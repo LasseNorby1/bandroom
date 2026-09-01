@@ -13,20 +13,25 @@ ASP.NET Core (.NET 10 LTS) modular monolith · EF Core + Postgres 17 · NodaTime
 - `src/Bandroom.Domain` — pure domain logic, zero I/O. The practice finder lives here; it is the one piece of real IP and the most tested code in the repo.
 - `src/Bandroom.Api` — the ASP.NET Core API. Feature modules as folders; EF Core entities and infrastructure live here so the domain stays pure.
 - `tests/Bandroom.Domain.Tests` — table-driven finder tests, straight from fig 1 of the spec.
+- `tests/Bandroom.Api.Tests` — integration tests through the real HTTP surface against a Testcontainers Postgres (needs Docker).
 
 ## Run it
 
 ```bash
-docker compose up -d          # postgres 17 on localhost:5432
+docker compose up -d          # postgres 17 on localhost:5433 (5432 is taken on this machine)
+dotnet ef database update --connection "Host=localhost;Port=5433;Database=bandroom;Username=bandroom;Password=bandroom_dev" --project src/Bandroom.Api
 dotnet run --project src/Bandroom.Api
 ```
 
 - API: http://localhost:5180 · OpenAPI: `/openapi/v1.json`
 - Health: `/health/live` (process), `/health/ready` (includes database)
+- Auth: `POST /auth/register|login|refresh|logout`, `GET /auth/me` (bearer)
 
 ```bash
-dotnet test                   # domain tests, no database needed
+dotnet test                   # domain tests run bare; api tests need docker
 ```
+
+Network note: on connections where CloudFront is unreachable (docker hub + ecr blob pulls EOF), pull images via Google's mirror (`docker pull mirror.gcr.io/library/postgres:17-alpine` + `docker tag`) and run tests with `TESTCONTAINERS_RYUK_DISABLED=true`.
 
 ## Foundation rules
 
@@ -39,7 +44,7 @@ dotnet test                   # domain tests, no database needed
 ## Build order
 
 - [x] 1 · Skeleton + pipeline — solution, CI, container, health endpoints, practice finder domain + tests
-- [ ] 2 · Identity + JWT/refresh — register, login, refresh rotation, email plumbing
+- [x] 2 · Identity + JWT/refresh — register, login (lockout), rotating refresh tokens with family reuse-detection, logout, `/auth/me`, first migration, integration tests
 - [ ] 3 · Bands + memberships + invite links — BandContext, global query filter, the leak test
 - [ ] 4 · Availability — weekly pattern (jsonb) + exceptions endpoints
 - [ ] 5 · Practice finder wired to real data — proposals
