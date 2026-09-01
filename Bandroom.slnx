@@ -1,0 +1,9 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/Bandroom.Domain/Bandroom.Domain.csproj" />
+    <Project Path="src/Bandroom.Api/Bandroom.Api.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/Bandroom.Domain.Tests/Bandroom.Domain.Tests.csproj" />
+  </Folder>
+</Solution>

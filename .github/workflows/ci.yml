@@ -1,0 +1,18 @@
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  build-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+      - run: dotnet restore Bandroom.slnx
+      - run: dotnet build Bandroom.slnx --no-restore --configuration Release
+      - run: dotnet test Bandroom.slnx --no-build --configuration Release

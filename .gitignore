@@ -1,0 +1,10 @@
+bin/
+obj/
+.vs/
+.idea/
+*.user
+TestResults/
+artifacts/
+.env
+*.local.json
+node_modules/
