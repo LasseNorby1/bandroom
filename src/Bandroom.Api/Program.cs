@@ -1,12 +1,16 @@
 using System.Text;
+using System.Text.Json;
+using System.Text.Json.Serialization;
 using Bandroom.Api.Data;
 using Bandroom.Api.Features.Auth;
+using Bandroom.Api.Features.Bands;
 using Bandroom.Api.Infrastructure.Email;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using NodaTime;
+using NodaTime.Serialization.SystemTextJson;
 using Serilog;
 
 Log.Logger = new LoggerConfiguration().WriteTo.Console().CreateBootstrapLogger();
@@ -15,10 +19,14 @@ try
 {
     var builder = WebApplication.CreateBuilder(args);
 
-    builder.Host.UseSerilog((context, loggerConfiguration) => loggerConfiguration
-        .ReadFrom.Configuration(context.Configuration)
-        .Enrich.FromLogContext()
-        .WriteTo.Console());
+    // preserveStaticLogger: each host builds its own logger instead of freezing
+    // the shared bootstrap — required for multiple hosts in one process (tests).
+    builder.Host.UseSerilog(
+        (context, loggerConfiguration) => loggerConfiguration
+            .ReadFrom.Configuration(context.Configuration)
+            .Enrich.FromLogContext()
+            .WriteTo.Console(),
+        preserveStaticLogger: true);
 
     var connectionString = builder.Configuration.GetConnectionString("Database");
     if (string.IsNullOrWhiteSpace(connectionString))
@@ -36,6 +44,12 @@ try
 
     builder.Services.AddSingleton(authOptions);
     builder.Services.AddSingleton<IClock>(SystemClock.Instance);
+
+    builder.Services.ConfigureHttpJsonOptions(json =>
+    {
+        json.SerializerOptions.ConfigureForNodaTime(DateTimeZoneProviders.Tzdb);
+        json.SerializerOptions.Converters.Add(new JsonStringEnumConverter(JsonNamingPolicy.CamelCase));
+    });
 
     builder.Services.AddDbContext<AppDbContext>(options =>
         options.UseNpgsql(connectionString, npgsql => npgsql.UseNodaTime()));
@@ -74,6 +88,11 @@ try
     builder.Services.AddScoped<TokenService>();
     builder.Services.AddSingleton<IAppEmailSender, LoggingEmailSender>();
 
+    // One scoped instance serves both roles: the endpoint filter writes it, the
+    // DbContext's query filters read it.
+    builder.Services.AddScoped<BandContext>();
+    builder.Services.AddScoped<IBandContext>(sp => sp.GetRequiredService<BandContext>());
+
     builder.Services.AddOpenApi();
     builder.Services.AddProblemDetails();
     builder.Services.AddHealthChecks()
@@ -101,6 +120,8 @@ try
     app.MapGet("/", () => Results.Ok(new { name = "bandroom-api", version = "0.1.0" }));
 
     app.MapAuthEndpoints();
+    app.MapBandEndpoints();
+    app.MapInviteEndpoints();
 
     app.Run();
 }

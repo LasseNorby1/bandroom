@@ -15,6 +15,11 @@ public sealed class DesignTimeDbContextFactory : IDesignTimeDbContextFactory<App
         var options = new DbContextOptionsBuilder<AppDbContext>()
             .UseNpgsql("Host=localhost;Database=bandroom-design", npgsql => npgsql.UseNodaTime())
             .Options;
-        return new AppDbContext(options);
+        return new AppDbContext(options, new DesignTimeBandContext());
+    }
+
+    private sealed class DesignTimeBandContext : IBandContext
+    {
+        public Guid? BandId => null;
     }
 }

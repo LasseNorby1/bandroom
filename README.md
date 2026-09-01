@@ -26,6 +26,7 @@ dotnet run --project src/Bandroom.Api
 - API: http://localhost:5180 · OpenAPI: `/openapi/v1.json`
 - Health: `/health/live` (process), `/health/ready` (includes database)
 - Auth: `POST /auth/register|login|refresh|logout`, `GET /auth/me` (bearer)
+- Bands: `POST|GET /bands`, `GET|PATCH /bands/{id}`, invites: `POST|GET /bands/{id}/invites`, `DELETE /bands/{id}/invites/{inviteId}`, `POST /invites/{token}/accept`
 
 ```bash
 dotnet test                   # domain tests run bare; api tests need docker
@@ -45,7 +46,7 @@ Network note: on connections where CloudFront is unreachable (docker hub + ecr b
 
 - [x] 1 · Skeleton + pipeline — solution, CI, container, health endpoints, practice finder domain + tests
 - [x] 2 · Identity + JWT/refresh — register, login (lockout), rotating refresh tokens with family reuse-detection, logout, `/auth/me`, first migration, integration tests
-- [ ] 3 · Bands + memberships + invite links — BandContext, global query filter, the leak test
+- [x] 3 · Bands + memberships + invite links — BandContext filter (404 for outsiders), fail-closed EF global query filters, model-completeness test, the cross-tenant leak test
 - [ ] 4 · Availability — weekly pattern (jsonb) + exceptions endpoints
 - [ ] 5 · Practice finder wired to real data — proposals
 - [ ] 6 · Events + RSVP + proposal flow — SignalR notifications

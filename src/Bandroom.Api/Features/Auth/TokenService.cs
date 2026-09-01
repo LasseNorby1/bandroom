@@ -2,6 +2,7 @@ using System.Buffers.Text;
 using System.Security.Cryptography;
 using System.Text;
 using Bandroom.Api.Data;
+using Bandroom.Api.Infrastructure;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.JsonWebTokens;
 using Microsoft.IdentityModel.Tokens;
@@ -24,7 +25,7 @@ public sealed class TokenService(AppDbContext db, AuthOptions options, IClock cl
     public async Task<TokenPair?> RotateAsync(string rawRefreshToken, CancellationToken ct)
     {
         var now = clock.GetCurrentInstant();
-        var hash = Hash(rawRefreshToken);
+        var hash = TokenHashing.Sha256Hex(rawRefreshToken);
 
         var token = await db.RefreshTokens.SingleOrDefaultAsync(t => t.TokenHash == hash, ct);
         if (token is null)
@@ -61,7 +62,7 @@ public sealed class TokenService(AppDbContext db, AuthOptions options, IClock cl
     /// <summary>Logout: revoke the presented token's whole family. Idempotent.</summary>
     public async Task RevokeAsync(string rawRefreshToken, CancellationToken ct)
     {
-        var hash = Hash(rawRefreshToken);
+        var hash = TokenHashing.Sha256Hex(rawRefreshToken);
         var token = await db.RefreshTokens.SingleOrDefaultAsync(t => t.TokenHash == hash, ct);
         if (token is not null)
         {
@@ -77,7 +78,7 @@ public sealed class TokenService(AppDbContext db, AuthOptions options, IClock cl
         db.RefreshTokens.Add(new RefreshToken
         {
             UserId = user.Id,
-            TokenHash = Hash(rawRefreshToken),
+            TokenHash = TokenHashing.Sha256Hex(rawRefreshToken),
             FamilyId = familyId,
             CreatedAt = now,
             ExpiresAt = now.Plus(Duration.FromDays(options.RefreshTokenDays)),
@@ -114,7 +115,4 @@ public sealed class TokenService(AppDbContext db, AuthOptions options, IClock cl
 
         return new JsonWebTokenHandler().CreateToken(descriptor);
     }
-
-    private static string Hash(string rawToken) =>
-        Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(rawToken)));
 }

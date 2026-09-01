@@ -6,7 +6,8 @@ using Xunit;
 
 namespace Bandroom.Api.Tests;
 
-public class AuthFlowTests(ApiFactory factory) : IClassFixture<ApiFactory>
+[Collection("api")]
+public class AuthFlowTests(ApiFactory factory)
 {
     private static RegisterRequest NewUser() =>
         new($"user-{Guid.NewGuid():N}@example.dk", "correct horse battery", "Lasse");
