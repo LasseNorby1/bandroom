@@ -1,6 +1,7 @@
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using System.Threading.RateLimiting;
 using Bandroom.Api.Data;
 using Bandroom.Api.Features.Auth;
 using Bandroom.Api.Features.Availability;
@@ -14,6 +15,8 @@ using Hangfire;
 using Hangfire.PostgreSql;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
+using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi;
@@ -75,7 +78,8 @@ try
             identity.Lockout.MaxFailedAccessAttempts = 5;
             identity.Lockout.DefaultLockoutTimeSpan = TimeSpan.FromMinutes(5);
         })
-        .AddEntityFrameworkStores<AppDbContext>();
+        .AddEntityFrameworkStores<AppDbContext>()
+        .AddDefaultTokenProviders();
 
     builder.Services
         .AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
@@ -110,7 +114,35 @@ try
     builder.Services.AddAuthorization();
 
     builder.Services.AddScoped<TokenService>();
-    builder.Services.AddSingleton<IAppEmailSender, LoggingEmailSender>();
+
+    var emailOptions = builder.Configuration.GetSection("Email").Get<EmailOptions>() ?? new EmailOptions();
+    builder.Services.AddSingleton(emailOptions);
+    if (!string.IsNullOrEmpty(emailOptions.SmtpHost))
+    {
+        builder.Services.AddSingleton<IAppEmailSender, SmtpEmailSender>();
+    }
+    else
+    {
+        builder.Services.AddSingleton<IAppEmailSender, LoggingEmailSender>();
+    }
+
+    // Config-gated so test hosts skip it; per-ip fixed window on /auth only.
+    var rateLimitingEnabled = builder.Configuration.GetValue("RateLimiting:Enabled", true);
+    if (rateLimitingEnabled)
+    {
+        builder.Services.AddRateLimiter(limiter =>
+        {
+            limiter.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+            limiter.AddPolicy("auth", httpContext => RateLimitPartition.GetFixedWindowLimiter(
+                httpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+                _ => new FixedWindowRateLimiterOptions
+                {
+                    PermitLimit = builder.Configuration.GetValue("RateLimiting:AuthPerMinute", 20),
+                    Window = TimeSpan.FromMinutes(1),
+                    QueueLimit = 0,
+                }));
+        });
+    }
 
     // One scoped instance serves both roles: the endpoint filter writes it, the
     // DbContext's query filters read it.
@@ -221,6 +253,11 @@ try
     if (corsOrigins.Length > 0)
     {
         app.UseCors();
+    }
+
+    if (rateLimitingEnabled)
+    {
+        app.UseRateLimiter();
     }
 
     app.UseAuthentication();

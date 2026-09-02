@@ -63,6 +63,10 @@ function LoginForm() {
           <Link href="/register" className="font-medium text-ink underline underline-offset-4">
             Create an account
           </Link>
+          <span className="mx-2 text-faint">·</span>
+          <Link href="/forgot-password" className="text-muted underline underline-offset-4 hover:text-ink">
+            Forgot password?
+          </Link>
         </p>
       </div>
     </main>

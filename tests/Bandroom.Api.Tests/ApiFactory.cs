@@ -26,8 +26,10 @@ public sealed class ApiFactory : WebApplicationFactory<Program>, IAsyncLifetime
     public ApiFactory()
     {
         // Env vars are the one config source that reliably beats appsettings under
-        // minimal hosting (bug-326) — keep Hangfire out of test hosts.
+        // minimal hosting (bug-326) — keep Hangfire and rate limiting out of test
+        // hosts (every test shares one client ip and would trip the auth limiter).
         Environment.SetEnvironmentVariable("Jobs__Enabled", "false");
+        Environment.SetEnvironmentVariable("RateLimiting__Enabled", "false");
     }
 
     protected override void ConfigureWebHost(IWebHostBuilder builder)

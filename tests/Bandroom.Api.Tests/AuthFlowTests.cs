@@ -1,7 +1,10 @@
 using System.Net;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
+using System.Text.RegularExpressions;
 using Bandroom.Api.Features.Auth;
+using Bandroom.Api.Tests.Support;
+using Microsoft.Extensions.DependencyInjection;
 using Xunit;
 
 namespace Bandroom.Api.Tests;
@@ -122,6 +125,43 @@ public class AuthFlowTests(ApiFactory factory)
         var response = await client.PostAsJsonAsync(
             "/auth/register", new RegisterRequest($"short-{Guid.NewGuid():N}@example.dk", "short", "Lasse"));
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task PasswordReset_FlowsEndToEnd_AndKillsOldSessions()
+    {
+        var client = factory.CreateClient();
+        var user = NewUser();
+        var register = await client.PostAsJsonAsync("/auth/register", user);
+        var tokens = await register.Content.ReadFromJsonAsync<TokenPairResponse>();
+
+        var forgot = await client.PostAsJsonAsync("/auth/forgot-password", new ForgotPasswordRequest(user.Email));
+        Assert.Equal(HttpStatusCode.NoContent, forgot.StatusCode);
+
+        var recorder = factory.Services.GetRequiredService<RecordingEmailSender>();
+        var mail = recorder.Sent.Last(m => m.To == user.Email && m.Subject.Contains("Reset"));
+        var token = Uri.UnescapeDataString(Regex.Match(mail.Body, @"token=([^&\s]+)").Groups[1].Value);
+
+        var reset = await client.PostAsJsonAsync(
+            "/auth/reset-password", new ResetPasswordRequest(user.Email, token, "brand new passphrase"));
+        Assert.Equal(HttpStatusCode.NoContent, reset.StatusCode);
+
+        // Old password and old refresh token are both dead; the new password works.
+        var oldLogin = await client.PostAsJsonAsync("/auth/login", new LoginRequest(user.Email, user.Password));
+        Assert.Equal(HttpStatusCode.Unauthorized, oldLogin.StatusCode);
+        var oldRefresh = await client.PostAsJsonAsync("/auth/refresh", new RefreshRequest(tokens!.RefreshToken));
+        Assert.Equal(HttpStatusCode.Unauthorized, oldRefresh.StatusCode);
+        var newLogin = await client.PostAsJsonAsync("/auth/login", new LoginRequest(user.Email, "brand new passphrase"));
+        newLogin.EnsureSuccessStatusCode();
+    }
+
+    [Fact]
+    public async Task ForgotPassword_UnknownEmail_IsStill204()
+    {
+        var client = factory.CreateClient();
+        var response = await client.PostAsJsonAsync(
+            "/auth/forgot-password", new ForgotPasswordRequest($"ghost-{Guid.NewGuid():N}@example.dk"));
+        Assert.Equal(HttpStatusCode.NoContent, response.StatusCode);
     }
 
     [Fact]

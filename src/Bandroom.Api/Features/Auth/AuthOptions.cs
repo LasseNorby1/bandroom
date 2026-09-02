@@ -12,4 +12,7 @@ public sealed record AuthOptions
     public int AccessTokenMinutes { get; init; } = 15;
 
     public int RefreshTokenDays { get; init; } = 30;
+
+    /// <summary>Where password-reset links point (the web app's public origin).</summary>
+    public string WebBaseUrl { get; init; } = "http://localhost:3000";
 }

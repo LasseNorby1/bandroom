@@ -59,6 +59,15 @@ public sealed class TokenService(AppDbContext db, AuthOptions options, IClock cl
         return await IssueAsync(user, token.FamilyId, ct);
     }
 
+    /// <summary>Password reset hygiene: every session for the user dies.</summary>
+    public Task RevokeAllForUserAsync(Guid userId, CancellationToken ct)
+    {
+        var now = clock.GetCurrentInstant();
+        return db.RefreshTokens
+            .Where(t => t.UserId == userId && t.RevokedAt == null)
+            .ExecuteUpdateAsync(setters => setters.SetProperty(t => t.RevokedAt, now), ct);
+    }
+
     /// <summary>Logout: revoke the presented token's whole family. Idempotent.</summary>
     public async Task RevokeAsync(string rawRefreshToken, CancellationToken ct)
     {

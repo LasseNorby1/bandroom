@@ -9,3 +9,7 @@ public sealed record RefreshRequest(string RefreshToken);
 public sealed record TokenPairResponse(string AccessToken, int ExpiresInSeconds, string RefreshToken);
 
 public sealed record MeResponse(Guid Id, string Email, string DisplayName);
+
+public sealed record ForgotPasswordRequest(string Email);
+
+public sealed record ResetPasswordRequest(string Email, string Token, string NewPassword);

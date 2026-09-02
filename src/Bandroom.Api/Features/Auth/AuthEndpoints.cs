@@ -11,15 +11,75 @@ public static class AuthEndpoints
 {
     public static IEndpointRouteBuilder MapAuthEndpoints(this IEndpointRouteBuilder routes)
     {
-        var auth = routes.MapGroup("/auth").WithTags("auth");
+        var auth = routes.MapGroup("/auth").WithTags("auth").RequireRateLimiting("auth");
 
         auth.MapPost("/register", RegisterAsync).WithSummary("Create an account and sign in");
         auth.MapPost("/login", LoginAsync).WithSummary("Sign in with email + password");
         auth.MapPost("/refresh", RefreshAsync).WithSummary("Rotate a refresh token");
         auth.MapPost("/logout", LogoutAsync).WithSummary("Revoke a refresh token family");
+        auth.MapPost("/forgot-password", ForgotPasswordAsync).WithSummary("Email a password reset link");
+        auth.MapPost("/reset-password", ResetPasswordAsync).WithSummary("Set a new password with a reset token");
         auth.MapGet("/me", MeAsync).RequireAuthorization().WithSummary("The signed-in user");
 
         return routes;
+    }
+
+    private static async Task<NoContent> ForgotPasswordAsync(
+        ForgotPasswordRequest request,
+        UserManager<AppUser> userManager,
+        IAppEmailSender email,
+        AuthOptions options,
+        CancellationToken ct)
+    {
+        // Always 204 — no user enumeration through this endpoint either.
+        var user = await userManager.FindByEmailAsync(request.Email);
+        if (user is not null)
+        {
+            var token = await userManager.GeneratePasswordResetTokenAsync(user);
+            var link = $"{options.WebBaseUrl}/reset-password" +
+                       $"?email={Uri.EscapeDataString(user.Email!)}&token={Uri.EscapeDataString(token)}";
+            await email.SendAsync(
+                user.Email!,
+                "Reset your Bandroom password",
+                $"Hi {user.DisplayName} — set a new password here: {link}\n\nIf you didn't ask for this, ignore it.",
+                ct);
+        }
+
+        return TypedResults.NoContent();
+    }
+
+    private static async Task<Results<NoContent, ValidationProblem>> ResetPasswordAsync(
+        ResetPasswordRequest request,
+        UserManager<AppUser> userManager,
+        TokenService tokens,
+        CancellationToken ct)
+    {
+        var invalid = TypedResults.ValidationProblem(new Dictionary<string, string[]>
+        {
+            ["token"] = ["That reset link is invalid or expired — request a new one."],
+        });
+
+        var user = await userManager.FindByEmailAsync(request.Email);
+        if (user is null)
+        {
+            return invalid;
+        }
+
+        var result = await userManager.ResetPasswordAsync(user, request.Token, request.NewPassword);
+        if (!result.Succeeded)
+        {
+            var passwordErrors = result.Errors
+                .Where(error => error.Code.StartsWith("Password", StringComparison.Ordinal))
+                .Select(error => error.Description)
+                .ToArray();
+            return passwordErrors.Length > 0
+                ? TypedResults.ValidationProblem(new Dictionary<string, string[]> { ["newPassword"] = passwordErrors })
+                : invalid;
+        }
+
+        // A reset means the old credential may be compromised — every session dies.
+        await tokens.RevokeAllForUserAsync(user.Id, ct);
+        return TypedResults.NoContent();
     }
 
     private static async Task<Results<Ok<TokenPairResponse>, ValidationProblem>> RegisterAsync(
