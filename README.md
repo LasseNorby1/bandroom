@@ -78,4 +78,4 @@ Auth (spec §6.2): the refresh token lives in an httpOnly cookie managed by the 
 - [x] web 6 · calendar-feed section + band settings
 - [x] web 7 · empty states, PWA manifest + icon, dark mode
 
-Phase 1 (spec §8) is dogfood-ready end to end: pattern → finder → propose → rsvp → auto-confirm → live update → ics. Next: deploy to coolify, then the Expo app (phase 2).
+Phase 1 (spec §8) is dogfood-ready end to end: pattern → finder → propose → rsvp → auto-confirm → live update → ics. Next: pick a host (NOT the Clayton Power coolify box — that server is off-limits to this project; own VPS or a PaaS, decision pending), then the Expo app (phase 2).

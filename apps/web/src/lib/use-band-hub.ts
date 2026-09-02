@@ -31,15 +31,25 @@ export function useBandHub(bandId: string) {
       invalidate();
     });
 
-    void connection
-      .start()
-      .then(() => (disposed ? undefined : connection.invoke("JoinBand", bandId)))
-      .catch(() => {
-        // The page works without live updates; reconnect logic retries.
-      });
+    // Deferred start: react strict mode mounts effects twice in dev, and a
+    // connection stopped mid-negotiation makes signalr log an error. The
+    // throwaway first mount's cleanup runs before this timer fires, so only
+    // the surviving mount ever starts negotiating.
+    const startTimer = setTimeout(() => {
+      if (disposed) {
+        return;
+      }
+      void connection
+        .start()
+        .then(() => (disposed ? connection.stop() : connection.invoke("JoinBand", bandId)))
+        .catch(() => {
+          // The page works without live updates; reconnect logic retries.
+        });
+    }, 0);
 
     return () => {
       disposed = true;
+      clearTimeout(startTimer);
       void connection.stop();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps -- invalidate is stable per band
