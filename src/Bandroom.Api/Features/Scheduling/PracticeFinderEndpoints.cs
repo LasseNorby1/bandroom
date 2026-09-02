@@ -70,6 +70,15 @@ public static class PracticeFinderEndpoints
 
         var lastPractice = await LatestConfirmedPracticeAsync(db, from, ct);
 
+        // Days already holding a practice (proposed or confirmed) are out — the
+        // finder proposes new days, it doesn't double-book existing ones.
+        var occupiedDates = await db.Events
+            .Where(e => e.Type == EventType.Practice &&
+                        e.Status != EventStatus.Cancelled &&
+                        e.Date >= from && e.Date <= to)
+            .Select(e => e.Date)
+            .ToListAsync(ct);
+
         var domainMembers = members
             .Select(member => new MemberAvailability(
                 member.Id,
@@ -85,7 +94,8 @@ public static class PracticeFinderEndpoints
         var quorum = Math.Max(1, Math.Min(band.Quorum, domainMembers.Count));
 
         var candidates = PracticeFinder.FindCandidates(new PracticeFinderRequest(
-            domainMembers, practiceSlot, from, days, quorum, lastPractice));
+            domainMembers, practiceSlot, from, days, quorum, lastPractice,
+            ExcludedDates: occupiedDates));
 
         var names = members.ToDictionary(member => member.Id, member => member.DisplayName);
         var response = new PracticeFinderResponse(from, days, quorum, practiceSlot, candidates

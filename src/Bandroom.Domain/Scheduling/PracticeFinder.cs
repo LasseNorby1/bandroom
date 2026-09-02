@@ -19,10 +19,18 @@ public static class PracticeFinder
         ArgumentOutOfRangeException.ThrowIfNegative(request.MinDaysSinceLastPractice);
 
         var candidates = new List<PracticeCandidate>();
+        var excluded = request.ExcludedDates is { Count: > 0 }
+            ? request.ExcludedDates.ToHashSet()
+            : null;
 
         for (var offset = 0; offset < request.HorizonDays; offset++)
         {
             var date = request.From.PlusDays(offset);
+
+            if (excluded is not null && excluded.Contains(date))
+            {
+                continue;
+            }
 
             if (request.LastPractice is { } lastPractice &&
                 Period.Between(lastPractice, date, PeriodUnits.Days).Days < request.MinDaysSinceLastPractice)

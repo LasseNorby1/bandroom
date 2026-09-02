@@ -7,6 +7,7 @@ namespace Bandroom.Domain.Scheduling;
 /// <param name="HorizonDays">How many days ahead to search.</param>
 /// <param name="Quorum">Minimum members for a viable practice — a band setting.</param>
 /// <param name="LastPractice">When set, days closer than <paramref name="MinDaysSinceLastPractice"/> are skipped.</param>
+/// <param name="ExcludedDates">Days that already hold a practice — proposing a second one is noise.</param>
 public sealed record PracticeFinderRequest(
     IReadOnlyList<MemberAvailability> Members,
     PracticeSlot Slot,
@@ -14,4 +15,5 @@ public sealed record PracticeFinderRequest(
     int HorizonDays,
     int Quorum,
     LocalDate? LastPractice = null,
-    int MinDaysSinceLastPractice = 2);
+    int MinDaysSinceLastPractice = 2,
+    IReadOnlyCollection<LocalDate>? ExcludedDates = null);

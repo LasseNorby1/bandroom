@@ -137,6 +137,22 @@ public class PracticeFinderTests
     }
 
     [Fact]
+    public void DaysAlreadyHoldingAPractice_AreSkipped()
+    {
+        var everyEvening = Member(Lasse, WeeklyPattern.Evenings(
+            IsoDayOfWeek.Monday, IsoDayOfWeek.Tuesday, IsoDayOfWeek.Wednesday,
+            IsoDayOfWeek.Thursday, IsoDayOfWeek.Friday, IsoDayOfWeek.Saturday, IsoDayOfWeek.Sunday));
+        var thursday = Monday.PlusDays(3);
+
+        var candidates = PracticeFinder.FindCandidates(new PracticeFinderRequest(
+            [everyEvening], PracticeSlot.Evening, Monday, HorizonDays: 7, Quorum: 1,
+            ExcludedDates: [thursday]));
+
+        Assert.DoesNotContain(candidates, candidate => candidate.Date == thursday);
+        Assert.Equal(6, candidates.Count);
+    }
+
+    [Fact]
     public void EmptyPatternIsNeverAvailable()
     {
         var candidates = PracticeFinder.FindCandidates(new PracticeFinderRequest(

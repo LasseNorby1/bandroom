@@ -2,6 +2,7 @@ using System.Net.Http.Json;
 using Bandroom.Api.Data;
 using Bandroom.Api.Features.Availability;
 using Bandroom.Api.Features.Bands;
+using Bandroom.Api.Features.Events;
 using Bandroom.Api.Features.Scheduling;
 using Bandroom.Api.Tests.Support;
 using Bandroom.Domain.Scheduling;
@@ -117,6 +118,37 @@ public class FinderTests(ApiFactory factory)
         var afternoons = await (await admin.GetAsync($"/bands/{bandId}/practice-finder?days=14&slot=afternoon"))
             .ReadAsAsync<PracticeFinderResponse>();
         Assert.Empty(afternoons.Candidates);
+    }
+
+    [Fact]
+    public async Task Finder_SkipsDaysThatAlreadyHaveAPractice()
+    {
+        var (admin, members, bandId) = await FourPieceBandAsync();
+        foreach (var client in new[] { admin }.Concat(members))
+        {
+            await client.PutAsJsonAsync(
+                $"/bands/{bandId}/availability/me/pattern", new UpdatePatternRequest(AllEvenings), TestJson.Options);
+        }
+
+        var before = await (await admin.GetAsync($"/bands/{bandId}/practice-finder?days=14"))
+            .ReadAsAsync<PracticeFinderResponse>();
+        var target = before.Candidates[0].Date;
+
+        var created = await (await admin.PostAsJsonAsync(
+                $"/bands/{bandId}/events",
+                new CreateEventRequest(EventType.Practice, target, Confirmed: false), TestJson.Options))
+            .ReadAsAsync<EventDetailResponse>();
+
+        var after = await (await admin.GetAsync($"/bands/{bandId}/practice-finder?days=14"))
+            .ReadAsAsync<PracticeFinderResponse>();
+        Assert.DoesNotContain(after.Candidates, candidate => candidate.Date == target);
+
+        // Cancelling the practice frees the day again.
+        (await admin.PostAsync($"/bands/{bandId}/events/{created.Event.Id}/cancel", null))
+            .EnsureSuccessStatusCode();
+        var freed = await (await admin.GetAsync($"/bands/{bandId}/practice-finder?days=14"))
+            .ReadAsAsync<PracticeFinderResponse>();
+        Assert.Contains(freed.Candidates, candidate => candidate.Date == target);
     }
 
     [Fact]
