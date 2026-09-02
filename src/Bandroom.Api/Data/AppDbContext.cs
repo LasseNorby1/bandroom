@@ -51,6 +51,8 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options, IBandCo
 
     public DbSet<PolishJob> PolishJobs => Set<PolishJob>();
 
+    public DbSet<ReferenceTrack> ReferenceTracks => Set<ReferenceTrack>();
+
     private static readonly JsonSerializerOptions PatternJsonOptions = new()
     {
         PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
@@ -250,6 +252,19 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options, IBandCo
             stem.HasOne<Membership>().WithMany().HasForeignKey(s => s.UploadedByMembershipId)
                 .OnDelete(DeleteBehavior.Cascade);
             stem.HasQueryFilter(s => s.BandId == _bandContext.BandId);
+        });
+
+        builder.Entity<ReferenceTrack>(reference =>
+        {
+            reference.Property(r => r.Title).HasMaxLength(120);
+            reference.Property(r => r.FileKey).HasMaxLength(300);
+            reference.Property(r => r.FileName).HasMaxLength(200);
+            reference.Property(r => r.ContentType).HasMaxLength(100);
+            reference.Property(r => r.Status).HasConversion<string>().HasMaxLength(20);
+            reference.HasOne<Band>().WithMany().HasForeignKey(r => r.BandId).OnDelete(DeleteBehavior.Cascade);
+            reference.HasOne<Membership>().WithMany().HasForeignKey(r => r.UploadedByMembershipId)
+                .OnDelete(DeleteBehavior.Cascade);
+            reference.HasQueryFilter(r => r.BandId == _bandContext.BandId);
         });
 
         builder.Entity<PolishJob>(job =>

@@ -328,6 +328,7 @@ try
     app.MapSongEndpoints();
     app.MapDemoEndpoints();
     app.MapPolishEndpoints();
+    app.MapReferenceEndpoints();
     app.MapCommentEndpoints();
     app.MapChatEndpoints();
     app.MapCalendarEndpoints();

@@ -66,6 +66,11 @@ public sealed class PolishJob : IBandScoped
 
     public PolishStatus Status { get; set; } = PolishStatus.Queued;
 
+    /// <summary>At most one of these — a library track or any demo version in the band.</summary>
+    public Guid? ReferenceTrackId { get; init; }
+
+    public Guid? ReferenceVersionId { get; init; }
+
     public Guid? OutputVersionId { get; set; }
 
     public string? Error { get; set; }

@@ -16,6 +16,8 @@ public sealed record WorkerOptions
     public string? Url { get; init; }
 }
 
+public sealed record RequestPolishRequest(Guid? ReferenceTrackId = null, Guid? ReferenceVersionId = null);
+
 public interface IPolishQueue
 {
     void Enqueue(Guid polishJobId);
@@ -50,6 +52,7 @@ public static class PolishEndpoints
 
     private static async Task<Results<Ok<PolishJobResponse>, NotFound, ValidationProblem>> RequestPolishAsync(
         Guid ideaId,
+        RequestPolishRequest? request,
         BandContext bandContext,
         AppDbContext db,
         IClock clock,
@@ -68,6 +71,25 @@ public static class PolishEndpoints
         if (string.IsNullOrEmpty(worker.Url))
         {
             errors["worker"] = ["Ai polish isn't available on this server (no audio worker configured)."];
+        }
+
+        if (request?.ReferenceTrackId is not null && request.ReferenceVersionId is not null)
+        {
+            errors["reference"] = ["Pick either a library reference or a demo version, not both."];
+        }
+
+        if (request?.ReferenceTrackId is { } referenceTrackId &&
+            !await db.ReferenceTracks.AnyAsync(
+                r => r.Id == referenceTrackId && r.Status == VersionStatus.Ready, ct))
+        {
+            errors["reference"] = ["Unknown reference track."];
+        }
+
+        if (request?.ReferenceVersionId is { } referenceVersionId &&
+            !await db.DemoVersions.AnyAsync(
+                v => v.Id == referenceVersionId && v.Status == VersionStatus.Ready, ct))
+        {
+            errors["reference"] = ["Unknown demo version."];
         }
 
         var now = clock.GetCurrentInstant();
@@ -101,6 +123,8 @@ public static class PolishEndpoints
         {
             BandId = idea.BandId,
             SongIdeaId = ideaId,
+            ReferenceTrackId = request?.ReferenceTrackId,
+            ReferenceVersionId = request?.ReferenceVersionId,
             RequestedByMembershipId = bandContext.MembershipId!.Value,
             CreatedAt = now,
         };
@@ -133,7 +157,8 @@ public sealed class PolishJobRunner(
 
     private sealed record WorkerStem(string Url, string Label);
 
-    private sealed record WorkerRequest(IReadOnlyList<WorkerStem> Stems, string OutputUrl, bool Master);
+    private sealed record WorkerRequest(
+        IReadOnlyList<WorkerStem> Stems, string OutputUrl, bool Master, string? ReferenceUrl);
 
     private sealed record WorkerResponse(double DurationSeconds);
 
@@ -164,12 +189,31 @@ public sealed class PolishJobRunner(
             var outputUpload = await storage.CreateUploadAsync(
                 outputKey, "audio/wav", ct, StorageAudience.Worker);
 
+            string? referenceKey = null;
+            if (job.ReferenceTrackId is { } referenceTrackId)
+            {
+                referenceKey = await db.ReferenceTracks.IgnoreQueryFilters()
+                    .Where(r => r.Id == referenceTrackId)
+                    .Select(r => r.FileKey)
+                    .SingleOrDefaultAsync(ct);
+            }
+            else if (job.ReferenceVersionId is { } referenceVersionId)
+            {
+                referenceKey = await db.DemoVersions.IgnoreQueryFilters()
+                    .Where(v => v.Id == referenceVersionId)
+                    .Select(v => v.FileKey)
+                    .SingleOrDefaultAsync(ct);
+            }
+
             var request = new WorkerRequest(
                 stems.Select(s => new WorkerStem(
                     storage.GetDownloadUrl(s.FileKey, TimeSpan.FromHours(1), StorageAudience.Worker),
                     s.Name ?? s.Label.ToString().ToLowerInvariant())).ToList(),
                 outputUpload.Url,
-                Master: true);
+                Master: true,
+                ReferenceUrl: referenceKey is null
+                    ? null
+                    : storage.GetDownloadUrl(referenceKey, TimeSpan.FromHours(1), StorageAudience.Worker));
 
             var http = httpClientFactory.CreateClient("worker");
             var response = await http.PostAsJsonAsync($"{worker.Url!.TrimEnd('/')}/polish", request, WorkerJson, ct);

@@ -5,10 +5,10 @@ import { use, useRef, useState } from "react";
 import { DemoPlayer } from "@/components/demo-player";
 import { Button } from "@/components/ui/button";
 import { api } from "@/lib/api";
-import { bandKeys, useIdea } from "@/lib/band-hooks";
+import { bandKeys, useIdea, useReferences } from "@/lib/band-hooks";
 import { cn } from "@/lib/cn";
 import type { StemLabel } from "@/lib/types";
-import { formatBytes, uploadDemoVersion, uploadStem } from "@/lib/upload";
+import { formatBytes, uploadDemoVersion, uploadReference, uploadStem } from "@/lib/upload";
 
 const stemLabels: StemLabel[] = ["drums", "bass", "guitar", "keys", "vocals", "other"];
 
@@ -73,18 +73,26 @@ export default function IdeaPage({
   const { bandId, ideaId } = use(params);
   const queryClient = useQueryClient();
   const idea = useIdea(bandId, ideaId);
+  const references = useReferences(bandId);
+  const [reference, setReference] = useState("standard");
   const [progressSetter, setProgress] = useState<number | null>(null);
   void progressSetter;
 
   const invalidate = () => {
     void queryClient.invalidateQueries({ queryKey: bandKeys.demos(bandId) });
     void queryClient.invalidateQueries({ queryKey: bandKeys.detail(bandId) });
+    void queryClient.invalidateQueries({ queryKey: ["band", bandId, "references"] });
   };
 
   const polish = useMutation({
     mutationFn: async () => {
+      const [kind, id] = reference.split(":");
       const { data, error } = await api.POST("/bands/{bandId}/song-ideas/{ideaId}/polish", {
         params: { path: { bandId, ideaId } },
+        body: {
+          referenceTrackId: kind === "ref" ? id : null,
+          referenceVersionId: kind === "ver" ? id : null,
+        },
       });
       if (error) throw error;
       return data;
@@ -161,6 +169,53 @@ export default function IdeaPage({
           >
             {activeJob ? "Mixing…" : "Mix & master stems"}
           </Button>
+        </div>
+
+        <div className="flex flex-wrap items-center gap-2">
+          <label htmlFor="reference" className="font-mono text-[11px] text-muted">
+            master
+          </label>
+          <select
+            id="reference"
+            value={reference}
+            onChange={(event) => setReference(event.target.value)}
+            className="h-9 rounded-lg border border-line bg-surface px-3 text-sm"
+          >
+            <option value="standard">by ear · −14 lufs</option>
+            {(references.data ?? []).length > 0 && (
+              <optgroup label="match a reference">
+                {references.data!.map((ref) => (
+                  <option key={ref.id} value={`ref:${ref.id}`}>
+                    {ref.title}
+                  </option>
+                ))}
+              </optgroup>
+            )}
+            {detail.versions.length > 0 && (
+              <optgroup label="match one of our takes">
+                {detail.versions.map((version) => (
+                  <option key={version.id} value={`ver:${version.id}`}>
+                    v{version.number} — {version.kind === "aiMix" ? "AI demo mix" : version.fileName}
+                  </option>
+                ))}
+              </optgroup>
+            )}
+          </select>
+          <UploadButton
+            label="+ upload reference"
+            busyLabel="Uploading"
+            variant="outline"
+            accept="audio/*"
+            onFile={async (file) => {
+              const uploaded = await uploadReference(bandId, file);
+              invalidate();
+              setReference(`ref:${uploaded.id}`);
+            }}
+          />
+          <p className="w-full text-xs text-faint">
+            &quot;Match&quot; runs reference mastering: eq, loudness and width shaped toward the
+            reference track.
+          </p>
         </div>
 
         {lastJob && (

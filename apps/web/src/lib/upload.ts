@@ -97,6 +97,29 @@ export async function uploadStem(
   return stem;
 }
 
+export async function uploadReference(
+  bandId: string,
+  file: File,
+  onProgress?: (fraction: number) => void,
+) {
+  const contentType = contentTypeOf(file);
+  const title = file.name.replace(/\.[^.]+$/, "");
+  const { data: init, error } = await api.POST("/bands/{bandId}/references/uploads", {
+    params: { path: { bandId } },
+    body: { title, fileName: file.name, contentType, sizeBytes: file.size },
+  });
+  if (error || !init) throw error ?? new Error("init failed");
+
+  await putWithProgress(init.uploadUrl, file, contentType, onProgress);
+
+  const { data: reference, error: confirmError } = await api.POST(
+    "/bands/{bandId}/references/{referenceId}/confirm",
+    { params: { path: { bandId, referenceId: init.referenceId } } },
+  );
+  if (confirmError || !reference) throw confirmError ?? new Error("confirm failed");
+  return reference;
+}
+
 export function formatBytes(bytes: number): string {
   if (bytes < 1024 * 1024) return `${Math.max(1, Math.round(bytes / 1024))} KB`;
   if (bytes < 1024 * 1024 * 1024) return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;

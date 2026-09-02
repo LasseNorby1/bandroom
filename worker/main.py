@@ -6,10 +6,14 @@ ceiling. Stems come in and the result goes out via presigned urls — audio neve
 touches the api. Reference-based mastering (matchering) is the v2 hook.
 """
 
+import asyncio
 import io
+import os
 import subprocess
+import tempfile
 
 import httpx
+import matchering as mg
 import numpy as np
 import pyloudnorm as pyln
 import soundfile as sf
@@ -50,6 +54,7 @@ class PolishRequest(BaseModel):
     stems: list[StemIn]
     output_url: str
     master: bool = True
+    reference_url: str | None = None
 
 
 class PolishResponse(BaseModel):
@@ -120,6 +125,20 @@ def bus_compress(mix: np.ndarray, threshold_db: float = -18.0, ratio: float = 3.
     return mix * per_sample[:, None]
 
 
+def match_reference(mix: np.ndarray, reference_bytes: bytes) -> np.ndarray:
+    """Matchering: eq/loudness/width matched to the reference, own limiter."""
+    reference = decode_to_stereo(reference_bytes)
+    with tempfile.TemporaryDirectory() as tmp:
+        target_path = os.path.join(tmp, "target.wav")
+        reference_path = os.path.join(tmp, "reference.wav")
+        output_path = os.path.join(tmp, "out.wav")
+        sf.write(target_path, mix.astype(np.float32), SR, subtype="FLOAT")
+        sf.write(reference_path, reference.astype(np.float32), SR, subtype="FLOAT")
+        mg.process(target=target_path, reference=reference_path, results=[mg.pcm16(output_path)])
+        matched, _ = sf.read(output_path, dtype="float64", always_2d=True)
+        return matched
+
+
 @app.get("/")
 def health() -> dict[str, bool]:
     return {"ok": True}
@@ -152,11 +171,18 @@ async def polish(request: PolishRequest) -> PolishResponse:
 
     mix = bus_compress(mix)
 
-    if request.master:
-        mix = loudness_normalize(mix, meter, -14.0)
-    peak = float(np.max(np.abs(mix))) or 1.0
-    if peak > 0.985:
-        mix *= 0.985 / peak
+    if request.reference_url:
+        async with httpx.AsyncClient(timeout=300) as client:
+            reference = await client.get(request.reference_url)
+            reference.raise_for_status()
+        # Matchering is cpu-bound and blocking — keep the event loop free.
+        mix = await asyncio.to_thread(match_reference, mix, reference.content)
+    else:
+        if request.master:
+            mix = loudness_normalize(mix, meter, -14.0)
+        peak = float(np.max(np.abs(mix))) or 1.0
+        if peak > 0.985:
+            mix *= 0.985 / peak
 
     buffer = io.BytesIO()
     sf.write(buffer, mix.astype(np.float32), SR, format="WAV", subtype="PCM_16")
@@ -166,4 +192,4 @@ async def polish(request: PolishRequest) -> PolishResponse:
             request.output_url, content=buffer.getvalue(), headers={"content-type": "audio/wav"})
         upload.raise_for_status()
 
-    return PolishResponse(duration_seconds=length / SR)
+    return PolishResponse(duration_seconds=len(mix) / SR)

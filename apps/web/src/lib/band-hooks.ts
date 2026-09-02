@@ -158,6 +158,19 @@ export function useComments(bandId: string, targetType: "event" | "demoVersion",
   });
 }
 
+export function useReferences(bandId: string) {
+  return useQuery({
+    queryKey: ["band", bandId, "references"],
+    queryFn: async () => {
+      const { data, error } = await api.GET("/bands/{bandId}/references", {
+        params: { path: { bandId } },
+      });
+      if (error) throw error;
+      return data;
+    },
+  });
+}
+
 export function useSongs(bandId: string) {
   return useQuery({
     queryKey: bandKeys.songs(bandId),

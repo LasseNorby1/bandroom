@@ -11,12 +11,6 @@ namespace Bandroom.Api.Features.Demos;
 
 public static class DemoEndpoints
 {
-    private static readonly HashSet<string> AllowedContentTypes = new(StringComparer.OrdinalIgnoreCase)
-    {
-        "audio/mpeg", "audio/mp3", "audio/mp4", "audio/x-m4a", "audio/aac",
-        "audio/wav", "audio/x-wav", "audio/wave", "audio/flac", "audio/ogg", "audio/webm",
-    };
-
     public static IEndpointRouteBuilder MapDemoEndpoints(this IEndpointRouteBuilder routes)
     {
         var band = routes.MapGroup("/bands/{bandId:guid}")
@@ -42,38 +36,6 @@ public static class DemoEndpoints
         band.MapDelete("/stems/{stemId:guid}", DeleteStemAsync).WithSummary("Delete a stem (uploader/admin)");
 
         return routes;
-    }
-
-    private static Dictionary<string, string[]>? ValidateUpload(
-        string fileName, string contentType, long sizeBytes, Band band, Instant now, EntitlementOptions entitlements)
-    {
-        var errors = new Dictionary<string, string[]>();
-        if (string.IsNullOrWhiteSpace(fileName) || fileName.Length > 200)
-        {
-            errors["fileName"] = ["File name is required (max 200 characters)."];
-        }
-
-        if (!AllowedContentTypes.Contains(contentType))
-        {
-            errors["contentType"] = ["Audio only: mp3, m4a/aac, wav, flac, ogg or webm."];
-        }
-
-        if (sizeBytes is <= 0 or > PlanLimits.MaxUploadBytes)
-        {
-            errors["sizeBytes"] = [$"File size must be positive and at most {PlanLimits.MaxUploadBytes / (1024 * 1024)} MB."];
-        }
-        else if (band.StorageUsedBytes + sizeBytes > PlanLimits.StorageQuota(band, now, entitlements))
-        {
-            errors["sizeBytes"] = ["That would exceed the band's storage quota."];
-        }
-
-        return errors.Count > 0 ? errors : null;
-    }
-
-    private static string Extension(string fileName)
-    {
-        var ext = Path.GetExtension(fileName);
-        return ext.Length is > 1 and <= 10 ? ext.ToLowerInvariant() : "";
     }
 
     private static async Task<Ok<List<IdeaSummaryResponse>>> ListIdeasAsync(AppDbContext db, CancellationToken ct)
@@ -233,7 +195,7 @@ public static class DemoEndpoints
 
         var now = clock.GetCurrentInstant();
         var band = await db.Bands.SingleAsync(b => b.Id == bandContext.BandId, ct);
-        if (ValidateUpload(request.FileName, request.ContentType, request.SizeBytes, band, now, entitlements) is { } errors)
+        if (UploadRules.Validate(request.FileName, request.ContentType, request.SizeBytes, band, now, entitlements) is { } errors)
         {
             return TypedResults.ValidationProblem(errors);
         }
@@ -246,7 +208,7 @@ public static class DemoEndpoints
                 BandId = idea.BandId,
                 SongIdeaId = ideaId,
                 Number = number + 1,
-                FileKey = $"bands/{idea.BandId}/ideas/{ideaId}/versions/{Guid.CreateVersion7()}{Extension(request.FileName)}",
+                FileKey = $"bands/{idea.BandId}/ideas/{ideaId}/versions/{Guid.CreateVersion7()}{UploadRules.Extension(request.FileName)}",
                 FileName = request.FileName.Trim(),
                 ContentType = request.ContentType,
                 UploadedByMembershipId = bandContext.MembershipId!.Value,
@@ -388,7 +350,7 @@ public static class DemoEndpoints
 
         var now = clock.GetCurrentInstant();
         var band = await db.Bands.SingleAsync(b => b.Id == bandContext.BandId, ct);
-        if (ValidateUpload(request.FileName, request.ContentType, request.SizeBytes, band, now, entitlements) is { } errors)
+        if (UploadRules.Validate(request.FileName, request.ContentType, request.SizeBytes, band, now, entitlements) is { } errors)
         {
             return TypedResults.ValidationProblem(errors);
         }
@@ -399,7 +361,7 @@ public static class DemoEndpoints
             SongIdeaId = ideaId,
             Label = request.Label,
             Name = request.Name?.Trim(),
-            FileKey = $"bands/{idea.BandId}/ideas/{ideaId}/stems/{Guid.CreateVersion7()}{Extension(request.FileName)}",
+            FileKey = $"bands/{idea.BandId}/ideas/{ideaId}/stems/{Guid.CreateVersion7()}{UploadRules.Extension(request.FileName)}",
             FileName = request.FileName.Trim(),
             ContentType = request.ContentType,
             UploadedByMembershipId = bandContext.MembershipId!.Value,

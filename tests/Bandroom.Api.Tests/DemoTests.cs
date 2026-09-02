@@ -168,6 +168,53 @@ public class DemoTests(ApiFactory factory)
     }
 
     [Fact]
+    public async Task References_UploadAndPolishAgainstThem()
+    {
+        var (client, bandId) = await BandAsync();
+        var ideaId = await CreateIdeaAsync(client, bandId);
+
+        // One ready stem so polish is possible.
+        var stemInit = await (await client.PostAsJsonAsync(
+                $"/bands/{bandId}/song-ideas/{ideaId}/stems/uploads",
+                new InitStemUploadRequest(StemLabel.Guitar, null, "gtr.wav", "audio/wav", 4096), TestJson.Options))
+            .ReadAsAsync<InitStemUploadResponse>();
+        using var raw = new HttpClient();
+        var stemContent = new ByteArrayContent(new byte[4096]);
+        stemContent.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("audio/wav");
+        (await raw.PutAsync(stemInit.UploadUrl, stemContent)).EnsureSuccessStatusCode();
+        (await client.PostAsync($"/bands/{bandId}/stems/{stemInit.StemId}/confirm", null)).EnsureSuccessStatusCode();
+
+        // Reference library upload.
+        var refInit = await (await client.PostAsJsonAsync(
+                $"/bands/{bandId}/references/uploads",
+                new InitReferenceUploadRequest("Our sound", "ref.wav", "audio/wav", 8192), TestJson.Options))
+            .ReadAsAsync<InitReferenceUploadResponse>();
+        var refContent = new ByteArrayContent(new byte[8192]);
+        refContent.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("audio/wav");
+        (await raw.PutAsync(refInit.UploadUrl, refContent)).EnsureSuccessStatusCode();
+        var reference = await (await client.PostAsync(
+                $"/bands/{bandId}/references/{refInit.ReferenceId}/confirm", null))
+            .ReadAsAsync<ReferenceResponse>();
+        Assert.Equal(VersionStatus.Ready, reference.Status);
+
+        var listed = await (await client.GetAsync($"/bands/{bandId}/references"))
+            .ReadAsAsync<List<ReferenceResponse>>();
+        Assert.Equal("Our sound", Assert.Single(listed).Title);
+
+        // Polish referencing the library track queues; a bogus reference is rejected.
+        var polish = await (await client.PostAsJsonAsync(
+                $"/bands/{bandId}/song-ideas/{ideaId}/polish",
+                new RequestPolishRequest(reference.Id, null), TestJson.Options))
+            .ReadAsAsync<PolishJobResponse>();
+        Assert.Equal(PolishStatus.Queued, polish.Status);
+
+        var bogus = await client.PostAsJsonAsync(
+            $"/bands/{bandId}/song-ideas/{ideaId}/polish",
+            new RequestPolishRequest(Guid.NewGuid(), null), TestJson.Options);
+        Assert.Equal(HttpStatusCode.BadRequest, bogus.StatusCode);
+    }
+
+    [Fact]
     public async Task Polish_WithoutStems_IsRejected()
     {
         var (client, bandId) = await BandAsync();
