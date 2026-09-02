@@ -1,0 +1,54 @@
+@import "tailwindcss";
+
+/* Bandroom design tokens — same palette as the spec artifact: restrained
+   neutrals, one rec-light accent, semantic green. Light and dark. */
+:root {
+  --paper: #faf9f8;
+  --surface: #ffffff;
+  --ink: #1c1917;
+  --muted: #6f6862;
+  --faint: #a8a09a;
+  --line: #e6e2dd;
+  --accent: #c13b2a;
+  --accent-soft: #f7e9e6;
+  --ok: #35784f;
+  --ok-soft: #e4efe7;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --paper: #171412;
+    --surface: #1f1b19;
+    --ink: #ece8e3;
+    --muted: #a39b93;
+    --faint: #6f6862;
+    --line: #332e2a;
+    --accent: #e2604c;
+    --accent-soft: #3a2320;
+    --ok: #6fb58c;
+    --ok-soft: #22322a;
+  }
+}
+
+@theme inline {
+  --color-paper: var(--paper);
+  --color-surface: var(--surface);
+  --color-ink: var(--ink);
+  --color-muted: var(--muted);
+  --color-faint: var(--faint);
+  --color-line: var(--line);
+  --color-accent: var(--accent);
+  --color-accent-soft: var(--accent-soft);
+  --color-ok: var(--ok);
+  --color-ok-soft: var(--ok-soft);
+  --font-display: var(--font-bricolage), ui-sans-serif, system-ui, sans-serif;
+  --font-sans: var(--font-schibsted), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-spline), ui-monospace, monospace;
+}
+
+body {
+  background: var(--paper);
+  color: var(--ink);
+  font-family: var(--font-schibsted), ui-sans-serif, system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}

@@ -1,5 +1,7 @@
 bin/
 obj/
+.next/
+next-env.d.ts
 .vs/
 .idea/
 *.user

@@ -6,7 +6,7 @@ on:
   pull_request:
 
 jobs:
-  build-test:
+  api:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -16,3 +16,15 @@ jobs:
       - run: dotnet restore Bandroom.slnx
       - run: dotnet build Bandroom.slnx --no-restore --configuration Release
       - run: dotnet test Bandroom.slnx --no-build --configuration Release
+
+  web:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter web build

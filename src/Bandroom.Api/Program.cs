@@ -119,6 +119,18 @@ try
     builder.Services.AddSignalR();
     builder.Services.AddSingleton<BandNotifier>();
 
+    // Production runs same-origin behind traefik (no cors at all); dev allows the
+    // next dev server. AllowCredentials because the signalr client sends them.
+    var corsOrigins = builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>() ?? [];
+    if (corsOrigins.Length > 0)
+    {
+        builder.Services.AddCors(cors => cors.AddDefaultPolicy(policy => policy
+            .WithOrigins(corsOrigins)
+            .AllowAnyHeader()
+            .AllowAnyMethod()
+            .AllowCredentials()));
+    }
+
     // Jobs:Enabled=false keeps Hangfire (storage, server, schedules) out of test
     // hosts; the job classes stay registered so tests can drive them directly.
     var jobsEnabled = builder.Configuration.GetValue("Jobs:Enabled", true);
@@ -145,6 +157,11 @@ try
     app.UseExceptionHandler();
     app.UseStatusCodePages();
     app.UseSerilogRequestLogging();
+
+    if (corsOrigins.Length > 0)
+    {
+        app.UseCors();
+    }
 
     app.UseAuthentication();
     app.UseAuthorization();

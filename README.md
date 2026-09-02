@@ -57,4 +57,25 @@ Network note: on connections where CloudFront is unreachable (docker hub + ecr b
 - [x] 6 · Events + RSVP + quorum auto-confirm — SignalR `eventChanged` per band group
 - [x] 7 · ICS feeds (Ical.Net, per-member capability urls) + Hangfire day-before reminders and weekly digests
 
-Phase 1 backend complete — next up: the Next.js web app speaking this API (then the Expo app, per spec §8).
+Phase 1 backend complete. The web app is under way:
+
+## Web app (apps/web)
+
+pnpm workspace: `apps/web` (Next.js) + `packages/client` (types generated from the api's OpenAPI document — `pnpm gen:api` re-exports and regenerates, so contract drift is impossible to miss).
+
+```bash
+pnpm install
+pnpm dev:web        # http://localhost:3000, expects the api on :5180
+```
+
+Auth (spec §6.2): the refresh token lives in an httpOnly cookie managed by the `/session/*` BFF routes; the access token lives in memory only with single-flight refresh (two concurrent refreshes would trip the api's reuse detection). Dev is cross-origin via CORS for localhost:3000; production runs same-origin behind traefik (`/api` + `/hubs`).
+
+- [x] web 1 · scaffold, auth BFF, login/register, home with band list + create (golden path verified in-browser)
+- [ ] web 2 · invites: create/QR in settings, accept page
+- [ ] web 3 · availability: pattern editor, blockouts, band week grid
+- [ ] web 4 · finder → one-tap propose
+- [ ] web 5 · agenda home, event detail, rsvp, SignalR invalidation
+- [ ] web 6 · calendar-feed onboarding, band settings
+- [ ] web 7 · polish: empty states, PWA manifest, dark-mode pass
+
+Then the Expo app (spec §8, phase 2).

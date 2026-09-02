@@ -1,0 +1,10 @@
+{
+  "name": "bandroom",
+  "private": true,
+  "packageManager": "pnpm@10.32.1",
+  "scripts": {
+    "dev:web": "pnpm --filter web dev",
+    "build:web": "pnpm --filter web build",
+    "gen:api": "node scripts/export-openapi.mjs && pnpm --filter @bandroom/client generate"
+  }
+}
