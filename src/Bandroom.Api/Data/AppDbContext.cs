@@ -1,5 +1,8 @@
+using System.Text.Json;
+using System.Text.Json.Serialization;
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.ChangeTracking;
 
 namespace Bandroom.Api.Data;
 
@@ -25,6 +28,14 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options, IBandCo
     public DbSet<Membership> Memberships => Set<Membership>();
 
     public DbSet<BandInvite> BandInvites => Set<BandInvite>();
+
+    public DbSet<AvailabilityException> AvailabilityExceptions => Set<AvailabilityException>();
+
+    private static readonly JsonSerializerOptions PatternJsonOptions = new()
+    {
+        PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+        Converters = { new JsonStringEnumConverter(JsonNamingPolicy.CamelCase) },
+    };
 
     protected override void OnModelCreating(ModelBuilder builder)
     {
@@ -59,6 +70,17 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options, IBandCo
             membership.HasIndex(m => new { m.BandId, m.UserId }).IsUnique();
             membership.Property(m => m.Role).HasConversion<string>().HasMaxLength(20);
             membership.Property(m => m.Instrument).HasMaxLength(50);
+            membership.Property(m => m.IcsToken).HasMaxLength(64);
+            membership.HasIndex(m => m.IcsToken).IsUnique();
+            membership.Property(m => m.WeeklyPattern)
+                .HasConversion(
+                    pattern => JsonSerializer.Serialize(pattern, PatternJsonOptions),
+                    json => JsonSerializer.Deserialize<List<WeeklySlot>>(json, PatternJsonOptions) ?? new List<WeeklySlot>(),
+                    new ValueComparer<List<WeeklySlot>>(
+                        (a, b) => (a ?? new List<WeeklySlot>()).SequenceEqual(b ?? new List<WeeklySlot>()),
+                        v => v.Aggregate(0, (hash, slot) => HashCode.Combine(hash, slot.GetHashCode())),
+                        v => v.ToList()))
+                .HasColumnType("jsonb");
             membership.HasOne<Band>()
                 .WithMany()
                 .HasForeignKey(m => m.BandId)
@@ -83,6 +105,17 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options, IBandCo
                 .HasForeignKey(i => i.CreatedByMembershipId)
                 .OnDelete(DeleteBehavior.Cascade);
             invite.HasQueryFilter(i => i.BandId == _bandContext.BandId);
+        });
+
+        builder.Entity<AvailabilityException>(exception =>
+        {
+            exception.Property(e => e.Note).HasMaxLength(200);
+            exception.HasIndex(e => new { e.MembershipId, e.To });
+            exception.HasOne<Membership>()
+                .WithMany()
+                .HasForeignKey(e => e.MembershipId)
+                .OnDelete(DeleteBehavior.Cascade);
+            exception.HasQueryFilter(e => e.BandId == _bandContext.BandId);
         });
     }
 }

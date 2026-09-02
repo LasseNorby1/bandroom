@@ -1,4 +1,6 @@
+using System.Buffers.Text;
 using System.Security.Claims;
+using System.Security.Cryptography;
 using Bandroom.Api.Data;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.EntityFrameworkCore;
@@ -65,6 +67,7 @@ public static class BandEndpoints
             UserId = userId,
             Role = BandRole.Admin,
             JoinedAt = now,
+            IcsToken = Base64Url.EncodeToString(RandomNumberGenerator.GetBytes(24)),
         };
 
         db.Bands.Add(band);

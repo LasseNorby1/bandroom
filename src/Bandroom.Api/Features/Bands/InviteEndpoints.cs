@@ -155,6 +155,7 @@ public static class InviteEndpoints
             UserId = userId,
             Role = BandRole.Member,
             JoinedAt = now,
+            IcsToken = Base64Url.EncodeToString(RandomNumberGenerator.GetBytes(24)),
         };
         db.Memberships.Add(membership);
         try

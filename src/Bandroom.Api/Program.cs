@@ -3,6 +3,7 @@ using System.Text.Json;
 using System.Text.Json.Serialization;
 using Bandroom.Api.Data;
 using Bandroom.Api.Features.Auth;
+using Bandroom.Api.Features.Availability;
 using Bandroom.Api.Features.Bands;
 using Bandroom.Api.Infrastructure.Email;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
@@ -122,6 +123,7 @@ try
     app.MapAuthEndpoints();
     app.MapBandEndpoints();
     app.MapInviteEndpoints();
+    app.MapAvailabilityEndpoints();
 
     app.Run();
 }
