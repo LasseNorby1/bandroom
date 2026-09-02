@@ -1,8 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { Suspense, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Field } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
@@ -10,7 +10,16 @@ import { Wordmark } from "@/components/wordmark";
 import { registerAccount } from "@/lib/auth";
 
 export default function RegisterPage() {
+  return (
+    <Suspense>
+      <RegisterForm />
+    </Suspense>
+  );
+}
+
+function RegisterForm() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
@@ -25,7 +34,8 @@ export default function RegisterPage() {
       String(data.get("displayName")),
     );
     if (result.ok) {
-      router.push("/home");
+      const next = searchParams.get("next");
+      router.push(next && next.startsWith("/") ? next : "/home");
       router.refresh();
       return;
     }

@@ -70,12 +70,12 @@ pnpm dev:web        # http://localhost:3000, expects the api on :5180
 
 Auth (spec §6.2): the refresh token lives in an httpOnly cookie managed by the `/session/*` BFF routes; the access token lives in memory only with single-flight refresh (two concurrent refreshes would trip the api's reuse detection). Dev is cross-origin via CORS for localhost:3000; production runs same-origin behind traefik (`/api` + `/hubs`).
 
-- [x] web 1 · scaffold, auth BFF, login/register, home with band list + create (golden path verified in-browser)
-- [ ] web 2 · invites: create/QR in settings, accept page
-- [ ] web 3 · availability: pattern editor, blockouts, band week grid
-- [ ] web 4 · finder → one-tap propose
-- [ ] web 5 · agenda home, event detail, rsvp, SignalR invalidation
-- [ ] web 6 · calendar-feed onboarding, band settings
-- [ ] web 7 · polish: empty states, PWA manifest, dark-mode pass
+- [x] web 1 · scaffold, auth BFF, login/register, home with band list + create
+- [x] web 2 · invites: create/QR in settings, `/invite/[token]` accept page (works logged-out via ?next=)
+- [x] web 3 · availability: pattern editor (7×2 tap grid), blockouts, the band week grid
+- [x] web 4 · finder → one-tap propose
+- [x] web 5 · agenda home, event detail, rsvp, SignalR live invalidation (verified: an api-side rsvp flipped the open page to confirmed)
+- [x] web 6 · calendar-feed section + band settings
+- [x] web 7 · empty states, PWA manifest + icon, dark mode
 
-Then the Expo app (spec §8, phase 2).
+Phase 1 (spec §8) is dogfood-ready end to end: pattern → finder → propose → rsvp → auto-confirm → live update → ics. Next: deploy to coolify, then the Expo app (phase 2).

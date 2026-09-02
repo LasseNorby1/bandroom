@@ -288,6 +288,16 @@
           "bands"
         ],
         "summary": "Band detail + members",
+        "parameters": [
+          {
+            "name": "bandId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
         "responses": {
           "200": {
             "description": "OK",
@@ -306,6 +316,16 @@
           "bands"
         ],
         "summary": "Update band settings (admin)",
+        "parameters": [
+          {
+            "name": "bandId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
         "requestBody": {
           "content": {
             "application/json": {
@@ -346,6 +366,16 @@
           "invites"
         ],
         "summary": "Create an invite link (raw token shown once)",
+        "parameters": [
+          {
+            "name": "bandId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
         "requestBody": {
           "content": {
             "application/json": {
@@ -390,6 +420,16 @@
           "invites"
         ],
         "summary": "Active invites",
+        "parameters": [
+          {
+            "name": "bandId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
         "responses": {
           "200": {
             "description": "OK",
@@ -422,6 +462,14 @@
               "type": "string",
               "format": "uuid"
             }
+          },
+          {
+            "name": "bandId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
           }
         ],
         "responses": {
@@ -452,6 +500,14 @@
               ],
               "format": "int32",
               "default": 28
+            }
+          },
+          {
+            "name": "bandId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
             }
           }
         ],
@@ -485,6 +541,16 @@
           "availability"
         ],
         "summary": "My pattern, exceptions and calendar feed",
+        "parameters": [
+          {
+            "name": "bandId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
         "responses": {
           "200": {
             "description": "OK",
@@ -505,6 +571,16 @@
           "availability"
         ],
         "summary": "Replace my weekly pattern",
+        "parameters": [
+          {
+            "name": "bandId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
         "requestBody": {
           "content": {
             "application/json": {
@@ -545,6 +621,16 @@
           "availability"
         ],
         "summary": "Add a blockout",
+        "parameters": [
+          {
+            "name": "bandId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
         "requestBody": {
           "content": {
             "application/json": {
@@ -594,6 +680,14 @@
               "type": "string",
               "format": "uuid"
             }
+          },
+          {
+            "name": "bandId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
           }
         ],
         "responses": {
@@ -632,6 +726,14 @@
             "schema": {
               "type": "string"
             }
+          },
+          {
+            "name": "bandId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
           }
         ],
         "responses": {
@@ -664,6 +766,16 @@
           "events"
         ],
         "summary": "Create a practice/gig/deadline (proposed by default)",
+        "parameters": [
+          {
+            "name": "bandId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
         "requestBody": {
           "content": {
             "application/json": {
@@ -715,6 +827,14 @@
               "format": "int32",
               "default": 60
             }
+          },
+          {
+            "name": "bandId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
           }
         ],
         "responses": {
@@ -759,6 +879,14 @@
               "type": "string",
               "format": "uuid"
             }
+          },
+          {
+            "name": "bandId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
           }
         ],
         "responses": {
@@ -792,6 +920,14 @@
             "schema": {
               "type": "string",
               "format": "uuid"
+            }
+          },
+          {
+            "name": "bandId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
             }
           }
         ],
@@ -847,6 +983,14 @@
               "type": "string",
               "format": "uuid"
             }
+          },
+          {
+            "name": "bandId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
           }
         ],
         "responses": {
@@ -890,6 +1034,14 @@
             "schema": {
               "type": "string",
               "format": "uuid"
+            }
+          },
+          {
+            "name": "bandId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
             }
           }
         ],
@@ -1096,8 +1248,14 @@
               }
             ]
           },
-          "startTime": { },
-          "endTime": { },
+          "startTime": {
+            "type": "string",
+            "format": "time"
+          },
+          "endTime": {
+            "type": "string",
+            "format": "time"
+          },
           "title": {
             "type": [
               "null",
@@ -1412,7 +1570,10 @@
           }
         }
       },
-      "Instant": { },
+      "Instant": {
+        "type": "string",
+        "format": "date-time"
+      },
       "InviteCreatedResponse": {
         "required": [
           "id",
@@ -1494,8 +1655,14 @@
           "sunday"
         ]
       },
-      "LocalDate": { },
-      "LocalTime": { },
+      "LocalDate": {
+        "type": "string",
+        "format": "date"
+      },
+      "LocalTime": {
+        "type": "string",
+        "format": "time"
+      },
       "LoginRequest": {
         "required": [
           "email",

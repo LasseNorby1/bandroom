@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
@@ -51,17 +52,16 @@ export default function HomePage() {
       {bands.data.length > 0 && (
         <ul className="space-y-3">
           {bands.data.map((band) => (
-            <li
-              key={band.id}
-              className="flex items-center justify-between rounded-xl border border-line bg-surface px-5 py-4"
-            >
-              <div>
+            <li key={band.id}>
+              <Link
+                href={`/b/${band.id}`}
+                className="flex items-center justify-between rounded-xl border border-line bg-surface px-5 py-4 transition-colors hover:border-ink"
+              >
                 <p className="font-medium">{band.name}</p>
-                <p className="text-xs text-muted">availability, finder and events land here next</p>
-              </div>
-              <span className="rounded-full border border-line px-2.5 py-0.5 font-mono text-[11px] text-muted">
-                {band.role}
-              </span>
+                <span className="rounded-full border border-line px-2.5 py-0.5 font-mono text-[11px] text-muted">
+                  {band.role}
+                </span>
+              </Link>
             </li>
           ))}
         </ul>

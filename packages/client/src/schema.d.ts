@@ -402,7 +402,9 @@ export interface paths {
             parameters: {
                 query?: never;
                 header?: never;
-                path?: never;
+                path: {
+                    bandId: string;
+                };
                 cookie?: never;
             };
             requestBody?: never;
@@ -428,7 +430,9 @@ export interface paths {
             parameters: {
                 query?: never;
                 header?: never;
-                path?: never;
+                path: {
+                    bandId: string;
+                };
                 cookie?: never;
             };
             requestBody: {
@@ -471,7 +475,9 @@ export interface paths {
             parameters: {
                 query?: never;
                 header?: never;
-                path?: never;
+                path: {
+                    bandId: string;
+                };
                 cookie?: never;
             };
             requestBody?: never;
@@ -493,7 +499,9 @@ export interface paths {
             parameters: {
                 query?: never;
                 header?: never;
-                path?: never;
+                path: {
+                    bandId: string;
+                };
                 cookie?: never;
             };
             requestBody?: {
@@ -545,6 +553,7 @@ export interface paths {
                 header?: never;
                 path: {
                     inviteId: string;
+                    bandId: string;
                 };
                 cookie?: never;
             };
@@ -585,7 +594,9 @@ export interface paths {
                     days?: number | string;
                 };
                 header?: never;
-                path?: never;
+                path: {
+                    bandId: string;
+                };
                 cookie?: never;
             };
             requestBody?: never;
@@ -630,7 +641,9 @@ export interface paths {
             parameters: {
                 query?: never;
                 header?: never;
-                path?: never;
+                path: {
+                    bandId: string;
+                };
                 cookie?: never;
             };
             requestBody?: never;
@@ -667,7 +680,9 @@ export interface paths {
             parameters: {
                 query?: never;
                 header?: never;
-                path?: never;
+                path: {
+                    bandId: string;
+                };
                 cookie?: never;
             };
             requestBody: {
@@ -717,7 +732,9 @@ export interface paths {
             parameters: {
                 query?: never;
                 header?: never;
-                path?: never;
+                path: {
+                    bandId: string;
+                };
                 cookie?: never;
             };
             requestBody: {
@@ -769,6 +786,7 @@ export interface paths {
                 header?: never;
                 path: {
                     exceptionId: string;
+                    bandId: string;
                 };
                 cookie?: never;
             };
@@ -810,7 +828,9 @@ export interface paths {
                     slot?: string;
                 };
                 header?: never;
-                path?: never;
+                path: {
+                    bandId: string;
+                };
                 cookie?: never;
             };
             requestBody?: never;
@@ -857,7 +877,9 @@ export interface paths {
                     days?: number | string;
                 };
                 header?: never;
-                path?: never;
+                path: {
+                    bandId: string;
+                };
                 cookie?: never;
             };
             requestBody?: never;
@@ -888,7 +910,9 @@ export interface paths {
             parameters: {
                 query?: never;
                 header?: never;
-                path?: never;
+                path: {
+                    bandId: string;
+                };
                 cookie?: never;
             };
             requestBody: {
@@ -937,6 +961,7 @@ export interface paths {
                 header?: never;
                 path: {
                     eventId: string;
+                    bandId: string;
                 };
                 cookie?: never;
             };
@@ -984,6 +1009,7 @@ export interface paths {
                 header?: never;
                 path: {
                     eventId: string;
+                    bandId: string;
                 };
                 cookie?: never;
             };
@@ -1042,6 +1068,7 @@ export interface paths {
                 header?: never;
                 path: {
                     eventId: string;
+                    bandId: string;
                 };
                 cookie?: never;
             };
@@ -1096,6 +1123,7 @@ export interface paths {
                 header?: never;
                 path: {
                     eventId: string;
+                    bandId: string;
                 };
                 cookie?: never;
             };
@@ -1181,8 +1209,10 @@ export interface components {
             type: components["schemas"]["EventType"];
             date: components["schemas"]["LocalDate"];
             slot?: null | components["schemas"]["PracticeSlot"];
-            startTime?: unknown;
-            endTime?: unknown;
+            /** Format: time */
+            startTime?: string;
+            /** Format: time */
+            endTime?: string;
             title?: null | string;
             location?: null | string;
             /** @default false */
@@ -1254,7 +1284,8 @@ export interface components {
                 [key: string]: string[];
             };
         };
-        Instant: unknown;
+        /** Format: date-time */
+        Instant: string;
         InviteCreatedResponse: {
             /** Format: uuid */
             id: string;
@@ -1275,8 +1306,10 @@ export interface components {
         };
         /** @enum {unknown} */
         IsoDayOfWeek: "none" | "monday" | "tuesday" | "wednesday" | "thursday" | "friday" | "saturday" | "sunday";
-        LocalDate: unknown;
-        LocalTime: unknown;
+        /** Format: date */
+        LocalDate: string;
+        /** Format: time */
+        LocalTime: string;
         LoginRequest: {
             email: string;
             password: string;

@@ -16,6 +16,7 @@ using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
+using Microsoft.OpenApi;
 using NodaTime;
 using NodaTime.Serialization.SystemTextJson;
 using Serilog;
@@ -147,7 +148,66 @@ try
     builder.Services.AddScoped<ReminderJob>();
     builder.Services.AddScoped<DigestJob>();
 
-    builder.Services.AddOpenApi();
+    builder.Services.AddOpenApi(openApi =>
+    {
+        // NodaTime values serialize as iso strings, but the generator can't see
+        // through their converters and emits `unknown` — map them explicitly so
+        // generated clients get real string types.
+        openApi.AddSchemaTransformer((schema, context, _) =>
+        {
+            var type = Nullable.GetUnderlyingType(context.JsonTypeInfo.Type) ?? context.JsonTypeInfo.Type;
+            if (type == typeof(Instant))
+            {
+                schema.Type = JsonSchemaType.String;
+                schema.Format = "date-time";
+            }
+            else if (type == typeof(LocalDate))
+            {
+                schema.Type = JsonSchemaType.String;
+                schema.Format = "date";
+            }
+            else if (type == typeof(LocalTime))
+            {
+                schema.Type = JsonSchemaType.String;
+                schema.Format = "time";
+            }
+
+            return Task.CompletedTask;
+        });
+
+        // Route values consumed only by endpoint filters (bandId) never appear in
+        // handler signatures, so the generator misses them — declare every route
+        // template placeholder as a path parameter explicitly.
+        openApi.AddOperationTransformer((operation, context, _) =>
+        {
+            var template = context.Description.RelativePath;
+            if (template is null)
+            {
+                return Task.CompletedTask;
+            }
+
+            foreach (System.Text.RegularExpressions.Match match in
+                     System.Text.RegularExpressions.Regex.Matches(template, @"\{(\w+)[^}]*\}"))
+            {
+                var name = match.Groups[1].Value;
+                if (operation.Parameters?.Any(p => p.Name == name && p.In == ParameterLocation.Path) == true)
+                {
+                    continue;
+                }
+
+                operation.Parameters ??= [];
+                operation.Parameters.Add(new OpenApiParameter
+                {
+                    Name = name,
+                    In = ParameterLocation.Path,
+                    Required = true,
+                    Schema = new OpenApiSchema { Type = JsonSchemaType.String },
+                });
+            }
+
+            return Task.CompletedTask;
+        });
+    });
     builder.Services.AddProblemDetails();
     builder.Services.AddHealthChecks()
         .AddDbContextCheck<AppDbContext>("database", tags: ["ready"]);
