@@ -5,6 +5,7 @@ using Bandroom.Api.Data;
 using Bandroom.Api.Features.Auth;
 using Bandroom.Api.Features.Availability;
 using Bandroom.Api.Features.Bands;
+using Bandroom.Api.Features.Scheduling;
 using Bandroom.Api.Infrastructure.Email;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
@@ -124,6 +125,7 @@ try
     app.MapBandEndpoints();
     app.MapInviteEndpoints();
     app.MapAvailabilityEndpoints();
+    app.MapPracticeFinderEndpoints();
 
     app.Run();
 }
