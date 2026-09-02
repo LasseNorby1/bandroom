@@ -43,6 +43,18 @@ public sealed class BandNotifier(IHubContext<BandHub> hub)
     public Task EventChangedAsync(Guid bandId, Guid eventId, string action, CancellationToken ct = default) =>
         hub.Clients.Group(BandHub.GroupName(bandId))
             .SendAsync("eventChanged", new EventChangedNotification(bandId, eventId, action), ct);
+
+    public Task DemoChangedAsync(Guid bandId, Guid songIdeaId, string action, CancellationToken ct = default) =>
+        hub.Clients.Group(BandHub.GroupName(bandId))
+            .SendAsync("demoChanged", new DemoChangedNotification(bandId, songIdeaId, action), ct);
+
+    public Task MessageAddedAsync(Guid bandId, Guid channelId, CancellationToken ct = default) =>
+        hub.Clients.Group(BandHub.GroupName(bandId))
+            .SendAsync("messageAdded", new MessageAddedNotification(bandId, channelId), ct);
 }
 
 public sealed record EventChangedNotification(Guid BandId, Guid EventId, string Action);
+
+public sealed record DemoChangedNotification(Guid BandId, Guid SongIdeaId, string Action);
+
+public sealed record MessageAddedNotification(Guid BandId, Guid ChannelId);

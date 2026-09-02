@@ -12,6 +12,9 @@ const tabs = [
   { segment: "", label: "Home" },
   { segment: "/availability", label: "Availability" },
   { segment: "/finder", label: "Finder" },
+  { segment: "/demos", label: "Demos" },
+  { segment: "/songs", label: "Songs" },
+  { segment: "/chat", label: "Chat" },
   { segment: "/settings", label: "Settings" },
 ];
 

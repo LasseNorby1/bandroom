@@ -3,7 +3,11 @@
 import { HubConnectionBuilder } from "@microsoft/signalr";
 import { useEffect } from "react";
 import { getAccessToken, refreshSession } from "./auth";
-import { useInvalidateBandEvents } from "./band-hooks";
+import {
+  useInvalidateBandChat,
+  useInvalidateBandDemos,
+  useInvalidateBandEvents,
+} from "./band-hooks";
 
 const hubUrl =
   process.env.NEXT_PUBLIC_HUB_URL ?? `${process.env.NEXT_PUBLIC_API_URL ?? ""}/hubs/band`;
@@ -14,6 +18,8 @@ const hubUrl =
  */
 export function useBandHub(bandId: string) {
   const invalidate = useInvalidateBandEvents(bandId);
+  const invalidateDemos = useInvalidateBandDemos(bandId);
+  const invalidateChat = useInvalidateBandChat(bandId);
 
   useEffect(() => {
     let disposed = false;
@@ -26,9 +32,13 @@ export function useBandHub(bandId: string) {
       .build();
 
     connection.on("eventChanged", invalidate);
+    connection.on("demoChanged", invalidateDemos);
+    connection.on("messageAdded", invalidateChat);
     connection.onreconnected(() => {
       void connection.invoke("JoinBand", bandId);
       invalidate();
+      invalidateDemos();
+      invalidateChat();
     });
 
     // Deferred start: react strict mode mounts effects twice in dev, and a

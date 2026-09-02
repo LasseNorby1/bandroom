@@ -10,6 +10,7 @@ import { api } from "@/lib/api";
 import { useBandContext } from "@/lib/band-context";
 import { bandKeys, useInvites, useMyAvailability } from "@/lib/band-hooks";
 import { formatDay } from "@/lib/format";
+import { formatBytes } from "@/lib/upload";
 import type { InviteCreated, PracticeSlot } from "@/lib/types";
 
 function CopyButton({ value, label = "Copy" }: { value: string; label?: string }) {
@@ -284,12 +285,40 @@ function BandSettings({ bandId }: { bandId: string }) {
   );
 }
 
+function PlanAndStorage() {
+  const { detail } = useBandContext();
+  if (!detail) return null;
+  const band = detail.band;
+  const usedFraction = band.storageQuotaBytes > 0 ? band.storageUsedBytes / band.storageQuotaBytes : 0;
+
+  return (
+    <section className="space-y-3 rounded-xl border border-line bg-surface p-5">
+      <div className="flex items-baseline justify-between">
+        <h2 className="font-medium">Plan &amp; storage</h2>
+        <span className="rounded-full border border-line px-2.5 py-0.5 font-mono text-[11px] text-muted">
+          {band.plan}
+        </span>
+      </div>
+      <div className="h-2 overflow-hidden rounded-full bg-paper">
+        <div
+          className="h-full rounded-full bg-ink"
+          style={{ width: `${Math.min(100, Math.round(usedFraction * 100))}%` }}
+        />
+      </div>
+      <p className="font-mono text-[11px] text-muted">
+        {formatBytes(band.storageUsedBytes)} of {formatBytes(band.storageQuotaBytes)} — demos and stems
+      </p>
+    </section>
+  );
+}
+
 export default function SettingsPage({ params }: { params: Promise<{ bandId: string }> }) {
   const { bandId } = use(params);
 
   return (
     <div className="space-y-6">
       <Invites bandId={bandId} />
+      <PlanAndStorage />
       <CalendarFeed bandId={bandId} />
       <BandSettings bandId={bandId} />
     </div>

@@ -19,7 +19,10 @@ public sealed record BandResponse(
     string TimeZone,
     int Quorum,
     PracticeSlot DefaultPracticeSlot,
-    string? RehearsalSpace);
+    string? RehearsalSpace,
+    BandPlan Plan,
+    long StorageUsedBytes,
+    long StorageQuotaBytes);
 
 public sealed record BandSummaryResponse(Guid Id, string Name, BandRole Role);
 

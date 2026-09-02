@@ -3,6 +3,7 @@
     <ProjectReference Include="..\Bandroom.Domain\Bandroom.Domain.csproj" />
   </ItemGroup>
   <ItemGroup>
+    <PackageReference Include="AWSSDK.S3" Version="4.0.102.4" />
     <PackageReference Include="Hangfire.AspNetCore" Version="1.8.25" />
     <PackageReference Include="Hangfire.PostgreSql" Version="1.21.1" />
     <PackageReference Include="Ical.Net" Version="5.2.3" />

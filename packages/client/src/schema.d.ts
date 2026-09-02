@@ -1247,6 +1247,1031 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/bands/{bandId}/songs": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** The repertoire */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    bandId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["SongResponse"][];
+                    };
+                };
+            };
+        };
+        put?: never;
+        /** Add a song */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    bandId: string;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["CreateSongRequest"];
+                };
+            };
+            responses: {
+                /** @description Created */
+                201: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["SongResponse"];
+                    };
+                };
+                /** @description Bad Request */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["HttpValidationProblemDetails"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/bands/{bandId}/songs/{songId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Update a song */
+        patch: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    songId: string;
+                    bandId: string;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["UpdateSongRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["SongResponse"];
+                    };
+                };
+                /** @description Bad Request */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["HttpValidationProblemDetails"];
+                    };
+                };
+                /** @description Not Found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        trace?: never;
+    };
+    "/bands/{bandId}/song-ideas": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Song ideas with version counts */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    bandId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["IdeaSummaryResponse"][];
+                    };
+                };
+            };
+        };
+        put?: never;
+        /** Start a song idea */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    bandId: string;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["CreateIdeaRequest"];
+                };
+            };
+            responses: {
+                /** @description Created */
+                201: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["IdeaSummaryResponse"];
+                    };
+                };
+                /** @description Bad Request */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["HttpValidationProblemDetails"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/bands/{bandId}/song-ideas/{ideaId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Idea with versions, stems and polish jobs */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    ideaId: string;
+                    bandId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["IdeaDetailResponse"];
+                    };
+                };
+                /** @description Not Found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Rename/relink/restatus an idea */
+        patch: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    ideaId: string;
+                    bandId: string;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["UpdateIdeaRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["IdeaSummaryResponse"];
+                    };
+                };
+                /** @description Bad Request */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["HttpValidationProblemDetails"];
+                    };
+                };
+                /** @description Not Found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        trace?: never;
+    };
+    "/bands/{bandId}/song-ideas/{ideaId}/versions/uploads": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Start a demo upload (presigned url) */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    ideaId: string;
+                    bandId: string;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["InitUploadRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["InitUploadResponse"];
+                    };
+                };
+                /** @description Bad Request */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["HttpValidationProblemDetails"];
+                    };
+                };
+                /** @description Not Found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/bands/{bandId}/versions/{versionId}/confirm": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Finish an upload — verifies the object and its size */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    versionId: string;
+                    bandId: string;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["ConfirmUploadRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["VersionResponse"];
+                    };
+                };
+                /** @description Bad Request */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["HttpValidationProblemDetails"];
+                    };
+                };
+                /** @description Not Found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/bands/{bandId}/versions/{versionId}/stream": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Presigned playback url */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    versionId: string;
+                    bandId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["StreamUrlResponse"];
+                    };
+                };
+                /** @description Not Found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/bands/{bandId}/versions/{versionId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Delete a version (uploader/admin) */
+        delete: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    versionId: string;
+                    bandId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description No Content */
+                204: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Not Found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/bands/{bandId}/song-ideas/{ideaId}/stems/uploads": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Start a stem upload */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    ideaId: string;
+                    bandId: string;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["InitStemUploadRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["InitStemUploadResponse"];
+                    };
+                };
+                /** @description Bad Request */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["HttpValidationProblemDetails"];
+                    };
+                };
+                /** @description Not Found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/bands/{bandId}/stems/{stemId}/confirm": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Finish a stem upload */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    stemId: string;
+                    bandId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["StemResponse"];
+                    };
+                };
+                /** @description Bad Request */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["HttpValidationProblemDetails"];
+                    };
+                };
+                /** @description Not Found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/bands/{bandId}/stems/{stemId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Delete a stem (uploader/admin) */
+        delete: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    stemId: string;
+                    bandId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description No Content */
+                204: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Not Found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/bands/{bandId}/song-ideas/{ideaId}/polish": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Mix & master the idea's stems into a new demo version (ai) */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    ideaId: string;
+                    bandId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["PolishJobResponse"];
+                    };
+                };
+                /** @description Bad Request */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["HttpValidationProblemDetails"];
+                    };
+                };
+                /** @description Not Found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/bands/{bandId}/comments": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Comments on an event or demo version */
+        get: {
+            parameters: {
+                query: {
+                    targetType: string;
+                    targetId: string;
+                };
+                header?: never;
+                path: {
+                    bandId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["CommentResponse"][];
+                    };
+                };
+                /** @description Bad Request */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["HttpValidationProblemDetails"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        /** Comment (optionally at a timestamp) */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    bandId: string;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["CreateCommentRequest"];
+                };
+            };
+            responses: {
+                /** @description Created */
+                201: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["CommentResponse"];
+                    };
+                };
+                /** @description Bad Request */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["HttpValidationProblemDetails"];
+                    };
+                };
+                /** @description Not Found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/bands/{bandId}/comments/{commentId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Delete own comment (or as admin) */
+        delete: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    commentId: string;
+                    bandId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description No Content */
+                204: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Not Found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/bands/{bandId}/channels": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Channels (#general always exists) */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    bandId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ChannelResponse"][];
+                    };
+                };
+            };
+        };
+        put?: never;
+        /** Create a channel */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    bandId: string;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["CreateChannelRequest"];
+                };
+            };
+            responses: {
+                /** @description Created */
+                201: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ChannelResponse"];
+                    };
+                };
+                /** @description Bad Request */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["HttpValidationProblemDetails"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/bands/{bandId}/channels/{channelId}/messages": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Messages, newest page first */
+        get: {
+            parameters: {
+                query?: {
+                    before?: string;
+                    take?: number | string;
+                };
+                header?: never;
+                path: {
+                    channelId: string;
+                    bandId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["MessagesPage"];
+                    };
+                };
+                /** @description Bad Request */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["HttpValidationProblemDetails"];
+                    };
+                };
+                /** @description Not Found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        put?: never;
+        /** Send a message */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    channelId: string;
+                    bandId: string;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["SendMessageRequest"];
+                };
+            };
+            responses: {
+                /** @description Created */
+                201: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["MessageResponse"];
+                    };
+                };
+                /** @description Bad Request */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["HttpValidationProblemDetails"];
+                    };
+                };
+                /** @description Not Found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -1268,6 +2293,8 @@ export interface components {
             band: components["schemas"]["BandResponse"];
             members: components["schemas"]["MemberResponse"][];
         };
+        /** @enum {unknown} */
+        BandPlan: "free" | "pro";
         BandResponse: {
             /** Format: uuid */
             id: string;
@@ -1277,6 +2304,11 @@ export interface components {
             quorum: number | string;
             defaultPracticeSlot: components["schemas"]["PracticeSlot"];
             rehearsalSpace: null | string;
+            plan: components["schemas"]["BandPlan"];
+            /** Format: int64 */
+            storageUsedBytes: number;
+            /** Format: int64 */
+            storageQuotaBytes: number;
         };
         /** @enum {unknown} */
         BandRole: "member" | "admin";
@@ -1286,9 +2318,47 @@ export interface components {
             name: string;
             role: components["schemas"]["BandRole"];
         };
+        ChannelResponse: {
+            /** Format: uuid */
+            id: string;
+            name: string;
+            isDefault: boolean;
+            createdAt: components["schemas"]["Instant"];
+        };
+        CommentResponse: {
+            /** Format: uuid */
+            id: string;
+            targetType: components["schemas"]["CommentTarget"];
+            /** Format: uuid */
+            targetId: string;
+            /** Format: uuid */
+            authorMembershipId: string;
+            authorName: string;
+            body: string;
+            /** Format: double */
+            atSeconds: null | number;
+            createdAt: components["schemas"]["Instant"];
+        };
+        /** @enum {unknown} */
+        CommentTarget: "event" | "demoVersion";
+        ConfirmUploadRequest: {
+            /** Format: double */
+            durationSeconds: null | number;
+        };
         CreateBandRequest: {
             name: string;
             timeZone: null | string;
+        };
+        CreateChannelRequest: {
+            name: string;
+        };
+        CreateCommentRequest: {
+            targetType: components["schemas"]["CommentTarget"];
+            /** Format: uuid */
+            targetId: string;
+            body: string;
+            /** Format: double */
+            atSeconds?: null | number;
         };
         CreateEventRequest: {
             type: components["schemas"]["EventType"];
@@ -1308,11 +2378,21 @@ export interface components {
             to: components["schemas"]["LocalDate"];
             note: null | string;
         };
+        CreateIdeaRequest: {
+            title: string;
+        };
         CreateInviteRequest: {
             /** Format: int32 */
             maxUses: null | number | string;
             /** Format: int32 */
             expiresInDays: null | number | string;
+        };
+        CreateSongRequest: {
+            title: string;
+            key?: null | string;
+            /** Format: int32 */
+            bpm?: null | number | string;
+            notes?: null | string;
         };
         EventDetailResponse: {
             event: components["schemas"]["EventSummaryResponse"];
@@ -1372,6 +2452,59 @@ export interface components {
                 [key: string]: string[];
             };
         };
+        IdeaDetailResponse: {
+            /** Format: uuid */
+            id: string;
+            title: string;
+            status: components["schemas"]["IdeaStatus"];
+            /** Format: uuid */
+            songId: null | string;
+            versions: components["schemas"]["VersionResponse"][];
+            stems: components["schemas"]["StemResponse"][];
+            polishJobs: components["schemas"]["PolishJobResponse"][];
+        };
+        /** @enum {unknown} */
+        IdeaStatus: "idea" | "inProgress" | "finished" | "parked";
+        IdeaSummaryResponse: {
+            /** Format: uuid */
+            id: string;
+            title: string;
+            status: components["schemas"]["IdeaStatus"];
+            /** Format: uuid */
+            songId: null | string;
+            /** Format: int32 */
+            versionCount: number | string;
+            latestVersionAt: null | components["schemas"]["Instant"];
+            createdAt: components["schemas"]["Instant"];
+        };
+        InitStemUploadRequest: {
+            label: components["schemas"]["StemLabel"];
+            name: null | string;
+            fileName: string;
+            contentType: string;
+            /** Format: int64 */
+            sizeBytes: number;
+        };
+        InitStemUploadResponse: {
+            /** Format: uuid */
+            stemId: string;
+            uploadUrl: string;
+            /** Format: date-time */
+            expiresAt: string;
+        };
+        InitUploadRequest: {
+            fileName: string;
+            contentType: string;
+            /** Format: int64 */
+            sizeBytes: number;
+        };
+        InitUploadResponse: {
+            /** Format: uuid */
+            versionId: string;
+            uploadUrl: string;
+            /** Format: date-time */
+            expiresAt: string;
+        };
         /** Format: date-time */
         Instant: string;
         InviteCreatedResponse: {
@@ -1426,12 +2559,37 @@ export interface components {
             email: string;
             displayName: string;
         };
+        MessageResponse: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            authorMembershipId: string;
+            authorName: string;
+            body: string;
+            createdAt: components["schemas"]["Instant"];
+        };
+        MessagesPage: {
+            items: components["schemas"]["MessageResponse"][];
+            nextBefore: null | string;
+        };
         MyAvailabilityResponse: {
             openSlots: components["schemas"]["WeeklySlot"][];
             patternUpdatedAt: null | components["schemas"]["Instant"];
             exceptions: components["schemas"]["ExceptionResponse"][];
             calendarFeedPath: string;
         };
+        PolishJobResponse: {
+            /** Format: uuid */
+            id: string;
+            status: components["schemas"]["PolishStatus"];
+            /** Format: uuid */
+            outputVersionId: null | string;
+            error: null | string;
+            createdAt: components["schemas"]["Instant"];
+            completedAt: null | components["schemas"]["Instant"];
+        };
+        /** @enum {unknown} */
+        PolishStatus: "queued" | "processing" | "done" | "failed";
         PracticeFinderResponse: {
             from: components["schemas"]["LocalDate"];
             /** Format: int32 */
@@ -1469,6 +2627,38 @@ export interface components {
         };
         /** @enum {unknown} */
         RsvpStatus: "going" | "notGoing" | "maybe";
+        SendMessageRequest: {
+            body: string;
+        };
+        SongResponse: {
+            /** Format: uuid */
+            id: string;
+            title: string;
+            key: null | string;
+            /** Format: int32 */
+            bpm: null | number | string;
+            status: components["schemas"]["SongStatus"];
+            notes: null | string;
+            createdAt: components["schemas"]["Instant"];
+        };
+        /** @enum {unknown} */
+        SongStatus: "active" | "retired";
+        /** @enum {unknown} */
+        StemLabel: "drums" | "bass" | "guitar" | "keys" | "vocals" | "other";
+        StemResponse: {
+            /** Format: uuid */
+            id: string;
+            label: components["schemas"]["StemLabel"];
+            name: null | string;
+            fileName: string;
+            /** Format: int64 */
+            sizeBytes: number;
+            status: components["schemas"]["VersionStatus"];
+            createdAt: components["schemas"]["Instant"];
+        };
+        StreamUrlResponse: {
+            url: string;
+        };
         TokenPairResponse: {
             accessToken: string;
             /** Format: int32 */
@@ -1483,9 +2673,42 @@ export interface components {
             defaultPracticeSlot: null | components["schemas"]["PracticeSlot"];
             rehearsalSpace: null | string;
         };
+        UpdateIdeaRequest: {
+            title: null | string;
+            status: null | components["schemas"]["IdeaStatus"];
+            /** Format: uuid */
+            songId: null | string;
+        };
         UpdatePatternRequest: {
             openSlots: components["schemas"]["WeeklySlot"][];
         };
+        UpdateSongRequest: {
+            title: null | string;
+            key: null | string;
+            /** Format: int32 */
+            bpm: null | number | string;
+            status: null | components["schemas"]["SongStatus"];
+            notes: null | string;
+        };
+        /** @enum {unknown} */
+        VersionKind: "upload" | "aiMix";
+        VersionResponse: {
+            /** Format: uuid */
+            id: string;
+            /** Format: int32 */
+            number: number | string;
+            kind: components["schemas"]["VersionKind"];
+            fileName: string;
+            contentType: string;
+            /** Format: int64 */
+            sizeBytes: number;
+            /** Format: double */
+            durationSeconds: null | number;
+            uploaderName: string;
+            createdAt: components["schemas"]["Instant"];
+        };
+        /** @enum {unknown} */
+        VersionStatus: "uploading" | "ready" | "failed";
         WeeklySlot: {
             day: components["schemas"]["IsoDayOfWeek"];
             slot: components["schemas"]["PracticeSlot"];

@@ -18,7 +18,7 @@ ASP.NET Core (.NET 10 LTS) modular monolith · EF Core + Postgres 17 · NodaTime
 ## Run it
 
 ```bash
-docker compose up -d          # postgres 17 on localhost:5433 (5432 is taken on this machine)
+docker compose up -d          # postgres (5433), minio (9000), audio worker (8090)
 dotnet ef database update --connection "Host=localhost;Port=5433;Database=bandroom;Username=bandroom;Password=bandroom_dev" --project src/Bandroom.Api
 dotnet run --project src/Bandroom.Api
 ```
@@ -30,7 +30,11 @@ dotnet run --project src/Bandroom.Api
 - Availability: `GET /bands/{id}/availability` (+`/me`), `PUT .../me/pattern`, `POST|DELETE .../me/exceptions`
 - Finder: `GET /bands/{id}/practice-finder?days=21&slot=evening`
 - Events: `POST|GET /bands/{id}/events`, `GET .../events/{eventId}`, `POST .../rsvp|confirm|cancel`
-- Live updates: SignalR hub `/hubs/band` (`JoinBand`, server pushes `eventChanged`)
+- Demos: `POST|GET /bands/{id}/song-ideas`, versions via presigned two-phase upload (`.../versions/uploads` → PUT → `.../versions/{vid}/confirm`), `GET .../versions/{vid}/stream`, stems the same way, `POST .../song-ideas/{ideaId}/polish` (ai mix & master via the worker)
+- Comments: `GET|POST /bands/{id}/comments` (events + demo versions, `atSeconds` pins on the waveform)
+- Songs: `POST|GET|PATCH /bands/{id}/songs`
+- Chat: `GET|POST /bands/{id}/channels`, `GET|POST .../channels/{cid}/messages` (cursor-paged)
+- Live updates: SignalR hub `/hubs/band` (`JoinBand`; server pushes `eventChanged`, `demoChanged`, `messageAdded`)
 - Calendar: `GET /calendar/{icsToken}.ics` (per-member capability url) · Hangfire dashboard at `/hangfire` (dev-only)
 
 ```bash
@@ -78,4 +82,15 @@ Auth (spec §6.2): the refresh token lives in an httpOnly cookie managed by the 
 - [x] web 6 · calendar-feed section + band settings
 - [x] web 7 · empty states, PWA manifest + icon, dark mode
 
-Phase 1 (spec §8) is dogfood-ready end to end: pattern → finder → propose → rsvp → auto-confirm → live update → ics. Next: pick a host (NOT the Clayton Power coolify box — that server is off-limits to this project; own VPS or a PaaS, decision pending), then the Expo app (phase 2).
+Phase 1 (spec §8) is dogfood-ready end to end: pattern → finder → propose → rsvp → auto-confirm → live update → ics.
+
+Phase 2/3 features (built pre-deploy, verified locally):
+
+- [x] demos — song ideas → versions, presigned uploads to s3-compatible storage (minio dev / r2 prod), playback with a real decoded waveform, timestamped comments, storage accounting + per-band quota (free 1 GiB / pro 25 GiB)
+- [x] comments on events and demo versions (one polymorphic table)
+- [x] songs — the repertoire, linkable from demo ideas
+- [x] group chat — #general per band, channels, cursor-paged history, live via the hub
+- [x] ai demo polish — labelled stems in, the python worker gain-stages/pans/glues and masters to −14 LUFS, output lands as an `aiMix` demo version (pro-gated; `Entitlements:EveryBandPro` covers dev/dogfood)
+- [x] billing skeleton — band plan + quota gates; checkout via a merchant of record comes at open-up (spec p4)
+
+Dev storage/audio notes: presigned urls are audience-aware (`Storage:WorkerEndpoint=http://minio:9000` for the worker container; browser + api use localhost). Next: pick a host (NOT the Clayton Power coolify box — own VPS or a PaaS, decision pending), then the Expo app.

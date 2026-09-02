@@ -35,6 +35,22 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options, IBandCo
 
     public DbSet<Rsvp> Rsvps => Set<Rsvp>();
 
+    public DbSet<Song> Songs => Set<Song>();
+
+    public DbSet<SongIdea> SongIdeas => Set<SongIdea>();
+
+    public DbSet<DemoVersion> DemoVersions => Set<DemoVersion>();
+
+    public DbSet<Comment> Comments => Set<Comment>();
+
+    public DbSet<Channel> Channels => Set<Channel>();
+
+    public DbSet<Message> Messages => Set<Message>();
+
+    public DbSet<Stem> Stems => Set<Stem>();
+
+    public DbSet<PolishJob> PolishJobs => Set<PolishJob>();
+
     private static readonly JsonSerializerOptions PatternJsonOptions = new()
     {
         PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
@@ -67,6 +83,7 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options, IBandCo
             band.Property(b => b.TimeZone).HasMaxLength(64);
             band.Property(b => b.RehearsalSpace).HasMaxLength(200);
             band.Property(b => b.DefaultPracticeSlot).HasConversion<string>().HasMaxLength(20);
+            band.Property(b => b.Plan).HasConversion<string>().HasMaxLength(20);
         });
 
         builder.Entity<Membership>(membership =>
@@ -155,6 +172,94 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options, IBandCo
                 .HasForeignKey(r => r.MembershipId)
                 .OnDelete(DeleteBehavior.Cascade);
             rsvp.HasQueryFilter(r => r.BandId == _bandContext.BandId);
+        });
+
+        builder.Entity<Song>(song =>
+        {
+            song.Property(s => s.Title).HasMaxLength(120);
+            song.Property(s => s.Key).HasMaxLength(12);
+            song.Property(s => s.Notes).HasMaxLength(2000);
+            song.Property(s => s.Status).HasConversion<string>().HasMaxLength(20);
+            song.HasOne<Band>().WithMany().HasForeignKey(s => s.BandId).OnDelete(DeleteBehavior.Cascade);
+            song.HasQueryFilter(s => s.BandId == _bandContext.BandId);
+        });
+
+        builder.Entity<SongIdea>(idea =>
+        {
+            idea.Property(i => i.Title).HasMaxLength(120);
+            idea.Property(i => i.Status).HasConversion<string>().HasMaxLength(20);
+            idea.HasOne<Band>().WithMany().HasForeignKey(i => i.BandId).OnDelete(DeleteBehavior.Cascade);
+            idea.HasOne<Song>().WithMany().HasForeignKey(i => i.SongId).OnDelete(DeleteBehavior.SetNull);
+            idea.HasOne<Membership>().WithMany().HasForeignKey(i => i.CreatedByMembershipId)
+                .OnDelete(DeleteBehavior.Cascade);
+            idea.HasQueryFilter(i => i.BandId == _bandContext.BandId);
+        });
+
+        builder.Entity<DemoVersion>(version =>
+        {
+            version.Property(v => v.FileKey).HasMaxLength(300);
+            version.Property(v => v.FileName).HasMaxLength(200);
+            version.Property(v => v.ContentType).HasMaxLength(100);
+            version.Property(v => v.Status).HasConversion<string>().HasMaxLength(20);
+            version.Property(v => v.Kind).HasConversion<string>().HasMaxLength(20);
+            version.HasIndex(v => new { v.SongIdeaId, v.Number }).IsUnique();
+            version.HasOne<SongIdea>().WithMany().HasForeignKey(v => v.SongIdeaId)
+                .OnDelete(DeleteBehavior.Cascade);
+            version.HasOne<Membership>().WithMany().HasForeignKey(v => v.UploadedByMembershipId)
+                .OnDelete(DeleteBehavior.Cascade);
+            version.HasQueryFilter(v => v.BandId == _bandContext.BandId);
+        });
+
+        builder.Entity<Comment>(comment =>
+        {
+            comment.Property(c => c.Body).HasMaxLength(1000);
+            comment.Property(c => c.TargetType).HasConversion<string>().HasMaxLength(20);
+            comment.HasIndex(c => new { c.TargetType, c.TargetId, c.CreatedAt });
+            comment.HasOne<Band>().WithMany().HasForeignKey(c => c.BandId).OnDelete(DeleteBehavior.Cascade);
+            comment.HasOne<Membership>().WithMany().HasForeignKey(c => c.AuthorMembershipId)
+                .OnDelete(DeleteBehavior.Cascade);
+            comment.HasQueryFilter(c => c.BandId == _bandContext.BandId);
+        });
+
+        builder.Entity<Channel>(channel =>
+        {
+            channel.Property(c => c.Name).HasMaxLength(50);
+            channel.HasOne<Band>().WithMany().HasForeignKey(c => c.BandId).OnDelete(DeleteBehavior.Cascade);
+            channel.HasQueryFilter(c => c.BandId == _bandContext.BandId);
+        });
+
+        builder.Entity<Message>(message =>
+        {
+            message.Property(m => m.Body).HasMaxLength(2000);
+            message.HasIndex(m => new { m.ChannelId, m.CreatedAt });
+            message.HasOne<Channel>().WithMany().HasForeignKey(m => m.ChannelId).OnDelete(DeleteBehavior.Cascade);
+            message.HasOne<Membership>().WithMany().HasForeignKey(m => m.AuthorMembershipId)
+                .OnDelete(DeleteBehavior.Cascade);
+            message.HasQueryFilter(m => m.BandId == _bandContext.BandId);
+        });
+
+        builder.Entity<Stem>(stem =>
+        {
+            stem.Property(s => s.FileKey).HasMaxLength(300);
+            stem.Property(s => s.FileName).HasMaxLength(200);
+            stem.Property(s => s.ContentType).HasMaxLength(100);
+            stem.Property(s => s.Name).HasMaxLength(50);
+            stem.Property(s => s.Label).HasConversion<string>().HasMaxLength(20);
+            stem.Property(s => s.Status).HasConversion<string>().HasMaxLength(20);
+            stem.HasOne<SongIdea>().WithMany().HasForeignKey(s => s.SongIdeaId).OnDelete(DeleteBehavior.Cascade);
+            stem.HasOne<Membership>().WithMany().HasForeignKey(s => s.UploadedByMembershipId)
+                .OnDelete(DeleteBehavior.Cascade);
+            stem.HasQueryFilter(s => s.BandId == _bandContext.BandId);
+        });
+
+        builder.Entity<PolishJob>(job =>
+        {
+            job.Property(j => j.Status).HasConversion<string>().HasMaxLength(20);
+            job.Property(j => j.Error).HasMaxLength(500);
+            job.HasOne<SongIdea>().WithMany().HasForeignKey(j => j.SongIdeaId).OnDelete(DeleteBehavior.Cascade);
+            job.HasOne<Membership>().WithMany().HasForeignKey(j => j.RequestedByMembershipId)
+                .OnDelete(DeleteBehavior.Cascade);
+            job.HasQueryFilter(j => j.BandId == _bandContext.BandId);
         });
     }
 }

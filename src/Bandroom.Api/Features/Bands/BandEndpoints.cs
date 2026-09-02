@@ -2,6 +2,7 @@ using System.Buffers.Text;
 using System.Security.Claims;
 using System.Security.Cryptography;
 using Bandroom.Api.Data;
+using Bandroom.Api.Infrastructure;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.JsonWebTokens;
@@ -33,6 +34,7 @@ public static class BandEndpoints
         ClaimsPrincipal principal,
         AppDbContext db,
         IClock clock,
+        EntitlementOptions entitlements,
         CancellationToken ct)
     {
         var subject = principal.FindFirstValue(JwtRegisteredClaimNames.Sub);
@@ -72,11 +74,18 @@ public static class BandEndpoints
 
         db.Bands.Add(band);
         db.Memberships.Add(membership);
+        db.Channels.Add(new Channel
+        {
+            BandId = band.Id,
+            Name = "general",
+            IsDefault = true,
+            CreatedAt = now,
+        });
         await db.SaveChangesAsync(ct);
 
         var creator = await db.Users.SingleAsync(u => u.Id == userId, ct);
         var response = new BandDetailResponse(
-            ToBandResponse(band),
+            ToBandResponse(band, now, entitlements),
             [new MemberResponse(membership.Id, userId, creator.DisplayName, BandRole.Admin, null, now)]);
         return TypedResults.Created($"/bands/{band.Id}", response);
     }
@@ -106,6 +115,8 @@ public static class BandEndpoints
     private static async Task<Ok<BandDetailResponse>> DetailAsync(
         BandContext bandContext,
         AppDbContext db,
+        IClock clock,
+        EntitlementOptions entitlements,
         CancellationToken ct)
     {
         var band = await db.Bands.SingleAsync(b => b.Id == bandContext.BandId, ct);
@@ -117,13 +128,16 @@ public static class BandEndpoints
             .Select(x => new MemberResponse(x.m.Id, x.u.Id, x.u.DisplayName, x.m.Role, x.m.Instrument, x.m.JoinedAt))
             .ToListAsync(ct);
 
-        return TypedResults.Ok(new BandDetailResponse(ToBandResponse(band), members));
+        return TypedResults.Ok(new BandDetailResponse(
+            ToBandResponse(band, clock.GetCurrentInstant(), entitlements), members));
     }
 
     private static async Task<Results<Ok<BandResponse>, ValidationProblem>> UpdateAsync(
         UpdateBandRequest request,
         BandContext bandContext,
         AppDbContext db,
+        IClock clock,
+        EntitlementOptions entitlements,
         CancellationToken ct)
     {
         var errors = new Dictionary<string, string[]>();
@@ -181,9 +195,12 @@ public static class BandEndpoints
         }
 
         await db.SaveChangesAsync(ct);
-        return TypedResults.Ok(ToBandResponse(band));
+        return TypedResults.Ok(ToBandResponse(band, clock.GetCurrentInstant(), entitlements));
     }
 
-    private static BandResponse ToBandResponse(Band band) =>
-        new(band.Id, band.Name, band.TimeZone, band.Quorum, band.DefaultPracticeSlot, band.RehearsalSpace);
+    private static BandResponse ToBandResponse(Band band, Instant now, EntitlementOptions entitlements) =>
+        new(band.Id, band.Name, band.TimeZone, band.Quorum, band.DefaultPracticeSlot, band.RehearsalSpace,
+            PlanLimits.IsPro(band, now, entitlements) ? BandPlan.Pro : BandPlan.Free,
+            band.StorageUsedBytes,
+            PlanLimits.StorageQuota(band, now, entitlements));
 }

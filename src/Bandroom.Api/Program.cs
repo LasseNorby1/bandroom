@@ -7,10 +7,16 @@ using Bandroom.Api.Features.Auth;
 using Bandroom.Api.Features.Availability;
 using Bandroom.Api.Features.Bands;
 using Bandroom.Api.Features.Calendar;
+using Bandroom.Api.Features.Chat;
+using Bandroom.Api.Features.Comments;
+using Bandroom.Api.Features.Demos;
 using Bandroom.Api.Features.Events;
 using Bandroom.Api.Features.Jobs;
 using Bandroom.Api.Features.Scheduling;
+using Bandroom.Api.Features.Songs;
+using Bandroom.Api.Infrastructure;
 using Bandroom.Api.Infrastructure.Email;
+using Bandroom.Api.Infrastructure.Storage;
 using Hangfire;
 using Hangfire.PostgreSql;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
@@ -180,6 +186,31 @@ try
     builder.Services.AddScoped<ReminderJob>();
     builder.Services.AddScoped<DigestJob>();
 
+    var storageOptions = builder.Configuration.GetSection("Storage").Get<StorageOptions>() ?? new StorageOptions();
+    if (string.IsNullOrEmpty(storageOptions.Endpoint))
+    {
+        throw new InvalidOperationException(
+            "Missing Storage:Endpoint (s3-compatible object storage — minio in dev, r2 in prod).");
+    }
+
+    builder.Services.AddSingleton(storageOptions);
+    builder.Services.AddSingleton<IFileStorage>(new S3FileStorage(storageOptions));
+
+    builder.Services.AddSingleton(
+        builder.Configuration.GetSection("Entitlements").Get<EntitlementOptions>() ?? new EntitlementOptions());
+    builder.Services.AddSingleton(
+        builder.Configuration.GetSection("Worker").Get<WorkerOptions>() ?? new WorkerOptions());
+    builder.Services.AddHttpClient("worker", client => client.Timeout = TimeSpan.FromMinutes(15));
+    builder.Services.AddScoped<PolishJobRunner>();
+    if (jobsEnabled)
+    {
+        builder.Services.AddSingleton<IPolishQueue, HangfirePolishQueue>();
+    }
+    else
+    {
+        builder.Services.AddSingleton<IPolishQueue, NoopPolishQueue>();
+    }
+
     builder.Services.AddOpenApi(openApi =>
     {
         // NodaTime values serialize as iso strings, but the generator can't see
@@ -187,7 +218,9 @@ try
         // generated clients get real string types.
         openApi.AddSchemaTransformer((schema, context, _) =>
         {
-            var type = Nullable.GetUnderlyingType(context.JsonTypeInfo.Type) ?? context.JsonTypeInfo.Type;
+            var underlying = Nullable.GetUnderlyingType(context.JsonTypeInfo.Type);
+            var isNullable = underlying is not null;
+            var type = underlying ?? context.JsonTypeInfo.Type;
             if (type == typeof(Instant))
             {
                 schema.Type = JsonSchemaType.String;
@@ -202,6 +235,17 @@ try
             {
                 schema.Type = JsonSchemaType.String;
                 schema.Format = "time";
+            }
+            else if (type == typeof(long))
+            {
+                // The generator unions int64/double with string (precision/NaN
+                // hedging); this api never sends either — keep clients numeric.
+                schema.Type = isNullable ? JsonSchemaType.Integer | JsonSchemaType.Null : JsonSchemaType.Integer;
+                schema.Format = "int64";
+            }
+            else if (type == typeof(double) || type == typeof(float))
+            {
+                schema.Type = isNullable ? JsonSchemaType.Number | JsonSchemaType.Null : JsonSchemaType.Number;
             }
 
             return Task.CompletedTask;
@@ -281,6 +325,11 @@ try
     app.MapAvailabilityEndpoints();
     app.MapPracticeFinderEndpoints();
     app.MapEventEndpoints();
+    app.MapSongEndpoints();
+    app.MapDemoEndpoints();
+    app.MapPolishEndpoints();
+    app.MapCommentEndpoints();
+    app.MapChatEndpoints();
     app.MapCalendarEndpoints();
     app.MapHub<BandHub>("/hubs/band");
 

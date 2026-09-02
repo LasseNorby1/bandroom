@@ -2,6 +2,7 @@
 
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { use } from "react";
+import { Comments } from "@/components/comments";
 import { RsvpButtons } from "@/components/rsvp-buttons";
 import { StatusChip } from "@/components/status-chip";
 import { Button } from "@/components/ui/button";
@@ -121,6 +122,11 @@ export default function EventPage({
             <li className="px-5 py-3 text-sm text-muted">No answers yet.</li>
           )}
         </ul>
+      </section>
+
+      <section className="space-y-3 rounded-xl border border-line bg-surface p-5">
+        <p className="font-mono text-xs tracking-wider text-muted">talk</p>
+        <Comments bandId={bandId} targetType="event" targetId={eventId} />
       </section>
     </div>
   );
