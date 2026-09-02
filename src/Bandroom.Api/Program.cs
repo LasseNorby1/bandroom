@@ -5,9 +5,13 @@ using Bandroom.Api.Data;
 using Bandroom.Api.Features.Auth;
 using Bandroom.Api.Features.Availability;
 using Bandroom.Api.Features.Bands;
+using Bandroom.Api.Features.Calendar;
 using Bandroom.Api.Features.Events;
+using Bandroom.Api.Features.Jobs;
 using Bandroom.Api.Features.Scheduling;
 using Bandroom.Api.Infrastructure.Email;
+using Hangfire;
+using Hangfire.PostgreSql;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.EntityFrameworkCore;
@@ -115,6 +119,22 @@ try
     builder.Services.AddSignalR();
     builder.Services.AddSingleton<BandNotifier>();
 
+    // Jobs:Enabled=false keeps Hangfire (storage, server, schedules) out of test
+    // hosts; the job classes stay registered so tests can drive them directly.
+    var jobsEnabled = builder.Configuration.GetValue("Jobs:Enabled", true);
+    if (jobsEnabled)
+    {
+        builder.Services.AddHangfire(hangfire => hangfire
+            .SetDataCompatibilityLevel(CompatibilityLevel.Version_180)
+            .UseSimpleAssemblyNameTypeSerializer()
+            .UseRecommendedSerializerSettings()
+            .UsePostgreSqlStorage(storage => storage.UseNpgsqlConnection(connectionString)));
+        builder.Services.AddHangfireServer();
+    }
+
+    builder.Services.AddScoped<ReminderJob>();
+    builder.Services.AddScoped<DigestJob>();
+
     builder.Services.AddOpenApi();
     builder.Services.AddProblemDetails();
     builder.Services.AddHealthChecks()
@@ -147,7 +167,20 @@ try
     app.MapAvailabilityEndpoints();
     app.MapPracticeFinderEndpoints();
     app.MapEventEndpoints();
+    app.MapCalendarEndpoints();
     app.MapHub<BandHub>("/hubs/band");
+
+    if (jobsEnabled)
+    {
+        app.UseHangfireDashboard("/hangfire", new DashboardOptions
+        {
+            Authorization = [new DevelopmentOnlyDashboardFilter(app.Environment.IsDevelopment())],
+        });
+        RecurringJob.AddOrUpdate<ReminderJob>(
+            "event-reminders", job => job.RunAsync(CancellationToken.None), "0 * * * *");
+        RecurringJob.AddOrUpdate<DigestJob>(
+            "weekly-digest", job => job.RunAsync(CancellationToken.None), "0 8 * * MON");
+    }
 
     app.Run();
 }

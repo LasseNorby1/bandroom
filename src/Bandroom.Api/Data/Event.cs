@@ -48,4 +48,7 @@ public sealed class Event : IBandScoped
     public required Guid CreatedByMembershipId { get; init; }
 
     public required Instant CreatedAt { get; init; }
+
+    /// <summary>Set by the reminder job so a day-before nudge is sent exactly once.</summary>
+    public Instant? ReminderSentAt { get; set; }
 }

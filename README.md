@@ -27,6 +27,11 @@ dotnet run --project src/Bandroom.Api
 - Health: `/health/live` (process), `/health/ready` (includes database)
 - Auth: `POST /auth/register|login|refresh|logout`, `GET /auth/me` (bearer)
 - Bands: `POST|GET /bands`, `GET|PATCH /bands/{id}`, invites: `POST|GET /bands/{id}/invites`, `DELETE /bands/{id}/invites/{inviteId}`, `POST /invites/{token}/accept`
+- Availability: `GET /bands/{id}/availability` (+`/me`), `PUT .../me/pattern`, `POST|DELETE .../me/exceptions`
+- Finder: `GET /bands/{id}/practice-finder?days=21&slot=evening`
+- Events: `POST|GET /bands/{id}/events`, `GET .../events/{eventId}`, `POST .../rsvp|confirm|cancel`
+- Live updates: SignalR hub `/hubs/band` (`JoinBand`, server pushes `eventChanged`)
+- Calendar: `GET /calendar/{icsToken}.ics` (per-member capability url) · Hangfire dashboard at `/hangfire` (dev-only)
 
 ```bash
 dotnet test                   # domain tests run bare; api tests need docker
@@ -47,7 +52,9 @@ Network note: on connections where CloudFront is unreachable (docker hub + ecr b
 - [x] 1 · Skeleton + pipeline — solution, CI, container, health endpoints, practice finder domain + tests
 - [x] 2 · Identity + JWT/refresh — register, login (lockout), rotating refresh tokens with family reuse-detection, logout, `/auth/me`, first migration, integration tests
 - [x] 3 · Bands + memberships + invite links — BandContext filter (404 for outsiders), fail-closed EF global query filters, model-completeness test, the cross-tenant leak test
-- [ ] 4 · Availability — weekly pattern (jsonb) + exceptions endpoints
-- [ ] 5 · Practice finder wired to real data — proposals
-- [ ] 6 · Events + RSVP + proposal flow — SignalR notifications
-- [ ] 7 · ICS feed (Ical.Net) + Hangfire digests/reminders — first real "thursday works for everyone" push
+- [x] 4 · Availability — jsonb weekly patterns, blockout exceptions, band overview (the week grid)
+- [x] 5 · Practice finder wired to real data — ranked candidates with who's-free, quorum clamped, spacing vs last practice
+- [x] 6 · Events + RSVP + quorum auto-confirm — SignalR `eventChanged` per band group
+- [x] 7 · ICS feeds (Ical.Net, per-member capability urls) + Hangfire day-before reminders and weekly digests
+
+Phase 1 backend complete — next up: the Next.js web app speaking this API (then the Expo app, per spec §8).
