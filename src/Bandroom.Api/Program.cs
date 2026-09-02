@@ -5,6 +5,7 @@ using Bandroom.Api.Data;
 using Bandroom.Api.Features.Auth;
 using Bandroom.Api.Features.Availability;
 using Bandroom.Api.Features.Bands;
+using Bandroom.Api.Features.Events;
 using Bandroom.Api.Features.Scheduling;
 using Bandroom.Api.Infrastructure.Email;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
@@ -84,6 +85,22 @@ try
                 IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(authOptions.JwtSigningKey)),
                 ClockSkew = TimeSpan.FromMinutes(1),
             };
+            // Browsers can't set headers on websocket upgrades — SignalR sends the
+            // token as ?access_token= for hub routes only.
+            jwt.Events = new JwtBearerEvents
+            {
+                OnMessageReceived = context =>
+                {
+                    var accessToken = context.Request.Query["access_token"];
+                    if (!string.IsNullOrEmpty(accessToken) &&
+                        context.HttpContext.Request.Path.StartsWithSegments("/hubs"))
+                    {
+                        context.Token = accessToken;
+                    }
+
+                    return Task.CompletedTask;
+                },
+            };
         });
     builder.Services.AddAuthorization();
 
@@ -94,6 +111,9 @@ try
     // DbContext's query filters read it.
     builder.Services.AddScoped<BandContext>();
     builder.Services.AddScoped<IBandContext>(sp => sp.GetRequiredService<BandContext>());
+
+    builder.Services.AddSignalR();
+    builder.Services.AddSingleton<BandNotifier>();
 
     builder.Services.AddOpenApi();
     builder.Services.AddProblemDetails();
@@ -126,6 +146,8 @@ try
     app.MapInviteEndpoints();
     app.MapAvailabilityEndpoints();
     app.MapPracticeFinderEndpoints();
+    app.MapEventEndpoints();
+    app.MapHub<BandHub>("/hubs/band");
 
     app.Run();
 }

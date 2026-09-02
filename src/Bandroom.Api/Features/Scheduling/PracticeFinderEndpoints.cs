@@ -102,8 +102,12 @@ public static class PracticeFinderEndpoints
         return TypedResults.Ok(response);
     }
 
-    /// <summary>Spacing input; events arrive in step 6 — until then there is nothing to space against.</summary>
-    private static Task<LocalDate?> LatestConfirmedPracticeAsync(
+    /// <summary>Spacing input: the most recent confirmed practice (band-scoped by the query filter).</summary>
+    private static async Task<LocalDate?> LatestConfirmedPracticeAsync(
         AppDbContext db, LocalDate before, CancellationToken ct) =>
-        Task.FromResult<LocalDate?>(null);
+        await db.Events
+            .Where(e => e.Type == EventType.Practice && e.Status == EventStatus.Confirmed && e.Date < before)
+            .OrderByDescending(e => e.Date)
+            .Select(e => (LocalDate?)e.Date)
+            .FirstOrDefaultAsync(ct);
 }

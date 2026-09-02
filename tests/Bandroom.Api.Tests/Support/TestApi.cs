@@ -26,13 +26,20 @@ internal static class TestApiExtensions
     /// <summary>Registers a fresh user and returns an authenticated client.</summary>
     public static async Task<HttpClient> RegisterUserAsync(this ApiFactory factory, string displayName)
     {
+        var (client, _) = await factory.RegisterUserWithTokenAsync(displayName);
+        return client;
+    }
+
+    public static async Task<(HttpClient Client, string AccessToken)> RegisterUserWithTokenAsync(
+        this ApiFactory factory, string displayName)
+    {
         var client = factory.CreateClient();
         var response = await client.PostAsJsonAsync("/auth/register", new RegisterRequest(
             $"user-{Guid.NewGuid():N}@example.dk", "correct horse battery", displayName));
         response.EnsureSuccessStatusCode();
         var tokens = await response.Content.ReadFromJsonAsync<TokenPairResponse>(TestJson.Options);
         client.DefaultRequestHeaders.Authorization = new("Bearer", tokens!.AccessToken);
-        return client;
+        return (client, tokens.AccessToken);
     }
 
     public static async Task<T> ReadAsAsync<T>(this HttpResponseMessage response)

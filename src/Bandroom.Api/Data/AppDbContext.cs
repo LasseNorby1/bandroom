@@ -31,6 +31,10 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options, IBandCo
 
     public DbSet<AvailabilityException> AvailabilityExceptions => Set<AvailabilityException>();
 
+    public DbSet<Event> Events => Set<Event>();
+
+    public DbSet<Rsvp> Rsvps => Set<Rsvp>();
+
     private static readonly JsonSerializerOptions PatternJsonOptions = new()
     {
         PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
@@ -116,6 +120,41 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options, IBandCo
                 .HasForeignKey(e => e.MembershipId)
                 .OnDelete(DeleteBehavior.Cascade);
             exception.HasQueryFilter(e => e.BandId == _bandContext.BandId);
+        });
+
+        builder.Entity<Event>(evt =>
+        {
+            evt.Property(e => e.Type).HasConversion<string>().HasMaxLength(20);
+            evt.Property(e => e.Status).HasConversion<string>().HasMaxLength(20);
+            evt.Property(e => e.Slot).HasConversion<string>().HasMaxLength(20);
+            evt.Property(e => e.Title).HasMaxLength(120);
+            evt.Property(e => e.Location).HasMaxLength(200);
+            evt.HasIndex(e => new { e.BandId, e.Date });
+            evt.HasOne<Band>()
+                .WithMany()
+                .HasForeignKey(e => e.BandId)
+                .OnDelete(DeleteBehavior.Cascade);
+            evt.HasOne<Membership>()
+                .WithMany()
+                .HasForeignKey(e => e.CreatedByMembershipId)
+                .OnDelete(DeleteBehavior.Cascade);
+            evt.HasQueryFilter(e => e.BandId == _bandContext.BandId);
+        });
+
+        builder.Entity<Rsvp>(rsvp =>
+        {
+            rsvp.Property(r => r.Status).HasConversion<string>().HasMaxLength(20);
+            rsvp.Property(r => r.Note).HasMaxLength(200);
+            rsvp.HasIndex(r => new { r.EventId, r.MembershipId }).IsUnique();
+            rsvp.HasOne<Event>()
+                .WithMany()
+                .HasForeignKey(r => r.EventId)
+                .OnDelete(DeleteBehavior.Cascade);
+            rsvp.HasOne<Membership>()
+                .WithMany()
+                .HasForeignKey(r => r.MembershipId)
+                .OnDelete(DeleteBehavior.Cascade);
+            rsvp.HasQueryFilter(r => r.BandId == _bandContext.BandId);
         });
     }
 }
