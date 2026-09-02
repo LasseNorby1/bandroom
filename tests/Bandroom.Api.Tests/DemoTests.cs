@@ -212,6 +212,28 @@ public class DemoTests(ApiFactory factory)
             $"/bands/{bandId}/song-ideas/{ideaId}/polish",
             new RequestPolishRequest(Guid.NewGuid(), null), TestJson.Options);
         Assert.Equal(HttpStatusCode.BadRequest, bogus.StatusCode);
+
+        // The mix stage takes its own reference — same pair semantics, on a fresh idea.
+        var ideaId2 = await CreateIdeaAsync(client, bandId);
+        var stemInit2 = await (await client.PostAsJsonAsync(
+                $"/bands/{bandId}/song-ideas/{ideaId2}/stems/uploads",
+                new InitStemUploadRequest(StemLabel.Bass, null, "bass.wav", "audio/wav", 4096), TestJson.Options))
+            .ReadAsAsync<InitStemUploadResponse>();
+        var stemContent2 = new ByteArrayContent(new byte[4096]);
+        stemContent2.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("audio/wav");
+        (await raw.PutAsync(stemInit2.UploadUrl, stemContent2)).EnsureSuccessStatusCode();
+        (await client.PostAsync($"/bands/{bandId}/stems/{stemInit2.StemId}/confirm", null)).EnsureSuccessStatusCode();
+
+        var bogusMix = await client.PostAsJsonAsync(
+            $"/bands/{bandId}/song-ideas/{ideaId2}/polish",
+            new RequestPolishRequest(null, null, Guid.NewGuid(), null), TestJson.Options);
+        Assert.Equal(HttpStatusCode.BadRequest, bogusMix.StatusCode);
+
+        var mixPolish = await (await client.PostAsJsonAsync(
+                $"/bands/{bandId}/song-ideas/{ideaId2}/polish",
+                new RequestPolishRequest(reference.Id, null, reference.Id, null), TestJson.Options))
+            .ReadAsAsync<PolishJobResponse>();
+        Assert.Equal(PolishStatus.Queued, mixPolish.Status);
     }
 
     [Fact]

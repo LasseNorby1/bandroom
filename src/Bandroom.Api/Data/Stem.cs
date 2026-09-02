@@ -71,6 +71,11 @@ public sealed class PolishJob : IBandScoped
 
     public Guid? ReferenceVersionId { get; init; }
 
+    /// <summary>Same pair for the mix stage — stem balance/width/glue shaped toward it.</summary>
+    public Guid? MixReferenceTrackId { get; init; }
+
+    public Guid? MixReferenceVersionId { get; init; }
+
     public Guid? OutputVersionId { get; set; }
 
     public string? Error { get; set; }

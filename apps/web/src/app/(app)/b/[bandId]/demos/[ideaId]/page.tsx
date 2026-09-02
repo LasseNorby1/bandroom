@@ -65,6 +65,56 @@ function UploadButton({
   );
 }
 
+function ReferencePicker({
+  id,
+  label,
+  defaultLabel,
+  value,
+  onChange,
+  references,
+  versions,
+}: {
+  id: string;
+  label: string;
+  defaultLabel: string;
+  value: string;
+  onChange: (value: string) => void;
+  references: { id: string; title: string }[];
+  versions: { id: string; number: string | number; kind: string; fileName: string }[];
+}) {
+  return (
+    <label htmlFor={id} className="flex items-center gap-2">
+      <span className="font-mono text-[11px] text-muted">{label}</span>
+      <select
+        id={id}
+        value={value}
+        onChange={(event) => onChange(event.target.value)}
+        className="h-9 rounded-lg border border-line bg-surface px-3 text-sm"
+      >
+        <option value="standard">{defaultLabel}</option>
+        {references.length > 0 && (
+          <optgroup label="match a reference">
+            {references.map((ref) => (
+              <option key={ref.id} value={`ref:${ref.id}`}>
+                {ref.title}
+              </option>
+            ))}
+          </optgroup>
+        )}
+        {versions.length > 0 && (
+          <optgroup label="match one of our takes">
+            {versions.map((version) => (
+              <option key={version.id} value={`ver:${version.id}`}>
+                v{version.number} — {version.kind === "aiMix" ? "AI demo mix" : version.fileName}
+              </option>
+            ))}
+          </optgroup>
+        )}
+      </select>
+    </label>
+  );
+}
+
 export default function IdeaPage({
   params,
 }: {
@@ -74,7 +124,8 @@ export default function IdeaPage({
   const queryClient = useQueryClient();
   const idea = useIdea(bandId, ideaId);
   const references = useReferences(bandId);
-  const [reference, setReference] = useState("standard");
+  const [mixReference, setMixReference] = useState("standard");
+  const [masterReference, setMasterReference] = useState("standard");
   const [progressSetter, setProgress] = useState<number | null>(null);
   void progressSetter;
 
@@ -86,12 +137,15 @@ export default function IdeaPage({
 
   const polish = useMutation({
     mutationFn: async () => {
-      const [kind, id] = reference.split(":");
+      const refId = (value: string, kind: "ref" | "ver") =>
+        value.startsWith(`${kind}:`) ? value.slice(4) : null;
       const { data, error } = await api.POST("/bands/{bandId}/song-ideas/{ideaId}/polish", {
         params: { path: { bandId, ideaId } },
         body: {
-          referenceTrackId: kind === "ref" ? id : null,
-          referenceVersionId: kind === "ver" ? id : null,
+          referenceTrackId: refId(masterReference, "ref"),
+          referenceVersionId: refId(masterReference, "ver"),
+          mixReferenceTrackId: refId(mixReference, "ref"),
+          mixReferenceVersionId: refId(mixReference, "ver"),
         },
       });
       if (error) throw error;
@@ -171,36 +225,25 @@ export default function IdeaPage({
           </Button>
         </div>
 
-        <div className="flex flex-wrap items-center gap-2">
-          <label htmlFor="reference" className="font-mono text-[11px] text-muted">
-            master
-          </label>
-          <select
-            id="reference"
-            value={reference}
-            onChange={(event) => setReference(event.target.value)}
-            className="h-9 rounded-lg border border-line bg-surface px-3 text-sm"
-          >
-            <option value="standard">by ear · −14 lufs</option>
-            {(references.data ?? []).length > 0 && (
-              <optgroup label="match a reference">
-                {references.data!.map((ref) => (
-                  <option key={ref.id} value={`ref:${ref.id}`}>
-                    {ref.title}
-                  </option>
-                ))}
-              </optgroup>
-            )}
-            {detail.versions.length > 0 && (
-              <optgroup label="match one of our takes">
-                {detail.versions.map((version) => (
-                  <option key={version.id} value={`ver:${version.id}`}>
-                    v{version.number} — {version.kind === "aiMix" ? "AI demo mix" : version.fileName}
-                  </option>
-                ))}
-              </optgroup>
-            )}
-          </select>
+        <div className="flex flex-wrap items-center gap-3">
+          <ReferencePicker
+            id="mix-reference"
+            label="mix"
+            defaultLabel="by ear · label presets"
+            value={mixReference}
+            onChange={setMixReference}
+            references={references.data ?? []}
+            versions={detail.versions}
+          />
+          <ReferencePicker
+            id="master-reference"
+            label="master"
+            defaultLabel="by ear · −14 lufs"
+            value={masterReference}
+            onChange={setMasterReference}
+            references={references.data ?? []}
+            versions={detail.versions}
+          />
           <UploadButton
             label="+ upload reference"
             busyLabel="Uploading"
@@ -209,12 +252,13 @@ export default function IdeaPage({
             onFile={async (file) => {
               const uploaded = await uploadReference(bandId, file);
               invalidate();
-              setReference(`ref:${uploaded.id}`);
+              setMixReference(`ref:${uploaded.id}`);
+              setMasterReference(`ref:${uploaded.id}`);
             }}
           />
           <p className="w-full text-xs text-faint">
-            &quot;Match&quot; runs reference mastering: eq, loudness and width shaped toward the
-            reference track.
+            &quot;Match&quot; chases the chosen track — the mix matches its balance, stereo width and
+            density; the master its eq and loudness. Mix and master can chase different tracks.
           </p>
         </div>
 

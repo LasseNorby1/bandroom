@@ -2830,6 +2830,10 @@ export interface components {
             referenceTrackId?: null | string;
             /** Format: uuid */
             referenceVersionId?: null | string;
+            /** Format: uuid */
+            mixReferenceTrackId?: null | string;
+            /** Format: uuid */
+            mixReferenceVersionId?: null | string;
         };
         ResetPasswordRequest: {
             email: string;

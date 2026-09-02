@@ -3828,6 +3828,20 @@
               "string"
             ],
             "format": "uuid"
+          },
+          "mixReferenceTrackId": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "uuid"
+          },
+          "mixReferenceVersionId": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "uuid"
           }
         }
       },
