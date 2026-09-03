@@ -1,13 +1,29 @@
 "use client";
 
 import { useInfiniteQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { use, useEffect, useRef, useState } from "react";
+import { Fragment, use, useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { api } from "@/lib/api";
 import { useBandContext } from "@/lib/band-context";
 import { bandKeys, useChannels } from "@/lib/band-hooks";
 import { cn } from "@/lib/cn";
+
+function dayLabel(sent: Date): string {
+  const now = new Date();
+  const startOf = (d: Date) => new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
+  const daysAgo = Math.round((startOf(now) - startOf(sent)) / 86_400_000);
+  if (daysAgo === 0) return "today";
+  if (daysAgo === 1) return "yesterday";
+  return sent
+    .toLocaleDateString("en-GB", {
+      weekday: "long",
+      day: "numeric",
+      month: "long",
+      ...(sent.getFullYear() !== now.getFullYear() && { year: "numeric" as const }),
+    })
+    .toLowerCase();
+}
 
 function useMessages(bandId: string, channelId: string | null) {
   return useInfiniteQuery({
@@ -109,26 +125,38 @@ export default function ChatPage({ params }: { params: Promise<{ bandId: string 
             work lives.
           </p>
         )}
-        {items.map((message) => {
+        {items.map((message, index) => {
           const mine = message.authorMembershipId === me?.membershipId;
+          const sent = new Date(message.createdAt);
+          const newDay =
+            index === 0 ||
+            new Date(items[index - 1].createdAt).toDateString() !== sent.toDateString();
           return (
-            <div key={message.id} className={cn("max-w-[85%]", mine && "ml-auto text-right")}>
-              <p className="font-mono text-[10px] text-faint">
-                {message.authorName} ·{" "}
-                {new Date(message.createdAt).toLocaleTimeString("en-GB", {
-                  hour: "2-digit",
-                  minute: "2-digit",
-                })}
-              </p>
-              <p
-                className={cn(
-                  "inline-block rounded-xl px-3.5 py-2 text-sm",
-                  mine ? "bg-ink text-paper" : "bg-paper",
-                )}
-              >
-                {message.body}
-              </p>
-            </div>
+            <Fragment key={message.id}>
+              {newDay && (
+                <div className="flex items-center gap-3 py-1">
+                  <span className="h-px flex-1 bg-line" />
+                  <span className="font-mono text-[10px] tracking-wider text-faint">
+                    {dayLabel(sent)}
+                  </span>
+                  <span className="h-px flex-1 bg-line" />
+                </div>
+              )}
+              <div className={cn("max-w-[85%]", mine && "ml-auto text-right")}>
+                <p className="font-mono text-[10px] text-faint">
+                  {message.authorName} ·{" "}
+                  {sent.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" })}
+                </p>
+                <p
+                  className={cn(
+                    "inline-block rounded-xl px-3.5 py-2 text-sm",
+                    mine ? "bg-ink text-paper" : "bg-paper",
+                  )}
+                >
+                  {message.body}
+                </p>
+              </div>
+            </Fragment>
           );
         })}
         <div ref={bottomRef} />
