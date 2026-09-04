@@ -3,9 +3,31 @@
 /// refreshes would present the same rotating token twice — which the api treats
 /// as theft and answers by revoking the whole family.
 let accessToken: string | null = null;
+let accessTokenExpiresAt = Number.MAX_SAFE_INTEGER;
 let refreshInFlight: Promise<string | null> | null = null;
 
+function rememberToken(token: string): void {
+  accessToken = token;
+  accessTokenExpiresAt = decodeExpiryMs(token);
+}
+
+function decodeExpiryMs(token: string): number {
+  try {
+    const segment = token.split(".")[1].replace(/-/g, "+").replace(/_/g, "/");
+    const padded = segment + "=".repeat((4 - (segment.length % 4)) % 4);
+    const payload = JSON.parse(atob(padded)) as { exp?: number };
+    return payload.exp ? payload.exp * 1000 : Number.MAX_SAFE_INTEGER;
+  } catch {
+    return Number.MAX_SAFE_INTEGER;
+  }
+}
+
 export function getAccessToken(): string | null {
+  // A token at (or within 10s of) expiry is as good as none — after the laptop
+  // sleeps, callers must fall through to refresh instead of presenting it.
+  if (accessToken && Date.now() >= accessTokenExpiresAt - 10_000) {
+    accessToken = null;
+  }
   return accessToken;
 }
 
@@ -18,7 +40,7 @@ export function refreshSession(): Promise<string | null> {
         return null;
       }
       const tokens = (await response.json()) as { accessToken: string };
-      accessToken = tokens.accessToken;
+      rememberToken(tokens.accessToken);
       return accessToken;
     } catch {
       return null;
@@ -41,7 +63,7 @@ async function callSession(path: string, body: unknown): Promise<AuthResult> {
     return { ok: false, status: response.status, detail: await describeProblem(response) };
   }
   const tokens = (await response.json()) as { accessToken: string };
-  accessToken = tokens.accessToken;
+  rememberToken(tokens.accessToken);
   return { ok: true };
 }
 
