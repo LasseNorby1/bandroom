@@ -97,4 +97,6 @@ Phase 2/3 features (built pre-deploy, verified locally):
 
 Waveforms: peaks are computed once and stored on the version (`DemoVersions.Peaks`, migration `VersionPeaks`) — the uploader's browser decodes the file it already has and sends them at confirm; the worker returns them for ai mixes. The player never downloads a take just to draw it; versions without stored peaks decode lazily on first play.
 
+UI kit: shadcn/ui is configured (`apps/web/components.json`, tokens bridged in `globals.css`) with `cn` re-exported from `@/lib/utils`. Add components with `pnpm dlx shadcn@latest add <name>` from `apps/web`; they land in `src/components/ui` already on the Bandroom palette.
+
 Dev storage/audio notes: presigned urls are audience-aware (`Storage:WorkerEndpoint=http://minio:9000` for the worker container; browser + api use localhost). Next: pick a host (NOT the Clayton Power coolify box — own VPS or a PaaS, decision pending), then the Expo app.
