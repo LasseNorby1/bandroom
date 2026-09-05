@@ -22,7 +22,8 @@ function UploadButton({
   label: string;
   accept: string;
   busyLabel: string;
-  onFile: (file: File) => Promise<void>;
+  /** Receives a progress setter so the button can show the transfer as it happens. */
+  onFile: (file: File, onProgress: (fraction: number) => void) => Promise<void>;
   variant?: "primary" | "outline";
 }) {
   const inputRef = useRef<HTMLInputElement>(null);
@@ -43,7 +44,7 @@ function UploadButton({
           setError(false);
           setProgress(0);
           try {
-            await onFile(file);
+            await onFile(file, setProgress);
           } catch {
             setError(true);
           } finally {
@@ -126,8 +127,6 @@ export default function IdeaPage({
   const references = useReferences(bandId);
   const [mixReference, setMixReference] = useState("standard");
   const [masterReference, setMasterReference] = useState("standard");
-  const [progressSetter, setProgress] = useState<number | null>(null);
-  void progressSetter;
 
   const invalidate = () => {
     void queryClient.invalidateQueries({ queryKey: bandKeys.demos(bandId) });
@@ -189,8 +188,8 @@ export default function IdeaPage({
           label="Upload a take"
           busyLabel="Uploading"
           accept="audio/*"
-          onFile={async (file) => {
-            await uploadDemoVersion(bandId, ideaId, file, setProgress);
+          onFile={async (file, onProgress) => {
+            await uploadDemoVersion(bandId, ideaId, file, onProgress);
             invalidate();
           }}
         />
@@ -249,8 +248,8 @@ export default function IdeaPage({
             busyLabel="Uploading"
             variant="outline"
             accept="audio/*"
-            onFile={async (file) => {
-              const uploaded = await uploadReference(bandId, file);
+            onFile={async (file, onProgress) => {
+              const uploaded = await uploadReference(bandId, file, onProgress);
               invalidate();
               setMixReference(`ref:${uploaded.id}`);
               setMasterReference(`ref:${uploaded.id}`);
@@ -311,8 +310,8 @@ export default function IdeaPage({
               busyLabel="…"
               variant="outline"
               accept="audio/*"
-              onFile={async (file) => {
-                await uploadStem(bandId, ideaId, file, label);
+              onFile={async (file, onProgress) => {
+                await uploadStem(bandId, ideaId, file, label, onProgress);
                 invalidate();
               }}
             />
