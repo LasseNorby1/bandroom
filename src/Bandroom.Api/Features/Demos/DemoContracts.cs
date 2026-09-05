@@ -20,7 +20,7 @@ public sealed record InitUploadRequest(string FileName, string ContentType, long
 
 public sealed record InitUploadResponse(Guid VersionId, string UploadUrl, DateTimeOffset ExpiresAt);
 
-public sealed record ConfirmUploadRequest(double? DurationSeconds);
+public sealed record ConfirmUploadRequest(double? DurationSeconds, float[]? Peaks = null);
 
 public sealed record VersionResponse(
     Guid Id,
@@ -30,6 +30,7 @@ public sealed record VersionResponse(
     string ContentType,
     long SizeBytes,
     double? DurationSeconds,
+    float[]? Peaks,
     string UploaderName,
     Instant CreatedAt);
 

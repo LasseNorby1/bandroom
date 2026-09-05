@@ -65,6 +65,23 @@ class PolishRequest(BaseModel):
 
 class PolishResponse(BaseModel):
     duration_seconds: float
+    peaks: list[float]
+
+
+PEAK_BARS = 96
+
+
+def waveform_peaks(audio: np.ndarray, bars: int = PEAK_BARS) -> list[float]:
+    """Per-bar absolute peak of the mono sum, normalised to the loudest bar —
+    the same shape the web player computes for uploads, so the api can store
+    it and nobody has to decode the file just to draw it."""
+    mono = np.abs(audio).max(axis=1)
+    if len(mono) == 0:
+        return [0.0] * bars
+    edges = np.linspace(0, len(mono), bars + 1, dtype=int)
+    peaks = np.array([mono[a:b].max() if b > a else 0.0 for a, b in zip(edges[:-1], edges[1:])])
+    peaks = peaks / max(float(peaks.max()), 1e-3)
+    return [round(float(p), 4) for p in peaks]
 
 
 def decode_to_stereo(data: bytes) -> np.ndarray:
@@ -289,4 +306,4 @@ async def polish(request: PolishRequest) -> PolishResponse:
             request.output_url, content=buffer.getvalue(), headers={"content-type": "audio/wav"})
         upload.raise_for_status()
 
-    return PolishResponse(duration_seconds=len(mix) / SR)
+    return PolishResponse(duration_seconds=len(mix) / SR, peaks=waveform_peaks(mix))

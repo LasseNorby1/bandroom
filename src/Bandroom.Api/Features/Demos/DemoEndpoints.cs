@@ -103,7 +103,7 @@ public static class DemoEndpoints
                 .OrderByDescending(v => v.Number)
                 .ToListAsync(ct))
             .Select(v => new VersionResponse(
-                v.Id, v.Number, v.Kind, v.FileName, v.ContentType, v.SizeBytes, v.DurationSeconds,
+                v.Id, v.Number, v.Kind, v.FileName, v.ContentType, v.SizeBytes, v.DurationSeconds, v.Peaks,
                 memberNames.GetValueOrDefault(v.UploadedByMembershipId, "?"), v.CreatedAt))
             .ToList();
 
@@ -257,6 +257,7 @@ public static class DemoEndpoints
 
             version.SizeBytes = size.Value;
             version.DurationSeconds = request.DurationSeconds;
+            version.Peaks = WaveformPeaks.Normalize(request.Peaks);
             version.Status = VersionStatus.Ready;
 
             var band = await db.Bands.SingleAsync(b => b.Id == version.BandId, ct);
@@ -271,7 +272,7 @@ public static class DemoEndpoints
             .SingleOrDefaultAsync(ct) ?? "?";
         return TypedResults.Ok(new VersionResponse(
             version.Id, version.Number, version.Kind, version.FileName, version.ContentType,
-            version.SizeBytes, version.DurationSeconds, uploaderName, version.CreatedAt));
+            version.SizeBytes, version.DurationSeconds, version.Peaks, uploaderName, version.CreatedAt));
     }
 
     private static async Task<Results<Ok<StreamUrlResponse>, NotFound>> StreamAsync(

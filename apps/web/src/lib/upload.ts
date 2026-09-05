@@ -1,4 +1,5 @@
 import { api } from "./api";
+import { decodeAudio, type DecodedAudio } from "./peaks";
 import type { DemoVersion, StemInfo, StemLabel } from "./types";
 
 const extensionTypes: Record<string, string> = {
@@ -33,6 +34,21 @@ function putWithProgress(url: string, file: File, contentType: string, onProgres
   });
 }
 
+/**
+ * Duration + waveform peaks from the file we already have in hand. Decoding
+ * happens once, here, on the uploader's machine; every later viewer gets the
+ * peaks from the api. Formats the browser can't decode fall back to metadata
+ * duration and no peaks (the player then decodes lazily on first play).
+ */
+async function analyzeAudio(file: File): Promise<{ durationSeconds: number | null; peaks: number[] | null }> {
+  try {
+    const decoded: DecodedAudio = await decodeAudio(await file.arrayBuffer());
+    return decoded;
+  } catch {
+    return { durationSeconds: await measureDuration(file), peaks: null };
+  }
+}
+
 function measureDuration(file: File): Promise<number | null> {
   return new Promise((resolve) => {
     const url = URL.createObjectURL(file);
@@ -63,12 +79,15 @@ export async function uploadDemoVersion(
   });
   if (error || !init) throw error ?? new Error("init failed");
 
-  await putWithProgress(init.uploadUrl, file, contentType, onProgress);
-  const duration = await measureDuration(file);
+  // Analyse while the bytes are in flight — both are local work on the same file.
+  const [, analysis] = await Promise.all([
+    putWithProgress(init.uploadUrl, file, contentType, onProgress),
+    analyzeAudio(file),
+  ]);
 
   const { data: version, error: confirmError } = await api.POST("/bands/{bandId}/versions/{versionId}/confirm", {
     params: { path: { bandId, versionId: init.versionId } },
-    body: { durationSeconds: duration },
+    body: { durationSeconds: analysis.durationSeconds, peaks: analysis.peaks },
   });
   if (confirmError || !version) throw confirmError ?? new Error("confirm failed");
   return version;

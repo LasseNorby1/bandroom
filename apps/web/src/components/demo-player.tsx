@@ -7,49 +7,40 @@ import { api } from "@/lib/api";
 import { useBandContext } from "@/lib/band-context";
 import { bandKeys } from "@/lib/band-hooks";
 import { cn } from "@/lib/cn";
+import { decodeAudio, PEAK_BARS } from "@/lib/peaks";
 import type { DemoVersion } from "@/lib/types";
 import { formatBytes, formatSeconds } from "@/lib/upload";
 
-const BAR_COUNT = 96;
+const PLACEHOLDER = Array.from({ length: PEAK_BARS }, () => 0.5);
 
-function usePeaks(url: string | null): number[] | null {
-  const [peaks, setPeaks] = useState<number[] | null>(null);
+/**
+ * Stored peaks win (no download at all). Older takes without them are decoded
+ * lazily — only once someone actually presses play, never for every version
+ * on the page at mount.
+ */
+function usePeaks(stored: number[] | null | undefined, url: string | null, wanted: boolean): number[] {
+  const [decoded, setDecoded] = useState<number[] | null>(null);
 
   useEffect(() => {
-    if (!url) return;
+    if (stored?.length || !wanted || !url) return;
     let cancelled = false;
 
     void (async () => {
       try {
         const response = await fetch(url);
-        const buffer = await response.arrayBuffer();
-        const audioContext = new AudioContext();
-        const decoded = await audioContext.decodeAudioData(buffer);
-        void audioContext.close();
-        const channel = decoded.getChannelData(0);
-        const blockSize = Math.max(1, Math.floor(channel.length / BAR_COUNT));
-        const computed = Array.from({ length: BAR_COUNT }, (_, i) => {
-          let sum = 0;
-          const start = i * blockSize;
-          for (let j = start; j < start + blockSize && j < channel.length; j += 32) {
-            sum = Math.max(sum, Math.abs(channel[j]));
-          }
-          return sum;
-        });
-        const max = Math.max(...computed, 0.01);
-        if (!cancelled) setPeaks(computed.map((p) => p / max));
+        const { peaks } = await decodeAudio(await response.arrayBuffer());
+        if (!cancelled) setDecoded(peaks);
       } catch {
         // Waveform is decoration; playback works without it.
-        if (!cancelled) setPeaks(null);
       }
     })();
 
     return () => {
       cancelled = true;
     };
-  }, [url]);
+  }, [stored, url, wanted]);
 
-  return peaks;
+  return stored?.length ? stored : (decoded ?? PLACEHOLDER);
 }
 
 export function DemoPlayer({ bandId, version }: { bandId: string; version: DemoVersion }) {
@@ -59,7 +50,8 @@ export function DemoPlayer({ bandId, version }: { bandId: string; version: DemoV
   const [url, setUrl] = useState<string | null>(null);
   const [playing, setPlaying] = useState(false);
   const [position, setPosition] = useState(0);
-  const peaks = usePeaks(url);
+  const [touched, setTouched] = useState(false);
+  const peaks = usePeaks(version.peaks, url, touched);
   const duration = version.durationSeconds ?? audioRef.current?.duration ?? 0;
 
   useEffect(() => {
@@ -95,6 +87,7 @@ export function DemoPlayer({ bandId, version }: { bandId: string; version: DemoV
       audio.pause();
       setPlaying(false);
     } else {
+      setTouched(true);
       void audio.play();
       setPlaying(true);
     }
@@ -106,6 +99,7 @@ export function DemoPlayer({ bandId, version }: { bandId: string; version: DemoV
     audio.currentTime = seconds;
     setPosition(seconds);
     if (audio.paused) {
+      setTouched(true);
       void audio.play();
       setPlaying(true);
     }
@@ -173,13 +167,13 @@ export function DemoPlayer({ bandId, version }: { bandId: string; version: DemoV
             if (duration > 0) seek(fraction * duration);
           }}
         >
-          {(peaks ?? Array.from({ length: BAR_COUNT }, () => 0.5)).map((peak, index) => (
+          {peaks.map((peak, index) => (
             <span
               key={index}
               style={{ height: `${Math.max(8, peak * 100)}%` }}
               className={cn(
                 "min-w-0 flex-1 rounded-sm",
-                index / BAR_COUNT <= progress ? "bg-ink" : "bg-line",
+                index / peaks.length <= progress ? "bg-ink" : "bg-line",
               )}
             />
           ))}

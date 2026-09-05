@@ -2648,6 +2648,17 @@
               "number"
             ],
             "format": "double"
+          },
+          "peaks": {
+            "type": [
+              "null",
+              "array"
+            ],
+            "items": {
+              "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?(?:[eE][+-]?\\d+)?$",
+              "type": "number",
+              "format": "float"
+            }
           }
         }
       },
@@ -4226,6 +4237,7 @@
           "contentType",
           "sizeBytes",
           "durationSeconds",
+          "peaks",
           "uploaderName",
           "createdAt"
         ],
@@ -4264,6 +4276,17 @@
               "number"
             ],
             "format": "double"
+          },
+          "peaks": {
+            "type": [
+              "null",
+              "array"
+            ],
+            "items": {
+              "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?(?:[eE][+-]?\\d+)?$",
+              "type": "number",
+              "format": "float"
+            }
           },
           "uploaderName": {
             "type": "string"

@@ -186,7 +186,7 @@ public sealed class PolishJobRunner(
         string? ReferenceUrl,
         string? MixReferenceUrl);
 
-    private sealed record WorkerResponse(double DurationSeconds);
+    private sealed record WorkerResponse(double DurationSeconds, float[]? Peaks = null);
 
     public async Task RunAsync(Guid polishJobId, CancellationToken ct)
     {
@@ -260,6 +260,7 @@ public sealed class PolishJobRunner(
                 ContentType = "audio/wav",
                 SizeBytes = size,
                 DurationSeconds = result.DurationSeconds,
+                Peaks = WaveformPeaks.Normalize(result.Peaks),
                 Status = VersionStatus.Ready,
                 Kind = VersionKind.AiMix,
                 UploadedByMembershipId = job.RequestedByMembershipId,

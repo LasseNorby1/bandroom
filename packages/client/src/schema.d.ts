@@ -2536,6 +2536,7 @@ export interface components {
         ConfirmUploadRequest: {
             /** Format: double */
             durationSeconds: null | number;
+            peaks?: null | number[];
         };
         CreateBandRequest: {
             name: string;
@@ -2930,6 +2931,7 @@ export interface components {
             sizeBytes: number;
             /** Format: double */
             durationSeconds: null | number;
+            peaks: null | number[];
             uploaderName: string;
             createdAt: components["schemas"]["Instant"];
         };

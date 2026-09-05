@@ -42,6 +42,14 @@ public sealed class DemoVersion : IBandScoped
 
     public double? DurationSeconds { get; set; }
 
+    /// <summary>
+    /// Waveform peaks (0..1, ~96 bars) computed once — by the uploader's browser
+    /// at confirm time, or by the worker for ai mixes — so nobody has to download
+    /// and decode the whole file just to draw it. Null: draw a flat placeholder
+    /// and decode lazily on first play.
+    /// </summary>
+    public float[]? Peaks { get; set; }
+
     public VersionStatus Status { get; set; } = VersionStatus.Uploading;
 
     public VersionKind Kind { get; init; } = VersionKind.Upload;

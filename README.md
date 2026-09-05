@@ -95,4 +95,6 @@ Phase 2/3 features (built pre-deploy, verified locally):
 - [x] reference mixing — the mix stage can chase a reference of its own: per-stem gains matched to its band balance (±6 dB around the by-ear staging), pan spread to its stereo width, glue to its density; mix and master can chase different tracks
 - [x] billing skeleton — band plan + quota gates; checkout via a merchant of record comes at open-up (spec p4)
 
+Waveforms: peaks are computed once and stored on the version (`DemoVersions.Peaks`, migration `VersionPeaks`) — the uploader's browser decodes the file it already has and sends them at confirm; the worker returns them for ai mixes. The player never downloads a take just to draw it; versions without stored peaks decode lazily on first play.
+
 Dev storage/audio notes: presigned urls are audience-aware (`Storage:WorkerEndpoint=http://minio:9000` for the worker container; browser + api use localhost). Next: pick a host (NOT the Clayton Power coolify box — own VPS or a PaaS, decision pending), then the Expo app.
