@@ -41,6 +41,8 @@ dotnet run --project src/Bandroom.Api
 dotnet test                   # domain tests run bare; api tests need docker
 ```
 
+No admin rights? Everything runs user-local: .NET via `dotnet-install.sh --channel 10.0 --install-dir ~/.dotnet`, Node 22 from the official tarball with `corepack enable` for pnpm, and Docker as a Lima VM (`limactl start template://docker` + the static docker cli, `DOCKER_HOST=unix://~/.lima/docker/sock/docker.sock`, `TESTCONTAINERS_RYUK_DISABLED=true`). Start the VM again after a reboot with `limactl start docker`.
+
 Network note: on connections where CloudFront is unreachable (docker hub + ecr blob pulls EOF), pull images via Google's mirror (`docker pull mirror.gcr.io/library/postgres:17-alpine` + `docker tag`) and run tests with `TESTCONTAINERS_RYUK_DISABLED=true`.
 
 ## Foundation rules
