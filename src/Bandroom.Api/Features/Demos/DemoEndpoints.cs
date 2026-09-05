@@ -194,7 +194,7 @@ public static class DemoEndpoints
         }
 
         var now = clock.GetCurrentInstant();
-        var band = await db.Bands.SingleAsync(b => b.Id == bandContext.BandId, ct);
+        var band = bandContext.Band;
         if (UploadRules.Validate(request.FileName, request.ContentType, request.SizeBytes, band, now, entitlements) is { } errors)
         {
             return TypedResults.ValidationProblem(errors);
@@ -260,8 +260,7 @@ public static class DemoEndpoints
             version.Peaks = WaveformPeaks.Normalize(request.Peaks);
             version.Status = VersionStatus.Ready;
 
-            var band = await db.Bands.SingleAsync(b => b.Id == version.BandId, ct);
-            band.StorageUsedBytes += size.Value;
+            bandContext.Band.StorageUsedBytes += size.Value;
             await db.SaveChangesAsync(ct);
             await notifier.DemoChangedAsync(version.BandId, version.SongIdeaId, "version", ct);
         }
@@ -314,7 +313,7 @@ public static class DemoEndpoints
             .Where(c => c.TargetType == CommentTarget.DemoVersion && c.TargetId == versionId)
             .ExecuteDeleteAsync(ct);
 
-        var band = await db.Bands.SingleAsync(b => b.Id == version.BandId, ct);
+        var band = bandContext.Band;
         band.StorageUsedBytes = Math.Max(0, band.StorageUsedBytes - version.SizeBytes);
         db.DemoVersions.Remove(version);
         await db.SaveChangesAsync(ct);
@@ -350,7 +349,7 @@ public static class DemoEndpoints
         }
 
         var now = clock.GetCurrentInstant();
-        var band = await db.Bands.SingleAsync(b => b.Id == bandContext.BandId, ct);
+        var band = bandContext.Band;
         if (UploadRules.Validate(request.FileName, request.ContentType, request.SizeBytes, band, now, entitlements) is { } errors)
         {
             return TypedResults.ValidationProblem(errors);
@@ -377,6 +376,7 @@ public static class DemoEndpoints
 
     private static async Task<Results<Ok<StemResponse>, NotFound, ValidationProblem>> ConfirmStemAsync(
         Guid stemId,
+        BandContext bandContext,
         AppDbContext db,
         IFileStorage storage,
         BandNotifier notifier,
@@ -401,8 +401,7 @@ public static class DemoEndpoints
 
             stem.SizeBytes = size.Value;
             stem.Status = VersionStatus.Ready;
-            var band = await db.Bands.SingleAsync(b => b.Id == stem.BandId, ct);
-            band.StorageUsedBytes += size.Value;
+            bandContext.Band.StorageUsedBytes += size.Value;
             await db.SaveChangesAsync(ct);
             await notifier.DemoChangedAsync(stem.BandId, stem.SongIdeaId, "stem", ct);
         }
@@ -430,7 +429,7 @@ public static class DemoEndpoints
             return TypedResults.Forbid();
         }
 
-        var band = await db.Bands.SingleAsync(b => b.Id == stem.BandId, ct);
+        var band = bandContext.Band;
         band.StorageUsedBytes = Math.Max(0, band.StorageUsedBytes - stem.SizeBytes);
         db.Stems.Remove(stem);
         await db.SaveChangesAsync(ct);

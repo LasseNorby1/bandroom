@@ -119,7 +119,7 @@ public static class BandEndpoints
         EntitlementOptions entitlements,
         CancellationToken ct)
     {
-        var band = await db.Bands.SingleAsync(b => b.Id == bandContext.BandId, ct);
+        var band = bandContext.Band;
 
         // No explicit BandId clause — the global query filter supplies it.
         var members = await db.Memberships
@@ -168,7 +168,7 @@ public static class BandEndpoints
             return TypedResults.ValidationProblem(errors);
         }
 
-        var band = await db.Bands.SingleAsync(b => b.Id == bandContext.BandId, ct);
+        var band = bandContext.Band;
         if (name is not null)
         {
             band.Name = name;

@@ -54,7 +54,7 @@ public static class PracticeFinderEndpoints
             return TypedResults.ValidationProblem(errors);
         }
 
-        var band = await db.Bands.SingleAsync(b => b.Id == bandContext.BandId, ct);
+        var band = bandContext.Band;
         var practiceSlot = requestedSlot ?? band.DefaultPracticeSlot;
 
         // The search starts tomorrow, band-local — today's slot may already be under way.

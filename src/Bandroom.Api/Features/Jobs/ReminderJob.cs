@@ -18,9 +18,14 @@ public sealed class ReminderJob(AppDbContext db, IAppEmailSender email, IClock c
 
     public async Task RunAtAsync(Instant now, CancellationToken ct)
     {
+        // Reminders go out for band-local "tomorrow", which is never earlier than
+        // yesterday in utc — so anything older can't need one. Without this floor
+        // every event that was confirmed too late for its reminder would be
+        // reloaded on every hourly run, forever.
+        var floor = now.InUtc().Date.PlusDays(-1);
         var pending = await db.Events
             .IgnoreQueryFilters()
-            .Where(e => e.Status == EventStatus.Confirmed && e.ReminderSentAt == null)
+            .Where(e => e.Status == EventStatus.Confirmed && e.ReminderSentAt == null && e.Date >= floor)
             .ToListAsync(ct);
         if (pending.Count == 0)
         {

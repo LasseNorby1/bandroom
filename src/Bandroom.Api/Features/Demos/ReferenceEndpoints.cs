@@ -52,7 +52,7 @@ public static class ReferenceEndpoints
         CancellationToken ct)
     {
         var now = clock.GetCurrentInstant();
-        var band = await db.Bands.SingleAsync(b => b.Id == bandContext.BandId, ct);
+        var band = bandContext.Band;
         var errors = UploadRules.Validate(request.FileName, request.ContentType, request.SizeBytes, band, now, entitlements)
                      ?? new Dictionary<string, string[]>();
         var title = request.Title?.Trim() ?? "";
@@ -85,6 +85,7 @@ public static class ReferenceEndpoints
 
     private static async Task<Results<Ok<ReferenceResponse>, NotFound, ValidationProblem>> ConfirmAsync(
         Guid referenceId,
+        BandContext bandContext,
         AppDbContext db,
         IFileStorage storage,
         CancellationToken ct)
@@ -108,8 +109,7 @@ public static class ReferenceEndpoints
 
             reference.SizeBytes = size.Value;
             reference.Status = VersionStatus.Ready;
-            var band = await db.Bands.SingleAsync(b => b.Id == reference.BandId, ct);
-            band.StorageUsedBytes += size.Value;
+            bandContext.Band.StorageUsedBytes += size.Value;
             await db.SaveChangesAsync(ct);
         }
 
@@ -135,7 +135,7 @@ public static class ReferenceEndpoints
             return TypedResults.Forbid();
         }
 
-        var band = await db.Bands.SingleAsync(b => b.Id == reference.BandId, ct);
+        var band = bandContext.Band;
         band.StorageUsedBytes = Math.Max(0, band.StorageUsedBytes - reference.SizeBytes);
         db.ReferenceTracks.Remove(reference);
         await db.SaveChangesAsync(ct);

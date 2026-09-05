@@ -34,7 +34,7 @@ public static class EventEndpoints
         BandNotifier notifier,
         CancellationToken ct)
     {
-        var band = await db.Bands.SingleAsync(b => b.Id == bandContext.BandId, ct);
+        var band = bandContext.Band;
         var today = BandTime.TodayIn(band, clock.GetCurrentInstant());
 
         var errors = new Dictionary<string, string[]>();
@@ -114,7 +114,7 @@ public static class EventEndpoints
             });
         }
 
-        var band = await db.Bands.SingleAsync(b => b.Id == bandContext.BandId, ct);
+        var band = bandContext.Band;
         var from = BandTime.TodayIn(band, clock.GetCurrentInstant());
         var to = from.PlusDays(days - 1);
 
@@ -190,7 +190,7 @@ public static class EventEndpoints
         {
             // Confirmation beats calculation (spec principle 2): quorum of real
             // yeses — clamped to the member count — flips the proposal.
-            var band = await db.Bands.SingleAsync(b => b.Id == evt.BandId, ct);
+            var band = bandContext.Band;
             var memberCount = await db.Memberships.CountAsync(ct);
             var going = await db.Rsvps.CountAsync(
                 r => r.EventId == eventId && r.Status == RsvpStatus.Going, ct);

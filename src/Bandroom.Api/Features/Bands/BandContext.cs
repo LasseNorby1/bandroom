@@ -11,17 +11,27 @@ namespace Bandroom.Api.Features.Bands;
 /// </summary>
 public sealed class BandContext : IBandContext
 {
+    private Band? _band;
+
     public Guid? BandId { get; private set; }
 
     public Guid? MembershipId { get; private set; }
 
     public BandRole? Role { get; private set; }
 
-    public void Set(Membership membership)
+    /// <summary>
+    /// The band itself, loaded (tracked) alongside the membership so handlers
+    /// never re-query it. Mutations on it are picked up by the request's
+    /// SaveChanges like any other tracked entity.
+    /// </summary>
+    public Band Band => _band ?? throw new InvalidOperationException("No band context — is the endpoint behind BandMemberFilter?");
+
+    public void Set(Membership membership, Band band)
     {
         BandId = membership.BandId;
         MembershipId = membership.Id;
         Role = membership.Role;
+        _band = band;
     }
 }
 
@@ -47,15 +57,19 @@ public sealed class BandMemberFilter(AppDbContext db, BandContext bandContext) :
         }
 
         // No band context exists yet — this lookup is the one that creates it.
-        var membership = await db.Memberships
+        // Membership and band come back in one round trip; both stay tracked so
+        // handlers can mutate the band (storage accounting, settings) directly.
+        var hit = await db.Memberships
             .IgnoreQueryFilters()
-            .SingleOrDefaultAsync(m => m.BandId == bandId && m.UserId == userId);
-        if (membership is null)
+            .Where(m => m.BandId == bandId && m.UserId == userId)
+            .Join(db.Bands, m => m.BandId, b => b.Id, (m, b) => new { Membership = m, Band = b })
+            .SingleOrDefaultAsync();
+        if (hit is null)
         {
             return TypedResults.NotFound();
         }
 
-        bandContext.Set(membership);
+        bandContext.Set(hit.Membership, hit.Band);
         return await next(context);
     }
 }

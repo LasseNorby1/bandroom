@@ -32,7 +32,7 @@ public static class AvailabilityEndpoints
         CancellationToken ct)
     {
         var membership = await db.Memberships.SingleAsync(m => m.Id == bandContext.MembershipId, ct);
-        var band = await db.Bands.SingleAsync(b => b.Id == bandContext.BandId, ct);
+        var band = bandContext.Band;
         var today = BandTime.TodayIn(band, clock.GetCurrentInstant());
 
         var exceptions = await db.AvailabilityExceptions
@@ -142,7 +142,7 @@ public static class AvailabilityEndpoints
             });
         }
 
-        var band = await db.Bands.SingleAsync(b => b.Id == bandContext.BandId, ct);
+        var band = bandContext.Band;
         var from = BandTime.TodayIn(band, clock.GetCurrentInstant());
         var to = from.PlusDays(days - 1);
 

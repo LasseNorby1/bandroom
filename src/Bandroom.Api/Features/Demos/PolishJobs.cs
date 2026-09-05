@@ -83,7 +83,7 @@ public static class PolishEndpoints
             db, errors, "mixReference", request?.MixReferenceTrackId, request?.MixReferenceVersionId, ct);
 
         var now = clock.GetCurrentInstant();
-        var band = await db.Bands.SingleAsync(b => b.Id == bandContext.BandId, ct);
+        var band = bandContext.Band;
         if (!PlanLimits.IsPro(band, now, entitlements))
         {
             errors["plan"] = ["Ai polish is a pro feature."];
