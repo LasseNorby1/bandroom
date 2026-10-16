@@ -12,7 +12,7 @@ namespace Bandroom.Api.Features.Jobs;
 /// reminder, sent once the band-local clock passes 17:00 on the day before.
 /// Jobs have no band context, so every query opts out of the filters explicitly.
 /// </summary>
-public sealed class ReminderJob(AppDbContext db, IAppEmailSender email, IClock clock, ILogger<ReminderJob> logger)
+public sealed class ReminderJob(AppDbContext db, IAppEmailSender email, Features.Push.IPushSender push, IClock clock, ILogger<ReminderJob> logger)
 {
     public Task RunAsync(CancellationToken ct) => RunAtAsync(clock.GetCurrentInstant(), ct);
 
@@ -39,7 +39,7 @@ public sealed class ReminderJob(AppDbContext db, IAppEmailSender email, IClock c
         var recipients = await db.Memberships
             .IgnoreQueryFilters()
             .Where(m => bandIds.Contains(m.BandId) && m.LeftAt == null)
-            .Join(db.Users, m => m.UserId, u => u.Id, (m, u) => new { m.BandId, u.Email, u.DisplayName })
+            .Join(db.Users, m => m.UserId, u => u.Id, (m, u) => new { m.BandId, u.Id, u.Email, u.DisplayName })
             .ToListAsync(ct);
 
         var sent = 0;
@@ -60,6 +60,8 @@ public sealed class ReminderJob(AppDbContext db, IAppEmailSender email, IClock c
             foreach (var recipient in recipients.Where(r => r.BandId == evt.BandId))
             {
                 await email.SendAsync(recipient.Email!, $"Tomorrow: {summary}", body, ct);
+                push.Send(recipient.Id, new Features.Push.PushPayload(
+                    $"Tomorrow: {summary}", $"{start}{(location is null ? "" : $" · {location}")}", $"/b/{evt.BandId}/events/{evt.Id}", $"reminder-{evt.Id}"));
             }
 
             evt.ReminderSentAt = now;

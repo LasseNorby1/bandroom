@@ -14,6 +14,7 @@ using Bandroom.Api.Features.Comments;
 using Bandroom.Api.Features.Demos;
 using Bandroom.Api.Features.Events;
 using Bandroom.Api.Features.Jobs;
+using Bandroom.Api.Features.Push;
 using Bandroom.Api.Features.Scheduling;
 using Bandroom.Api.Features.Songs;
 using Bandroom.Api.Infrastructure;
@@ -225,6 +226,18 @@ try
         builder.Configuration.GetSection("Entitlements").Get<EntitlementOptions>() ?? new EntitlementOptions());
     builder.Services.AddSingleton(
         builder.Configuration.GetSection("Billing").Get<BillingOptions>() ?? new BillingOptions());
+    var pushOptions = builder.Configuration.GetSection("Push").Get<PushOptions>() ?? new PushOptions();
+    builder.Services.AddSingleton(pushOptions);
+    builder.Services.AddScoped<PushDeliveryJob>();
+    if (jobsEnabled && pushOptions.IsConfigured)
+    {
+        builder.Services.AddSingleton<IPushSender, HangfirePushSender>();
+    }
+    else
+    {
+        builder.Services.AddSingleton<IPushSender, NoopPushSender>();
+    }
+
     var aiOptions = builder.Configuration.GetSection("Ai").Get<AiOptions>() ?? new AiOptions();
     builder.Services.AddSingleton(aiOptions);
     builder.Services.AddSingleton<IAiClient>(new AnthropicAiClient(aiOptions));
@@ -327,6 +340,15 @@ try
 
     var app = builder.Build();
 
+    // `--vapid`: print a fresh web-push key pair and exit (deploy.sh mints them into .env).
+    if (args.Contains("--vapid"))
+    {
+        var (publicKey, privateKey) = Vapid.GenerateKeys();
+        Console.WriteLine($"PUSH_VAPID_PUBLIC_KEY={publicKey}");
+        Console.WriteLine($"PUSH_VAPID_PRIVATE_KEY={privateKey}");
+        return;
+    }
+
     // `--migrate`: apply pending migrations and exit. Deploys run this as an
     // explicit step before the new api starts — never on app start against prod
     // (foundation rules). Nothing is listening and no hosted service runs here.
@@ -384,6 +406,7 @@ try
     app.MapMemberEndpoints();
     app.MapBillingEndpoints();
     app.MapAiEndpoints();
+    app.MapPushEndpoints();
     app.MapInviteEndpoints();
     app.MapAvailabilityEndpoints();
     app.MapPracticeFinderEndpoints();

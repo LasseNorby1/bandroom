@@ -33,6 +33,14 @@ echo "==> deploying tag ${TAG}"
 
 docker compose pull --quiet api web worker
 docker compose up -d postgres minio
+if ! grep -q "^PUSH_VAPID_PRIVATE_KEY=.\+" .env; then
+  echo "==> minting web-push keys"
+  docker compose run --rm migrate --vapid | grep "^PUSH_VAPID_" > /tmp/vapid.env
+  while IFS='=' read -r k v; do fill "$k" "$v"; done < /tmp/vapid.env
+  rm -f /tmp/vapid.env
+  fill PUSH_SUBJECT "mailto:hello@bandroom.io"
+  set -a; source .env; set +a
+fi
 echo "==> migrations"
 docker compose run --rm migrate
 echo "==> starting"

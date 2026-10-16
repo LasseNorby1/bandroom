@@ -61,6 +61,8 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options, IBandCo
 
     public DbSet<ImportedBusyDay> ImportedBusyDays => Set<ImportedBusyDay>();
 
+    public DbSet<PushSubscription> PushSubscriptions => Set<PushSubscription>();
+
     private static readonly JsonSerializerOptions PatternJsonOptions = new()
     {
         PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
@@ -314,6 +316,17 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options, IBandCo
             analysis.Property(a => a.Status).HasConversion<string>().HasMaxLength(20);
             analysis.HasOne<DemoVersion>().WithOne().HasForeignKey<VersionAnalysis>(a => a.VersionId).OnDelete(DeleteBehavior.Cascade);
             analysis.HasQueryFilter(a => a.BandId == _bandContext.BandId);
+        });
+
+        builder.Entity<PushSubscription>(sub =>
+        {
+            sub.Property(s => s.Endpoint).HasMaxLength(1000);
+            sub.Property(s => s.P256dh).HasMaxLength(200);
+            sub.Property(s => s.Auth).HasMaxLength(100);
+            sub.Property(s => s.UserAgent).HasMaxLength(200);
+            sub.HasIndex(s => s.Endpoint).IsUnique();
+            sub.HasIndex(s => s.UserId);
+            sub.HasOne<AppUser>().WithMany().HasForeignKey(s => s.UserId).OnDelete(DeleteBehavior.Cascade);
         });
 
         builder.Entity<ImportedBusyDay>(busy =>

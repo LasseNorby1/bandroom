@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { ConfirmDialog } from "@/components/confirm-dialog";
+import { PushToggle } from "@/components/push-toggle";
 import { Button } from "@/components/ui/button";
 import { Field } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
@@ -180,6 +181,15 @@ export default function AccountPage() {
         <p className="font-mono text-xs tracking-wider text-accent">account</p>
         <h1 className="font-display text-2xl font-semibold tracking-tight">{me.data.displayName}</h1>
       </div>
+      <section className="space-y-3 rounded-xl border border-line bg-surface p-5">
+        <div>
+          <h2 className="font-medium">Notifications</h2>
+          <p className="text-sm text-muted">
+            The whole point of the finder is that &ldquo;Thursday works for everyone&rdquo; reaches you. One switch per device.
+          </p>
+        </div>
+        <PushToggle />
+      </section>
       <ChangeEmail current={me.data.email} />
       <ChangePassword />
       <ExportAndDelete />

@@ -2,6 +2,7 @@ using Bandroom.Api.Data;
 using Bandroom.Api.Features.Bands;
 using Bandroom.Api.Features.Auth;
 using Bandroom.Api.Infrastructure;
+using Bandroom.Api.Features.Push;
 using Bandroom.Api.Infrastructure.Email;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.EntityFrameworkCore;
@@ -34,6 +35,8 @@ public static class EventEndpoints
         AppDbContext db,
         IClock clock,
         BandNotifier notifier,
+        IPushSender push,
+        AuthOptions authOptions,
         CancellationToken ct)
     {
         var band = bandContext.Band;
@@ -96,6 +99,10 @@ public static class EventEndpoints
         });
         await db.SaveChangesAsync(ct);
         await notifier.EventChangedAsync(evt.BandId, evt.Id, "created", ct);
+        if (evt.Status == EventStatus.Proposed)
+        {
+            await EventPush.ProposedAsync(db, push, authOptions, band, evt, bandContext.MembershipId, now, ct);
+        }
 
         return TypedResults.Created(
             $"/bands/{evt.BandId}/events/{evt.Id}", await LoadDetailAsync(db, evt.Id, bandContext.MembershipId!.Value, ct));
@@ -153,6 +160,7 @@ public static class EventEndpoints
         IClock clock,
         BandNotifier notifier,
         IAppEmailSender email,
+        IPushSender push,
         AuthOptions authOptions,
         CancellationToken ct)
     {
@@ -170,82 +178,10 @@ public static class EventEndpoints
             return TypedResults.NotFound();
         }
 
-        var now = clock.GetCurrentInstant();
-        var rsvp = await db.Rsvps.SingleOrDefaultAsync(
-            r => r.EventId == eventId && r.MembershipId == bandContext.MembershipId, ct);
-        if (rsvp is null)
-        {
-            db.Rsvps.Add(new Rsvp
-            {
-                BandId = evt.BandId,
-                EventId = eventId,
-                MembershipId = bandContext.MembershipId!.Value,
-                Status = request.Status,
-                Note = request.Note?.Trim(),
-                UpdatedAt = now,
-            });
-        }
-        else
-        {
-            rsvp.Status = request.Status;
-            rsvp.Note = request.Note?.Trim();
-            rsvp.UpdatedAt = now;
-        }
-
-        await db.SaveChangesAsync(ct);
-
-        var action = "rsvp";
-        var band = bandContext.Band;
-        var memberCount = await db.Memberships.CountAsync(m => m.LeftAt == null, ct);
-        var quorum = Math.Max(1, Math.Min(band.Quorum, memberCount));
-        var going = await db.Rsvps.CountAsync(
-            r => r.EventId == eventId && r.Status == RsvpStatus.Going, ct);
-
-        if (evt.Status == EventStatus.Proposed)
-        {
-            // Confirmation beats calculation (spec principle 2): quorum of real
-            // yeses — clamped to the member count — flips the proposal.
-            if (going >= quorum)
-            {
-                evt.Status = EventStatus.Confirmed;
-                await db.SaveChangesAsync(ct);
-                action = "confirmed";
-            }
-        }
-        else if (evt.Status == EventStatus.Confirmed)
-        {
-            // A late "can't make it" that drops a confirmed practice below quorum
-            // asks the organiser once whether to keep or cancel (spec §4). It
-            // re-arms if the count recovers and drops again.
-            if (going < quorum && evt.QuorumWarnedAt is null)
-            {
-                evt.QuorumWarnedAt = now;
-                await db.SaveChangesAsync(ct);
-                action = "belowQuorum";
-
-                var organiser = await db.Memberships
-                    .Where(m => m.Id == evt.CreatedByMembershipId && m.LeftAt == null)
-                    .Join(db.Users, m => m.UserId, u => u.Id, (m, u) => new { u.Email, u.DisplayName })
-                    .SingleOrDefaultAsync(ct);
-                if (organiser?.Email is not null)
-                {
-                    var summary = EventText.Summarize(evt, band);
-                    await email.SendAsync(
-                        organiser.Email,
-                        $"Below quorum: {summary}",
-                        $"Hi {organiser.DisplayName} — {going} of {quorum} are now going to {summary} on {evt.Date}. " +
-                        $"Keep it or cancel: {authOptions.WebBaseUrl}/b/{evt.BandId}/events/{evt.Id}",
-                        ct);
-                }
-            }
-            else if (going >= quorum && evt.QuorumWarnedAt is not null)
-            {
-                evt.QuorumWarnedAt = null;
-                await db.SaveChangesAsync(ct);
-            }
-        }
-
-        await notifier.EventChangedAsync(evt.BandId, evt.Id, action, ct);
+        var membership = await db.Memberships.SingleAsync(m => m.Id == bandContext.MembershipId, ct);
+        await RsvpService.ApplyAsync(
+            db, bandContext.Band, membership, evt, request.Status, request.Note, clock.GetCurrentInstant(),
+            notifier, email, push, authOptions, ct);
         return TypedResults.Ok(await LoadDetailAsync(db, eventId, bandContext.MembershipId!.Value, ct));
     }
 

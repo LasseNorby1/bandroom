@@ -13,7 +13,8 @@ namespace Bandroom.Api.Features.Jobs;
 /// is left alone, so cancelling one week doesn't summon it back.
 /// Runs daily; no band context, so every query opts out of the filters.
 /// </summary>
-public sealed class RecurringPracticeJob(AppDbContext db, IClock clock, ILogger<RecurringPracticeJob> logger)
+public sealed class RecurringPracticeJob(
+    AppDbContext db, IClock clock, Features.Push.IPushSender push, Features.Auth.AuthOptions authOptions, ILogger<RecurringPracticeJob> logger)
 {
     public const int WeeksAhead = 2;
 
@@ -48,7 +49,7 @@ public sealed class RecurringPracticeJob(AppDbContext db, IClock clock, ILogger<
                     continue;
                 }
 
-                db.Events.Add(new Event
+                var evt = new Event
                 {
                     BandId = band.Id,
                     Type = EventType.Practice,
@@ -57,7 +58,11 @@ public sealed class RecurringPracticeJob(AppDbContext db, IClock clock, ILogger<
                     Slot = band.DefaultPracticeSlot,
                     CreatedByMembershipId = organiser.Value,
                     CreatedAt = now,
-                });
+                };
+                db.Events.Add(evt);
+                await db.SaveChangesAsync(ct);
+                // Everyone gets the one-tap answers — the standing day is nobody's proposal.
+                await Features.Events.EventPush.ProposedAsync(db, push, authOptions, band, evt, null, now, ct);
                 created++;
             }
         }

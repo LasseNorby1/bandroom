@@ -20,6 +20,8 @@ export const metadata: Metadata = {
     url: "/",
   },
   twitter: { card: "summary_large_image" },
+  // iOS only delivers web push to an installed app; this makes "Add to Home Screen" open it standalone.
+  appleWebApp: { capable: true, title: "Bandroom", statusBarStyle: "default" },
 };
 
 // Cookie-free visit counts on the landing page, only when a GoatCounter code is

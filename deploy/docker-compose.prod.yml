@@ -49,6 +49,9 @@ services:
       Ai__ApiKey: ${ANTHROPIC_API_KEY:-}
       Billing__CheckoutUrl: ${BILLING_CHECKOUT_URL:-}
       Billing__WebhookSecret: ${BILLING_WEBHOOK_SECRET:-}
+      Push__PublicKey: ${PUSH_VAPID_PUBLIC_KEY:-}
+      Push__PrivateKey: ${PUSH_VAPID_PRIVATE_KEY:-}
+      Push__Subject: ${PUSH_SUBJECT:-mailto:hello@bandroom.io}
     depends_on:
       postgres: { condition: service_healthy }
       minio: { condition: service_started }

@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { use, useState } from "react";
 import { api } from "@/lib/api";
+import { PushToggle } from "@/components/push-toggle";
 import { bandKeys } from "@/lib/band-hooks";
 import { RsvpButtons } from "@/components/rsvp-buttons";
 import { StatusChip } from "@/components/status-chip";
@@ -264,6 +265,15 @@ function AddEvent({ bandId }: { bandId: string }) {
   );
 }
 
+function PushNudge() {
+  return (
+    <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-line bg-surface px-5 py-3">
+      <p className="text-sm text-muted">Get proposals on your phone, answer from the notification.</p>
+      <PushToggle compact />
+    </div>
+  );
+}
+
 function NextUp({ bandId, evt }: { bandId: string; evt: EventSummary }) {
   const { detail } = useBandContext();
 
@@ -317,6 +327,7 @@ export default function BandHomePage({ params }: { params: Promise<{ bandId: str
     <div className="space-y-6">
       <Noticeboard bandId={bandId} />
       <CatchUp bandId={bandId} />
+      <PushNudge />
       {mine.data && mine.data.openSlots.length === 0 && (
         <div className="flex items-center justify-between gap-4 rounded-xl border border-accent/30 bg-accent-soft px-5 py-4">
           <p className="text-sm">

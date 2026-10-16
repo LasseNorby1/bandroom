@@ -7,6 +7,13 @@ namespace Bandroom.Api.Features.Events;
 /// <summary>Shared human-readable rendering for ics, reminders and digests.</summary>
 public static class EventText
 {
+    /// <summary>"thu 14 nov · 19–22" — band-local, for notifications.</summary>
+    public static string When(Event evt, Band band)
+    {
+        var (start, end) = SlotTimes.Resolve(evt);
+        return $"{evt.Date:ddd d MMM} · {start:HH:mm}–{end:HH:mm}";
+    }
+
     public static string Summarize(Event evt, Band band) => evt.Title ?? evt.Type switch
     {
         EventType.Practice => $"Practice — {band.Name}",
