@@ -3,9 +3,11 @@ using System.Text.Json;
 using System.Text.Json.Serialization;
 using System.Threading.RateLimiting;
 using Bandroom.Api.Data;
+using Bandroom.Api.Features.Ai;
 using Bandroom.Api.Features.Auth;
 using Bandroom.Api.Features.Availability;
 using Bandroom.Api.Features.Bands;
+using Bandroom.Api.Features.Billing;
 using Bandroom.Api.Features.Calendar;
 using Bandroom.Api.Features.Chat;
 using Bandroom.Api.Features.Comments;
@@ -201,6 +203,13 @@ try
 
     builder.Services.AddScoped<ReminderJob>();
     builder.Services.AddScoped<DigestJob>();
+    builder.Services.AddScoped<CalendarImporter>();
+    builder.Services.AddScoped<CalendarImportJob>();
+    builder.Services.AddHttpClient("calendar", client =>
+    {
+        client.Timeout = TimeSpan.FromSeconds(15);
+        client.DefaultRequestHeaders.UserAgent.ParseAdd("Bandroom/1.0 (+https://bandroom.io)");
+    });
 
     var storageOptions = builder.Configuration.GetSection("Storage").Get<StorageOptions>() ?? new StorageOptions();
     if (string.IsNullOrEmpty(storageOptions.Endpoint))
@@ -214,6 +223,12 @@ try
 
     builder.Services.AddSingleton(
         builder.Configuration.GetSection("Entitlements").Get<EntitlementOptions>() ?? new EntitlementOptions());
+    builder.Services.AddSingleton(
+        builder.Configuration.GetSection("Billing").Get<BillingOptions>() ?? new BillingOptions());
+    var aiOptions = builder.Configuration.GetSection("Ai").Get<AiOptions>() ?? new AiOptions();
+    builder.Services.AddSingleton(aiOptions);
+    builder.Services.AddSingleton<IAiClient>(new AnthropicAiClient(aiOptions));
+    BandEndpoints.AiAvailable = !string.IsNullOrEmpty(aiOptions.ApiKey);
     builder.Services.AddSingleton(
         builder.Configuration.GetSection("Worker").Get<WorkerOptions>() ?? new WorkerOptions());
     builder.Services.AddHttpClient("worker", client => client.Timeout = TimeSpan.FromMinutes(15));
@@ -367,6 +382,8 @@ try
     app.MapAccountEndpoints();
     app.MapBandEndpoints();
     app.MapMemberEndpoints();
+    app.MapBillingEndpoints();
+    app.MapAiEndpoints();
     app.MapInviteEndpoints();
     app.MapAvailabilityEndpoints();
     app.MapPracticeFinderEndpoints();
@@ -394,6 +411,8 @@ try
             "weekly-digest", job => job.RunAsync(CancellationToken.None), "0 8 * * MON");
         RecurringJob.AddOrUpdate<RecurringPracticeJob>(
             "standing-practices", job => job.RunAsync(CancellationToken.None), "0 6 * * *");
+        RecurringJob.AddOrUpdate<CalendarImportJob>(
+            "calendar-import", job => job.RunAsync(CancellationToken.None), "15 */6 * * *");
     }
 
     app.Run();

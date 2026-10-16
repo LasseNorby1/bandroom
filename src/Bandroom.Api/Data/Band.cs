@@ -51,6 +51,16 @@ public sealed class Band
 
     public Instant? PlanExpiresAt { get; set; }
 
+    /// <summary>Merchant-of-record references, filled in by the billing webhook.</summary>
+    public string? BillingCustomerId { get; set; }
+
+    public string? BillingSubscriptionId { get; set; }
+
+    public string? BillingPortalUrl { get; set; }
+
+    /// <summary>Per-band ai switch (spec §5.5, trust): parsing, drafting, summaries — never the music.</summary>
+    public bool AiEnabled { get; set; } = true;
+
     /// <summary>Verified bytes in object storage (demos + stems), quota-gated.</summary>
     public long StorageUsedBytes { get; set; }
 

@@ -21,6 +21,8 @@ public static class AvailabilityEndpoints
         availability.MapPut("/me/pattern", UpdatePatternAsync).WithSummary("Replace my weekly pattern");
         availability.MapPost("/me/exceptions", CreateExceptionAsync).WithSummary("Add a blockout");
         availability.MapDelete("/me/exceptions/{exceptionId:guid}", DeleteExceptionAsync).WithSummary("Remove my blockout");
+        availability.MapPut("/me/calendar", SetCalendarImportAsync)
+            .WithSummary("Set (or clear, with an empty url) my private calendar feed for the busy overlay");
 
         return routes;
     }
@@ -41,11 +43,70 @@ public static class AvailabilityEndpoints
             .Select(e => new ExceptionResponse(e.Id, e.From, e.To, e.Note))
             .ToListAsync(ct);
 
-        return TypedResults.Ok(new MyAvailabilityResponse(
+        return TypedResults.Ok(await MineResponseAsync(db, membership, exceptions, ct));
+    }
+
+    private static async Task<MyAvailabilityResponse> MineResponseAsync(
+        AppDbContext db, Membership membership, IReadOnlyList<ExceptionResponse> exceptions, CancellationToken ct)
+    {
+        var busy = await db.ImportedBusyDays
+            .Where(b => b.MembershipId == membership.Id)
+            .OrderBy(b => b.Date)
+            .Select(b => new BusyDayResponse(b.Date, b.Slot, b.Summary))
+            .ToListAsync(ct);
+        return new MyAvailabilityResponse(
             membership.WeeklyPattern,
             membership.PatternUpdatedAt,
             exceptions,
-            $"/calendar/{membership.IcsToken}.ics"));
+            $"/calendar/{membership.IcsToken}.ics",
+            new CalendarImportStatus(
+                membership.CalendarImportUrl, membership.CalendarImportedAt, membership.CalendarImportError, busy.Count),
+            busy);
+    }
+
+    private static async Task<Results<Ok<MyAvailabilityResponse>, ValidationProblem>> SetCalendarImportAsync(
+        CalendarImportRequest request,
+        BandContext bandContext,
+        AppDbContext db,
+        CalendarImporter importer,
+        CancellationToken ct)
+    {
+        var url = request.Url?.Trim();
+        var membership = await db.Memberships.SingleAsync(m => m.Id == bandContext.MembershipId, ct);
+        if (string.IsNullOrEmpty(url))
+        {
+            membership.CalendarImportUrl = null;
+            membership.CalendarImportedAt = null;
+            membership.CalendarImportError = null;
+            await db.ImportedBusyDays.Where(b => b.MembershipId == membership.Id).ExecuteDeleteAsync(ct);
+            await db.SaveChangesAsync(ct);
+            return TypedResults.Ok(await MineResponseAsync(db, membership, [], ct));
+        }
+
+        if (url.Length > 500 || !Uri.TryCreate(url, UriKind.Absolute, out var uri) || uri.Scheme is not ("https" or "http" or "webcal"))
+        {
+            return TypedResults.ValidationProblem(new Dictionary<string, string[]>
+            {
+                ["url"] = ["Paste the private ics address of your calendar (https:// or webcal://)."],
+            });
+        }
+
+        membership.CalendarImportUrl = uri.Scheme == "webcal" ? "https" + url[6..] : url;
+        var error = await importer.ImportAsync(membership, bandContext.Band, ct);
+        if (error is not null)
+        {
+            return TypedResults.ValidationProblem(new Dictionary<string, string[]>
+            {
+                ["url"] = [$"Couldn't read that calendar: {error}"],
+            });
+        }
+
+        var exceptions = await db.AvailabilityExceptions
+            .Where(e => e.MembershipId == membership.Id)
+            .OrderBy(e => e.From)
+            .Select(e => new ExceptionResponse(e.Id, e.From, e.To, e.Note))
+            .ToListAsync(ct);
+        return TypedResults.Ok(await MineResponseAsync(db, membership, exceptions, ct));
     }
 
     private static async Task<Results<Ok<MyAvailabilityResponse>, ValidationProblem>> UpdatePatternAsync(
@@ -68,8 +129,7 @@ public static class AvailabilityEndpoints
         membership.PatternUpdatedAt = clock.GetCurrentInstant();
         await db.SaveChangesAsync(ct);
 
-        return TypedResults.Ok(new MyAvailabilityResponse(
-            membership.WeeklyPattern, membership.PatternUpdatedAt, [], $"/calendar/{membership.IcsToken}.ics"));
+        return TypedResults.Ok(await MineResponseAsync(db, membership, [], ct));
     }
 
     private static async Task<Results<Ok<ExceptionResponse>, ValidationProblem>> CreateExceptionAsync(
@@ -157,6 +217,9 @@ public static class AvailabilityEndpoints
             .Where(e => e.To >= from && e.From <= to)
             .OrderBy(e => e.From)
             .ToListAsync(ct);
+        var busy = await db.ImportedBusyDays
+            .Where(b => b.Date >= from && b.Date <= to)
+            .ToListAsync(ct);
 
         var response = new BandAvailabilityResponse(from, days, members
             .Select(member => new MemberAvailabilityResponse(
@@ -167,6 +230,10 @@ public static class AvailabilityEndpoints
                 exceptions
                     .Where(e => e.MembershipId == member.Id)
                     .Select(e => new ExceptionResponse(e.Id, e.From, e.To, e.Note))
+                    .ToList(),
+                busy
+                    .Where(b => b.MembershipId == member.Id)
+                    .Select(b => new BusyDayResponse(b.Date, b.Slot, b.Summary))
                     .ToList()))
             .ToList());
         return TypedResults.Ok(response);

@@ -59,6 +59,8 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options, IBandCo
 
     public DbSet<VersionAnalysis> VersionAnalyses => Set<VersionAnalysis>();
 
+    public DbSet<ImportedBusyDay> ImportedBusyDays => Set<ImportedBusyDay>();
+
     private static readonly JsonSerializerOptions PatternJsonOptions = new()
     {
         PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
@@ -93,7 +95,11 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options, IBandCo
             band.Property(b => b.DefaultPracticeSlot).HasConversion<string>().HasMaxLength(20);
             band.Property(b => b.Plan).HasConversion<string>().HasMaxLength(20);
             band.Property(b => b.ReminderHour).HasDefaultValue(17);
+            band.Property(b => b.AiEnabled).HasDefaultValue(true);
             band.Property(b => b.Notice).HasMaxLength(2000);
+            band.Property(b => b.BillingCustomerId).HasMaxLength(64);
+            band.Property(b => b.BillingSubscriptionId).HasMaxLength(64);
+            band.Property(b => b.BillingPortalUrl).HasMaxLength(500);
             band.Property(b => b.RecurringPracticeDay).HasConversion<string>().HasMaxLength(20);
         });
 
@@ -103,6 +109,8 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options, IBandCo
             membership.Property(m => m.Role).HasConversion<string>().HasMaxLength(20);
             membership.Property(m => m.Instrument).HasMaxLength(50);
             membership.Property(m => m.IcsToken).HasMaxLength(64);
+            membership.Property(m => m.CalendarImportUrl).HasMaxLength(500);
+            membership.Property(m => m.CalendarImportError).HasMaxLength(200);
             membership.HasIndex(m => m.IcsToken).IsUnique();
             membership.Property(m => m.WeeklyPattern)
                 .HasConversion(
@@ -306,6 +314,15 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options, IBandCo
             analysis.Property(a => a.Status).HasConversion<string>().HasMaxLength(20);
             analysis.HasOne<DemoVersion>().WithOne().HasForeignKey<VersionAnalysis>(a => a.VersionId).OnDelete(DeleteBehavior.Cascade);
             analysis.HasQueryFilter(a => a.BandId == _bandContext.BandId);
+        });
+
+        builder.Entity<ImportedBusyDay>(busy =>
+        {
+            busy.Property(b => b.Slot).HasConversion<string>().HasMaxLength(20);
+            busy.Property(b => b.Summary).HasMaxLength(120);
+            busy.HasIndex(b => new { b.MembershipId, b.Date });
+            busy.HasOne<Membership>().WithMany().HasForeignKey(b => b.MembershipId).OnDelete(DeleteBehavior.Cascade);
+            busy.HasQueryFilter(b => b.BandId == _bandContext.BandId);
         });
 
         builder.Entity<PolishJob>(job =>

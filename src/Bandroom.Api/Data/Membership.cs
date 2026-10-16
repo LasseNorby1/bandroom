@@ -52,4 +52,14 @@ public sealed class Membership : IBandScoped
     /// Accepting an invite again clears it.
     /// </summary>
     public Instant? LeftAt { get; set; }
+
+    /// <summary>Opt-in calendar overlay: the member's private ics feed url (spec §8 p4).</summary>
+    public string? CalendarImportUrl { get; set; }
+
+    public Instant? CalendarImportedAt { get; set; }
+
+    public string? CalendarImportError { get; set; }
+
+    /// <summary>For "what did I miss": set when the member says they're caught up.</summary>
+    public Instant? LastSeenAt { get; set; }
 }

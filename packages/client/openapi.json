@@ -22,6 +22,29 @@
         }
       }
     },
+    "/billing/webhooks/lemonsqueezy": {
+      "post": {
+        "tags": [
+          "billing"
+        ],
+        "summary": "Lemon Squeezy subscription webhook (signed)",
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/invites/{token}/accept": {
       "post": {
         "tags": [
@@ -711,6 +734,189 @@
         }
       }
     },
+    "/bands/{bandId}/billing": {
+      "get": {
+        "tags": [
+          "billing"
+        ],
+        "summary": "Plan, expiry and where to upgrade",
+        "parameters": [
+          {
+            "name": "bandId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BillingResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/bands/{bandId}/availability/me/exceptions/parse": {
+      "post": {
+        "tags": [
+          "ai"
+        ],
+        "summary": "Natural language → proposed blockouts (nothing saved)",
+        "parameters": [
+          {
+            "name": "bandId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ParseTextRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ParsedBlockoutsResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/bands/{bandId}/events/parse-offer": {
+      "post": {
+        "tags": [
+          "ai"
+        ],
+        "summary": "A pasted venue email → a draft gig event (nothing saved)",
+        "parameters": [
+          {
+            "name": "bandId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ParseTextRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ParsedGigOffer"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/bands/{bandId}/catch-up": {
+      "get": {
+        "tags": [
+          "ai"
+        ],
+        "summary": "What happened since my last visit",
+        "parameters": [
+          {
+            "name": "bandId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CatchUpResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/bands/{bandId}/catch-up/seen": {
+      "post": {
+        "tags": [
+          "ai"
+        ],
+        "summary": "I'm caught up",
+        "parameters": [
+          {
+            "name": "bandId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          }
+        }
+      }
+    },
     "/bands/{bandId}/invites": {
       "post": {
         "tags": [
@@ -1043,6 +1249,56 @@
           },
           "404": {
             "description": "Not Found"
+          }
+        }
+      }
+    },
+    "/bands/{bandId}/availability/me/calendar": {
+      "put": {
+        "tags": [
+          "availability"
+        ],
+        "summary": "Set (or clear, with an empty url) my private calendar feed for the busy overlay",
+        "parameters": [
+          {
+            "name": "bandId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CalendarImportRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MyAvailabilityResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HttpValidationProblemDetails"
+                }
+              }
+            }
           }
         }
       }
@@ -3112,6 +3368,8 @@
           "recurringPracticeDay",
           "notice",
           "noticeUpdatedAt",
+          "aiEnabled",
+          "aiAvailable",
           "plan",
           "storageUsedBytes",
           "storageQuotaBytes"
@@ -3171,6 +3429,12 @@
               }
             ]
           },
+          "aiEnabled": {
+            "type": "boolean"
+          },
+          "aiAvailable": {
+            "type": "boolean"
+          },
           "plan": {
             "$ref": "#/components/schemas/BandPlan"
           },
@@ -3207,6 +3471,184 @@
           },
           "role": {
             "$ref": "#/components/schemas/BandRole"
+          }
+        }
+      },
+      "BillingResponse": {
+        "required": [
+          "plan",
+          "isPro",
+          "planExpiresAt",
+          "checkoutUrl",
+          "portalUrl"
+        ],
+        "type": "object",
+        "properties": {
+          "plan": {
+            "$ref": "#/components/schemas/BandPlan"
+          },
+          "isPro": {
+            "type": "boolean"
+          },
+          "planExpiresAt": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/Instant"
+              }
+            ]
+          },
+          "checkoutUrl": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "portalUrl": {
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        }
+      },
+      "BusyDayResponse": {
+        "required": [
+          "date",
+          "slot",
+          "summary"
+        ],
+        "type": "object",
+        "properties": {
+          "date": {
+            "$ref": "#/components/schemas/LocalDate"
+          },
+          "slot": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/PracticeSlot"
+              }
+            ]
+          },
+          "summary": {
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        }
+      },
+      "CalendarImportRequest": {
+        "required": [
+          "url"
+        ],
+        "type": "object",
+        "properties": {
+          "url": {
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        }
+      },
+      "CalendarImportStatus": {
+        "required": [
+          "url",
+          "importedAt",
+          "error",
+          "busyDays"
+        ],
+        "type": "object",
+        "properties": {
+          "url": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "importedAt": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/Instant"
+              }
+            ]
+          },
+          "error": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "busyDays": {
+            "type": "integer",
+            "format": "int32"
+          }
+        }
+      },
+      "CatchUpItem": {
+        "required": [
+          "at",
+          "kind",
+          "text",
+          "path"
+        ],
+        "type": "object",
+        "properties": {
+          "at": {
+            "$ref": "#/components/schemas/Instant"
+          },
+          "kind": {
+            "type": "string"
+          },
+          "text": {
+            "type": "string"
+          },
+          "path": {
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        }
+      },
+      "CatchUpResponse": {
+        "required": [
+          "since",
+          "items",
+          "summary"
+        ],
+        "type": "object",
+        "properties": {
+          "since": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/Instant"
+              }
+            ]
+          },
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CatchUpItem"
+            }
+          },
+          "summary": {
+            "type": [
+              "null",
+              "string"
+            ]
           }
         }
       },
@@ -4329,7 +4771,8 @@
           "displayName",
           "openSlots",
           "patternUpdatedAt",
-          "exceptions"
+          "exceptions",
+          "importedBusy"
         ],
         "type": "object",
         "properties": {
@@ -4360,6 +4803,12 @@
             "type": "array",
             "items": {
               "$ref": "#/components/schemas/ExceptionResponse"
+            }
+          },
+          "importedBusy": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/BusyDayResponse"
             }
           }
         }
@@ -4475,7 +4924,9 @@
           "openSlots",
           "patternUpdatedAt",
           "exceptions",
-          "calendarFeedPath"
+          "calendarFeedPath",
+          "calendarImport",
+          "importedBusy"
         ],
         "type": "object",
         "properties": {
@@ -4502,6 +4953,119 @@
             }
           },
           "calendarFeedPath": {
+            "type": "string"
+          },
+          "calendarImport": {
+            "$ref": "#/components/schemas/CalendarImportStatus"
+          },
+          "importedBusy": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/BusyDayResponse"
+            }
+          }
+        }
+      },
+      "ParsedBlockoutsResponse": {
+        "required": [
+          "blockouts",
+          "unparsed"
+        ],
+        "type": "object",
+        "properties": {
+          "blockouts": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ProposedBlockout"
+            }
+          },
+          "unparsed": {
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        }
+      },
+      "ParsedGigOffer": {
+        "required": [
+          "type",
+          "date",
+          "startTime",
+          "endTime",
+          "title",
+          "location",
+          "fee",
+          "notes"
+        ],
+        "type": "object",
+        "properties": {
+          "type": {
+            "$ref": "#/components/schemas/EventType"
+          },
+          "date": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/LocalDate"
+              }
+            ]
+          },
+          "startTime": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/LocalTime"
+              }
+            ]
+          },
+          "endTime": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/LocalTime"
+              }
+            ]
+          },
+          "title": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "location": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "fee": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "notes": {
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        }
+      },
+      "ParseTextRequest": {
+        "required": [
+          "text"
+        ],
+        "type": "object",
+        "properties": {
+          "text": {
             "type": "string"
           }
         }
@@ -4604,6 +5168,28 @@
           "afternoon",
           "evening"
         ]
+      },
+      "ProposedBlockout": {
+        "required": [
+          "from",
+          "to",
+          "note"
+        ],
+        "type": "object",
+        "properties": {
+          "from": {
+            "$ref": "#/components/schemas/LocalDate"
+          },
+          "to": {
+            "$ref": "#/components/schemas/LocalDate"
+          },
+          "note": {
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        }
       },
       "ReferenceResponse": {
         "required": [
@@ -5023,6 +5609,12 @@
           "clearRecurringPracticeDay": {
             "type": "boolean",
             "default": false
+          },
+          "aiEnabled": {
+            "type": [
+              "null",
+              "boolean"
+            ]
           }
         }
       },
@@ -5265,6 +5857,9 @@
       "name": "Bandroom.Api"
     },
     {
+      "name": "billing"
+    },
+    {
       "name": "invites"
     },
     {
@@ -5275,6 +5870,9 @@
     },
     {
       "name": "bands"
+    },
+    {
+      "name": "ai"
     },
     {
       "name": "availability"

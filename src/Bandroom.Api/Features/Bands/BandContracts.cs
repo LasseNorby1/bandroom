@@ -14,7 +14,8 @@ public sealed record UpdateBandRequest(
     string? RehearsalSpace,
     int? ReminderHour = null,
     IsoDayOfWeek? RecurringPracticeDay = null,
-    bool ClearRecurringPracticeDay = false);
+    bool ClearRecurringPracticeDay = false,
+    bool? AiEnabled = null);
 
 public sealed record BandResponse(
     Guid Id,
@@ -27,6 +28,9 @@ public sealed record BandResponse(
     IsoDayOfWeek? RecurringPracticeDay,
     string? Notice,
     Instant? NoticeUpdatedAt,
+    bool AiEnabled,
+    /// <summary>Whether this server has an ai key at all; the ui hides ai affordances otherwise.</summary>
+    bool AiAvailable,
     BandPlan Plan,
     long StorageUsedBytes,
     long StorageQuotaBytes);

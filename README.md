@@ -102,7 +102,11 @@ Phase 2/3 features (built pre-deploy, verified locally):
 - [x] members & accounts — leave/remove/roles (soft departure keeps history), change email/password, export my data, delete account (anonymised), reminder hour, below-quorum organiser prompt, pattern staleness in the finder
 - [x] phase 3 bits — 🔥 reactions on versions, the pinned noticeboard, files on songs (lyrics/chords/charts via presigned upload), standing practice day (daily job proposes two weeks ahead), record a take in the browser, bpm + key per version from the worker (`/analyze`, derived `VersionAnalyses` table)
 
-Not built yet, by decision: the Expo app with push (phase 2's biggest piece), billing checkout, calendar import, and the llm features (natural-language blockouts, catch-up digest, transcription, search) — those need an Anthropic key and a model choice first.
+- [x] billing — Lemon Squeezy webhook (`POST /billing/webhooks/lemonsqueezy`, signed) flips the band plan; `GET /bands/{id}/billing` gives admins the checkout url (`Billing:CheckoutUrl`, band id as custom data) and the customer portal. Nothing shows until `Billing:*` is configured.
+- [x] calendar overlay — a member pastes their private ics address (`PUT /bands/{id}/availability/me/calendar`); busy slots (all-day, or overlapping the band's slot windows) count like blockouts in the finder and show as ◔ in the grid. Refreshed every six hours. No OAuth, read-only.
+- [x] the roadie (ai, Claude via the Anthropic SDK, `Ai:ApiKey`) — natural-language blockouts (`POST .../exceptions/parse`, proposed, you confirm), a venue email → draft gig (`POST /events/parse-offer`), and "since you were here" (`GET /catch-up`, three sentences over what the others did). Per-band switch in settings; 503 without a key, 409 when off. Tests run against a fake client.
+
+Not built yet, by decision: the Expo app with push (phase 2's biggest piece), transcription and search (need an asr model and an embeddings provider).
 
 Waveforms: peaks are computed once and stored on the version (`DemoVersions.Peaks`, migration `VersionPeaks`) — the uploader's browser decodes the file it already has and sends them at confirm; the worker returns them for ai mixes. The player never downloads a take just to draw it; versions without stored peaks decode lazily on first play.
 

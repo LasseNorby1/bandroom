@@ -131,6 +131,23 @@ namespace Bandroom.Api.Data.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
 
+                    b.Property<bool>("AiEnabled")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(true);
+
+                    b.Property<string>("BillingCustomerId")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<string>("BillingPortalUrl")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<string>("BillingSubscriptionId")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
                     b.Property<Instant>("CreatedAt")
                         .HasColumnType("timestamp with time zone");
 
@@ -430,6 +447,36 @@ namespace Bandroom.Api.Data.Migrations
                     b.ToTable("Events");
                 });
 
+            modelBuilder.Entity("Bandroom.Api.Data.ImportedBusyDay", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("BandId")
+                        .HasColumnType("uuid");
+
+                    b.Property<LocalDate>("Date")
+                        .HasColumnType("date");
+
+                    b.Property<Guid>("MembershipId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Slot")
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
+
+                    b.Property<string>("Summary")
+                        .HasMaxLength(120)
+                        .HasColumnType("character varying(120)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("MembershipId", "Date");
+
+                    b.ToTable("ImportedBusyDays");
+                });
+
             modelBuilder.Entity("Bandroom.Api.Data.Membership", b =>
                 {
                     b.Property<Guid>("Id")
@@ -438,6 +485,17 @@ namespace Bandroom.Api.Data.Migrations
 
                     b.Property<Guid>("BandId")
                         .HasColumnType("uuid");
+
+                    b.Property<string>("CalendarImportError")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<string>("CalendarImportUrl")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<Instant?>("CalendarImportedAt")
+                        .HasColumnType("timestamp with time zone");
 
                     b.Property<string>("IcsToken")
                         .IsRequired()
@@ -449,6 +507,9 @@ namespace Bandroom.Api.Data.Migrations
                         .HasColumnType("character varying(50)");
 
                     b.Property<Instant>("JoinedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Instant?>("LastSeenAt")
                         .HasColumnType("timestamp with time zone");
 
                     b.Property<Instant?>("LeftAt")
@@ -1100,6 +1161,15 @@ namespace Bandroom.Api.Data.Migrations
                     b.HasOne("Bandroom.Api.Data.Membership", null)
                         .WithMany()
                         .HasForeignKey("CreatedByMembershipId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Bandroom.Api.Data.ImportedBusyDay", b =>
+                {
+                    b.HasOne("Bandroom.Api.Data.Membership", null)
+                        .WithMany()
+                        .HasForeignKey("MembershipId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
                 });

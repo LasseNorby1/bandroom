@@ -1,6 +1,6 @@
 "use client";
 
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
 import QRCode from "qrcode";
 import { use, useEffect, useState } from "react";
@@ -427,8 +427,16 @@ function BandSettings({ bandId }: { bandId: string }) {
   );
 }
 
-function PlanAndStorage() {
-  const { detail } = useBandContext();
+function PlanAndStorage({ bandId }: { bandId: string }) {
+  const { detail, isAdmin } = useBandContext();
+  const billing = useQuery({
+    queryKey: ["band", bandId, "billing"],
+    queryFn: async () => {
+      const { data, error } = await api.GET("/bands/{bandId}/billing", { params: { path: { bandId } } });
+      if (error) throw error;
+      return data;
+    },
+  });
   if (!detail) return null;
   const band = detail.band;
   const usedFraction = band.storageQuotaBytes > 0 ? band.storageUsedBytes / band.storageQuotaBytes : 0;
@@ -450,6 +458,76 @@ function PlanAndStorage() {
       <p className="font-mono text-[11px] text-muted">
         {formatBytes(band.storageUsedBytes)} of {formatBytes(band.storageQuotaBytes)} — demos and stems
       </p>
+      {billing.data && (
+        <div className="flex flex-wrap items-center gap-3 border-t border-line pt-3">
+          {billing.data.isPro ? (
+            <>
+              <p className="text-sm text-muted">
+                Pro: 25 GB and ai polish.
+                {billing.data.planExpiresAt && ` Renews around ${formatDay(billing.data.planExpiresAt.slice(0, 10))}.`}
+              </p>
+              {billing.data.portalUrl && isAdmin && (
+                <a href={billing.data.portalUrl} target="_blank" rel="noopener" className="text-sm underline underline-offset-4 hover:text-ink">
+                  Manage subscription
+                </a>
+              )}
+            </>
+          ) : (
+            <>
+              <p className="text-sm text-muted">Free: 1 GB. Pro adds 25 GB and the ai mix &amp; master, one payment covers the band.</p>
+              {billing.data.checkoutUrl ? (
+                <a href={billing.data.checkoutUrl} className="inline-flex h-9 items-center rounded-full bg-ink px-4 text-sm font-medium text-paper hover:opacity-90">
+                  Upgrade to Pro
+                </a>
+              ) : isAdmin ? (
+                <p className="text-xs text-faint">Checkout isn&apos;t open yet.</p>
+              ) : null}
+            </>
+          )}
+        </div>
+      )}
+    </section>
+  );
+}
+
+function AiSwitch({ bandId }: { bandId: string }) {
+  const { detail, isAdmin } = useBandContext();
+  const queryClient = useQueryClient();
+  const toggle = useMutation({
+    mutationFn: async (aiEnabled: boolean) => {
+      const { error } = await api.PATCH("/bands/{bandId}", {
+        params: { path: { bandId } },
+        body: { name: null, timeZone: null, quorum: null, defaultPracticeSlot: null, rehearsalSpace: null, reminderHour: null, recurringPracticeDay: null, clearRecurringPracticeDay: false, aiEnabled },
+      });
+      if (error) throw error;
+    },
+    onSuccess: () => void queryClient.invalidateQueries({ queryKey: bandKeys.detail(bandId) }),
+  });
+  if (!detail || !detail.band.aiAvailable) return null;
+  const on = detail.band.aiEnabled;
+  return (
+    <section className="flex items-start justify-between gap-4 rounded-xl border border-line bg-surface p-5">
+      <div>
+        <h2 className="font-medium">The roadie (ai)</h2>
+        <p className="text-sm text-muted">
+          Parses &ldquo;can&apos;t the next two weekends&rdquo; into blockouts, drafts a gig from a venue email, and writes
+          the catch-up. Never touches the music. Your audio is never used to train anything.
+        </p>
+      </div>
+      {isAdmin ? (
+        <button
+          type="button"
+          role="switch"
+          aria-checked={on}
+          disabled={toggle.isPending}
+          onClick={() => toggle.mutate(!on)}
+          className={cn("shrink-0 rounded-full border px-3 py-1 font-mono text-[11px]", on ? "border-ok bg-ok-soft text-ok" : "border-line text-muted")}
+        >
+          {on ? "on" : "off"}
+        </button>
+      ) : (
+        <span className="font-mono text-[11px] text-muted">{on ? "on" : "off"}</span>
+      )}
     </section>
   );
 }
@@ -461,7 +539,8 @@ export default function SettingsPage({ params }: { params: Promise<{ bandId: str
     <div className="space-y-6">
       <Invites bandId={bandId} />
       <Members bandId={bandId} />
-      <PlanAndStorage />
+      <PlanAndStorage bandId={bandId} />
+      <AiSwitch bandId={bandId} />
       <CalendarFeed bandId={bandId} />
       <BandSettings bandId={bandId} />
     </div>

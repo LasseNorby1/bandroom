@@ -70,6 +70,12 @@ public static class PracticeFinderEndpoints
             .Where(e => e.To >= from && e.From <= to)
             .ToListAsync(ct);
 
+        // The calendar overlay: a day the member's own calendar fills in this slot
+        // (or all day) counts like a blockout. Opt-in, read-only, never written back.
+        var imported = await db.ImportedBusyDays
+            .Where(b => b.Date >= from && b.Date <= to && (b.Slot == null || b.Slot == practiceSlot))
+            .ToListAsync(ct);
+
         var lastPractice = await LatestConfirmedPracticeAsync(db, from, ct);
 
         // Days already holding a practice (proposed or confirmed) are out — the
@@ -88,6 +94,9 @@ public static class PracticeFinderEndpoints
                 exceptions
                     .Where(e => e.MembershipId == member.Id)
                     .Select(e => new DateInterval(e.From, e.To))
+                    .Concat(imported
+                        .Where(b => b.MembershipId == member.Id)
+                        .Select(b => new DateInterval(b.Date, b.Date)))
                     .ToList()))
             .ToList();
 

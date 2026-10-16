@@ -10,6 +10,7 @@ import { bandKeys, useBandAvailability, useMyAvailability } from "@/lib/band-hoo
 import { cn } from "@/lib/cn";
 import { addDays, DAY_ORDER, DAY_SHORT, formatDay, isoDayOfDate, SLOT_LABEL } from "@/lib/format";
 import type { BlockoutException, IsoDay, MemberAvailability, PracticeSlot, WeeklySlot } from "@/lib/types";
+import { useBandContext as useBand } from "@/lib/band-context";
 
 const SLOTS: PracticeSlot[] = ["evening", "afternoon"];
 
@@ -158,6 +159,44 @@ function Blockouts({ bandId }: { bandId: string }) {
     onSuccess: invalidate,
   });
 
+  // "Can't the next two weekends": the roadie proposes, you confirm (spec §5.5).
+  const { detail } = useBand();
+  const aiOn = !!detail?.band.aiAvailable && !!detail?.band.aiEnabled;
+  const [phrase, setPhrase] = useState("");
+  const [proposed, setProposed] = useState<{ from: string; to: string; note: string | null; keep: boolean }[] | null>(null);
+  const [unparsed, setUnparsed] = useState<string | null>(null);
+  const parse = useMutation({
+    mutationFn: async () => {
+      const { data, error } = await api.POST("/bands/{bandId}/availability/me/exceptions/parse", {
+        params: { path: { bandId } },
+        body: { text: phrase },
+      });
+      if (error || !data) throw error ?? new Error("no answer");
+      return data;
+    },
+    onSuccess: (data) => {
+      setProposed(data.blockouts.map((b) => ({ ...b, keep: true })));
+      setUnparsed(data.unparsed ?? null);
+    },
+  });
+  const addProposed = useMutation({
+    mutationFn: async () => {
+      for (const b of proposed ?? []) {
+        if (!b.keep) continue;
+        const { error } = await api.POST("/bands/{bandId}/availability/me/exceptions", {
+          params: { path: { bandId } },
+          body: { from: b.from, to: b.to, note: b.note },
+        });
+        if (error) throw error;
+      }
+    },
+    onSuccess: () => {
+      setProposed(null);
+      setPhrase("");
+      invalidate();
+    },
+  });
+
   return (
     <section className="space-y-4 rounded-xl border border-line bg-surface p-5">
       <div>
@@ -189,6 +228,57 @@ function Blockouts({ bandId }: { bandId: string }) {
         </ul>
       )}
 
+      {aiOn && (
+        <div className="space-y-2 rounded-lg border border-dashed border-line p-3">
+          <form
+            className="flex gap-2"
+            onSubmit={(event) => {
+              event.preventDefault();
+              if (phrase.trim()) parse.mutate();
+            }}
+          >
+            <Input
+              value={phrase}
+              onChange={(e) => setPhrase(e.target.value)}
+              placeholder="Say it: “can't the next two weekends, tuesdays out until June”"
+              maxLength={500}
+              className="h-9"
+            />
+            <Button type="submit" size="sm" variant="outline" disabled={parse.isPending || !phrase.trim()}>
+              {parse.isPending ? "Reading…" : "Propose"}
+            </Button>
+          </form>
+          {parse.isError && <p className="text-xs text-accent">Couldn&apos;t read that. Try plainer words, or use the fields below.</p>}
+          {proposed && (
+            <div className="space-y-2">
+              {proposed.length === 0 && <p className="text-xs text-muted">No dates found in that.</p>}
+              <ul className="space-y-1">
+                {proposed.map((b, i) => (
+                  <li key={`${b.from}-${i}`} className="flex items-center gap-2 text-sm">
+                    <input
+                      type="checkbox"
+                      checked={b.keep}
+                      onChange={(e) => setProposed(proposed.map((x, j) => (j === i ? { ...x, keep: e.target.checked } : x)))}
+                    />
+                    <span>
+                      {formatDay(b.from)}
+                      {b.to !== b.from && <> – {formatDay(b.to)}</>}
+                      {b.note && <span className="text-muted"> · {b.note}</span>}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+              {unparsed && <p className="text-xs text-faint">Couldn&apos;t place: “{unparsed}”</p>}
+              {proposed.some((b) => b.keep) && (
+                <Button size="sm" onClick={() => addProposed.mutate()} disabled={addProposed.isPending}>
+                  {addProposed.isPending ? "Adding…" : `Add ${proposed.filter((b) => b.keep).length} blockout${proposed.filter((b) => b.keep).length === 1 ? "" : "s"}`}
+                </Button>
+              )}
+            </div>
+          )}
+        </div>
+      )}
+
       <form
         className="flex flex-wrap items-end gap-2"
         onSubmit={(event) => {
@@ -217,14 +307,97 @@ function Blockouts({ bandId }: { bandId: string }) {
   );
 }
 
-type CellState = "free" | "blocked" | "off";
+function CalendarOverlay({ bandId }: { bandId: string }) {
+  const queryClient = useQueryClient();
+  const mine = useMyAvailability(bandId);
+  const [url, setUrl] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  const save = useMutation({
+    mutationFn: async (value: string) => {
+      const { error } = await api.PUT("/bands/{bandId}/availability/me/calendar", {
+        params: { path: { bandId } },
+        body: { url: value },
+      });
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      setUrl(null);
+      setError(null);
+      void queryClient.invalidateQueries({ queryKey: bandKeys.availability(bandId) });
+    },
+    onError: (err: unknown) => {
+      const problem = err as { errors?: Record<string, string[]> } | undefined;
+      setError(problem?.errors ? Object.values(problem.errors).flat().join(" ") : "Couldn't save that.");
+    },
+  });
+
+  if (!mine.data) return null;
+  const status = mine.data.calendarImport;
+  const editing = url !== null;
+
+  return (
+    <section className="space-y-3 rounded-xl border border-line bg-surface p-5">
+      <div>
+        <h2 className="font-medium">Your calendar, overlaid</h2>
+        <p className="text-sm text-muted">
+          Paste the private ics address of your own calendar and days it fills show as busy here, in the finder too.
+          Read-only, refreshed every six hours, nothing is written back.
+        </p>
+      </div>
+      {status.url && !editing ? (
+        <div className="flex flex-wrap items-center gap-3 text-sm">
+          <code className="min-w-0 max-w-full truncate rounded bg-paper px-2 py-1 font-mono text-xs">{status.url}</code>
+          <span className="font-mono text-[11px] text-muted">
+            {status.error ? <span className="text-accent">{status.error}</span> : `${status.busyDays} busy slot${status.busyDays === 1 ? "" : "s"} in the next 60 days`}
+          </span>
+          <button type="button" onClick={() => setUrl(status.url ?? "")} className="text-xs text-muted hover:text-ink">change</button>
+          <button type="button" onClick={() => save.mutate("")} className="text-xs text-muted hover:text-accent">remove</button>
+        </div>
+      ) : (
+        <form
+          className="flex flex-wrap gap-2"
+          onSubmit={(event) => {
+            event.preventDefault();
+            save.mutate(url ?? "");
+          }}
+        >
+          <Input
+            value={url ?? ""}
+            onChange={(e) => setUrl(e.target.value)}
+            placeholder="https://calendar.google.com/calendar/ical/…/private-…/basic.ics"
+            className="min-w-64 flex-1"
+          />
+          <Button type="submit" variant="outline" disabled={save.isPending || !(url ?? "").trim()}>
+            {save.isPending ? "Reading…" : "Overlay it"}
+          </Button>
+          {editing && status.url && (
+            <Button type="button" variant="ghost" onClick={() => setUrl(null)}>Cancel</Button>
+          )}
+        </form>
+      )}
+      {error && <p className="text-xs text-accent">{error}</p>}
+      <p className="text-xs text-faint">
+        Google: calendar settings → &ldquo;Secret address in iCal format&rdquo;. Apple: share the calendar as public, copy the link. Outlook: publish calendar, ICS link.
+      </p>
+    </section>
+  );
+}
+
+type CellState = "free" | "blocked" | "busy" | "off";
 
 function memberStateOn(member: MemberAvailability, date: string, slot: PracticeSlot): CellState {
   if (member.exceptions.some((e) => e.from <= date && date <= e.to)) {
     return "blocked";
   }
   const day = isoDayOfDate(date);
-  return member.openSlots.some((s) => s.day === day && s.slot === slot) ? "free" : "off";
+  if (!member.openSlots.some((s) => s.day === day && s.slot === slot)) {
+    return "off";
+  }
+  if (member.importedBusy.some((b) => b.date === date && (b.slot === null || b.slot === slot))) {
+    return "busy";
+  }
+  return "free";
 }
 
 function WeekGrid({ bandId }: { bandId: string }) {
@@ -281,11 +454,15 @@ function WeekGrid({ bandId }: { bandId: string }) {
                           "size-8 rounded-md",
                           state === "free" && "bg-ok-soft",
                           state === "blocked" && "border border-line bg-paper",
+                          state === "busy" && "border border-accent/30 bg-accent-soft/60",
                           state === "off" && "border border-dashed border-line",
                         )}
                       >
                         {state === "blocked" && (
                           <span className="flex h-full items-center justify-center font-mono text-[10px] text-faint">✕</span>
+                        )}
+                        {state === "busy" && (
+                          <span className="flex h-full items-center justify-center font-mono text-[10px] text-accent">◔</span>
                         )}
                       </div>
                     </td>
@@ -318,6 +495,7 @@ function WeekGrid({ bandId }: { bandId: string }) {
       <div className="flex gap-4 font-mono text-[11px] text-muted">
         <span className="flex items-center gap-1.5"><span className="size-3 rounded bg-ok-soft" /> free</span>
         <span className="flex items-center gap-1.5"><span className="flex size-3 items-center justify-center rounded border border-line text-[8px]">✕</span> blockout</span>
+        <span className="flex items-center gap-1.5"><span className="flex size-3 items-center justify-center rounded border border-accent/30 bg-accent-soft/60 text-[8px] text-accent">◔</span> busy (calendar)</span>
         <span className="flex items-center gap-1.5"><span className="size-3 rounded border border-dashed border-line" /> outside pattern</span>
       </div>
     </section>
@@ -331,6 +509,7 @@ export default function AvailabilityPage({ params }: { params: Promise<{ bandId:
     <div className="space-y-6">
       <PatternEditor bandId={bandId} />
       <Blockouts bandId={bandId} />
+      <CalendarOverlay bandId={bandId} />
       <WeekGrid bandId={bandId} />
     </div>
   );

@@ -37,6 +37,49 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/billing/webhooks/lemonsqueezy": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Lemon Squeezy subscription webhook (signed) */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description No Content */
+                204: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Bad Request */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": string;
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/invites/{token}/accept": {
         parameters: {
             query?: never;
@@ -892,6 +935,220 @@ export interface paths {
         };
         trace?: never;
     };
+    "/bands/{bandId}/billing": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Plan, expiry and where to upgrade */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    bandId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["BillingResponse"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/bands/{bandId}/availability/me/exceptions/parse": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Natural language → proposed blockouts (nothing saved) */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    bandId: string;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["ParseTextRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ParsedBlockoutsResponse"];
+                    };
+                };
+                /** @description Conflict */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": string;
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/bands/{bandId}/events/parse-offer": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** A pasted venue email → a draft gig event (nothing saved) */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    bandId: string;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["ParseTextRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ParsedGigOffer"];
+                    };
+                };
+                /** @description Conflict */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": string;
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/bands/{bandId}/catch-up": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** What happened since my last visit */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    bandId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["CatchUpResponse"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/bands/{bandId}/catch-up/seen": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** I'm caught up */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    bandId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description No Content */
+                204: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/bands/{bandId}/invites": {
         parameters: {
             query?: never;
@@ -1237,6 +1494,57 @@ export interface paths {
                 };
             };
         };
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/bands/{bandId}/availability/me/calendar": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Set (or clear, with an empty url) my private calendar feed for the busy overlay */
+        put: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    bandId: string;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["CalendarImportRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["MyAvailabilityResponse"];
+                    };
+                };
+                /** @description Bad Request */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["HttpValidationProblemDetails"];
+                    };
+                };
+            };
+        };
+        post?: never;
+        delete?: never;
         options?: never;
         head?: never;
         patch?: never;
@@ -3179,6 +3487,8 @@ export interface components {
             recurringPracticeDay: null | components["schemas"]["IsoDayOfWeek"];
             notice: null | string;
             noticeUpdatedAt: null | components["schemas"]["Instant"];
+            aiEnabled: boolean;
+            aiAvailable: boolean;
             plan: components["schemas"]["BandPlan"];
             /** Format: int64 */
             storageUsedBytes: number;
@@ -3192,6 +3502,39 @@ export interface components {
             id: string;
             name: string;
             role: components["schemas"]["BandRole"];
+        };
+        BillingResponse: {
+            plan: components["schemas"]["BandPlan"];
+            isPro: boolean;
+            planExpiresAt: null | components["schemas"]["Instant"];
+            checkoutUrl: null | string;
+            portalUrl: null | string;
+        };
+        BusyDayResponse: {
+            date: components["schemas"]["LocalDate"];
+            slot: null | components["schemas"]["PracticeSlot"];
+            summary: null | string;
+        };
+        CalendarImportRequest: {
+            url: null | string;
+        };
+        CalendarImportStatus: {
+            url: null | string;
+            importedAt: null | components["schemas"]["Instant"];
+            error: null | string;
+            /** Format: int32 */
+            busyDays: number;
+        };
+        CatchUpItem: {
+            at: components["schemas"]["Instant"];
+            kind: string;
+            text: string;
+            path: null | string;
+        };
+        CatchUpResponse: {
+            since: null | components["schemas"]["Instant"];
+            items: components["schemas"]["CatchUpItem"][];
+            summary: null | string;
         };
         ChangeEmailRequest: {
             password: string;
@@ -3492,6 +3835,7 @@ export interface components {
             openSlots: components["schemas"]["WeeklySlot"][];
             patternUpdatedAt: null | components["schemas"]["Instant"];
             exceptions: components["schemas"]["ExceptionResponse"][];
+            importedBusy: components["schemas"]["BusyDayResponse"][];
         };
         MemberResponse: {
             /** Format: uuid */
@@ -3527,6 +3871,25 @@ export interface components {
             patternUpdatedAt: null | components["schemas"]["Instant"];
             exceptions: components["schemas"]["ExceptionResponse"][];
             calendarFeedPath: string;
+            calendarImport: components["schemas"]["CalendarImportStatus"];
+            importedBusy: components["schemas"]["BusyDayResponse"][];
+        };
+        ParsedBlockoutsResponse: {
+            blockouts: components["schemas"]["ProposedBlockout"][];
+            unparsed: null | string;
+        };
+        ParsedGigOffer: {
+            type: components["schemas"]["EventType"];
+            date: null | components["schemas"]["LocalDate"];
+            startTime: null | components["schemas"]["LocalTime"];
+            endTime: null | components["schemas"]["LocalTime"];
+            title: null | string;
+            location: null | string;
+            fee: null | string;
+            notes: null | string;
+        };
+        ParseTextRequest: {
+            text: string;
         };
         PolishJobResponse: {
             /** Format: uuid */
@@ -3552,6 +3915,11 @@ export interface components {
         };
         /** @enum {unknown} */
         PracticeSlot: "afternoon" | "evening";
+        ProposedBlockout: {
+            from: components["schemas"]["LocalDate"];
+            to: components["schemas"]["LocalDate"];
+            note: null | string;
+        };
         ReferenceResponse: {
             /** Format: uuid */
             id: string;
@@ -3661,6 +4029,7 @@ export interface components {
             recurringPracticeDay?: null | components["schemas"]["IsoDayOfWeek"];
             /** @default false */
             clearRecurringPracticeDay: boolean;
+            aiEnabled?: null | boolean;
         };
         UpdateIdeaRequest: {
             title: null | string;

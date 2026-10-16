@@ -208,6 +208,11 @@ public static class BandEndpoints
             band.ReminderHour = reminderHour;
         }
 
+        if (request.AiEnabled is { } aiEnabled)
+        {
+            band.AiEnabled = aiEnabled;
+        }
+
         if (request.ClearRecurringPracticeDay)
         {
             band.RecurringPracticeDay = null;
@@ -247,9 +252,13 @@ public static class BandEndpoints
         return TypedResults.Ok(ToBandResponse(band, now, entitlements));
     }
 
+    /// <summary>Set once at startup from AiOptions; a static because ToBandResponse is called from several handlers.</summary>
+    public static bool AiAvailable { get; set; }
+
     private static BandResponse ToBandResponse(Band band, Instant now, EntitlementOptions entitlements) =>
         new(band.Id, band.Name, band.TimeZone, band.Quorum, band.DefaultPracticeSlot, band.RehearsalSpace,
             band.ReminderHour, band.RecurringPracticeDay, band.Notice, band.NoticeUpdatedAt,
+            band.AiEnabled, AiAvailable,
             PlanLimits.IsPro(band, now, entitlements) ? BandPlan.Pro : BandPlan.Free,
             band.StorageUsedBytes,
             PlanLimits.StorageQuota(band, now, entitlements));

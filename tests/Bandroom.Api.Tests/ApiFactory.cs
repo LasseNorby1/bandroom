@@ -37,6 +37,10 @@ public sealed class ApiFactory : WebApplicationFactory<Program>, IAsyncLifetime
             r.ForPort(9000).ForPath("/").ForStatusCode(System.Net.HttpStatusCode.Forbidden)))
         .Build();
 
+    public FakeCalendarHandler CalendarHandler { get; } = new();
+
+    public FakeAiClient Ai { get; } = new();
+
     public ApiFactory()
     {
         // Env vars are the one config source that reliably beats appsettings under
@@ -47,6 +51,8 @@ public sealed class ApiFactory : WebApplicationFactory<Program>, IAsyncLifetime
         Environment.SetEnvironmentVariable("Jobs__Enabled", "false");
         Environment.SetEnvironmentVariable("RateLimiting__Enabled", "false");
         Environment.SetEnvironmentVariable("Worker__Url", "http://localhost:59999");
+        Environment.SetEnvironmentVariable("Billing__WebhookSecret", "test-webhook-secret");
+        Environment.SetEnvironmentVariable("Billing__CheckoutUrl", "https://store.example.test/buy/pro");
     }
 
     protected override void ConfigureWebHost(IWebHostBuilder builder)
@@ -60,6 +66,11 @@ public sealed class ApiFactory : WebApplicationFactory<Program>, IAsyncLifetime
             services.RemoveAll<IAppEmailSender>();
             services.AddSingleton<RecordingEmailSender>();
             services.AddSingleton<IAppEmailSender>(sp => sp.GetRequiredService<RecordingEmailSender>());
+
+            // One canned calendar feed and one canned model for every test.
+            services.AddHttpClient("calendar").ConfigurePrimaryHttpMessageHandler(() => CalendarHandler);
+            services.RemoveAll<Bandroom.Api.Features.Ai.IAiClient>();
+            services.AddSingleton<Bandroom.Api.Features.Ai.IAiClient>(Ai);
 
             services.RemoveAll<IFileStorage>();
             services.AddSingleton<IFileStorage>(_ => new S3FileStorage(new StorageOptions
