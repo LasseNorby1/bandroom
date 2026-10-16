@@ -24,6 +24,13 @@ public sealed record StorageOptions
     /// <summary>Create the bucket on first use — dev/test convenience; off for r2.</summary>
     public bool EnsureBucket { get; init; }
 
+    /// <summary>
+    /// Browser origins allowed to PUT/GET presigned urls straight against the
+    /// bucket. Applied as bucket cors together with EnsureBucket (self-hosted
+    /// rustfs/minio); r2 configures cors in its own dashboard instead.
+    /// </summary>
+    public string[] AllowedOrigins { get; init; } = [];
+
     public int UploadUrlMinutes { get; init; } = 15;
 }
 
@@ -148,6 +155,30 @@ public sealed class S3FileStorage : IFileStorage, IDisposable
                 ex.ErrorCode is "BucketAlreadyOwnedByYou" or "BucketAlreadyExists")
             {
                 // fine — someone got there first
+            }
+
+            if (_options.AllowedOrigins.Length > 0)
+            {
+                // Without this a browser's preflight for a presigned PUT gets no
+                // Access-Control-* headers and every upload fails silently.
+                await _opsClient.PutCORSConfigurationAsync(new PutCORSConfigurationRequest
+                {
+                    BucketName = _options.Bucket,
+                    Configuration = new CORSConfiguration
+                    {
+                        Rules =
+                        [
+                            new CORSRule
+                            {
+                                AllowedOrigins = [.. _options.AllowedOrigins],
+                                AllowedMethods = ["GET", "PUT", "HEAD"],
+                                AllowedHeaders = ["*"],
+                                ExposeHeaders = ["ETag"],
+                                MaxAgeSeconds = 3600,
+                            },
+                        ],
+                    },
+                }, ct);
             }
 
             _bucketEnsured = true;

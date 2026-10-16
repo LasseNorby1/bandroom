@@ -6,7 +6,7 @@ One room for the band: a calendar that finds practice days by itself, the demos 
 
 ## Stack
 
-ASP.NET Core (.NET 10 LTS) modular monolith · EF Core + Postgres 17 · NodaTime for all scheduling math · SignalR for live updates · Hangfire for jobs · Cloudflare R2 for audio (presigned, never proxied) · Next.js web app and Expo mobile app speak the same OpenAPI contract.
+ASP.NET Core (.NET 10 LTS) modular monolith · EF Core + Postgres 17 · NodaTime for all scheduling math · SignalR for live updates · Hangfire for jobs · S3-compatible object storage for audio (RustFS now, R2 later; presigned, never proxied) · Next.js web app and Expo mobile app speak the same OpenAPI contract.
 
 ## Layout
 
@@ -18,7 +18,7 @@ ASP.NET Core (.NET 10 LTS) modular monolith · EF Core + Postgres 17 · NodaTime
 ## Run it
 
 ```bash
-docker compose up -d          # postgres (5433), minio (9000), audio worker (8090)
+docker compose up -d          # postgres (5433), rustfs s3 (9000), audio worker (8090)
 dotnet ef database update --connection "Host=localhost;Port=5433;Database=bandroom;Username=bandroom;Password=bandroom_dev" --project src/Bandroom.Api
 dotnet run --project src/Bandroom.Api
 ```
@@ -88,7 +88,7 @@ Phase 1 (spec §8) is dogfood-ready end to end: pattern → finder → propose �
 
 Phase 2/3 features (built pre-deploy, verified locally):
 
-- [x] demos — song ideas → versions, presigned uploads to s3-compatible storage (minio dev / r2 prod), playback with a real decoded waveform, timestamped comments, storage accounting + per-band quota (free 1 GiB / pro 25 GiB)
+- [x] demos — song ideas → versions, presigned uploads to s3-compatible storage (rustfs dev+prod, r2 later), playback with a real decoded waveform, timestamped comments, storage accounting + per-band quota (free 1 GiB / pro 25 GiB)
 - [x] comments on events and demo versions (one polymorphic table)
 - [x] songs — the repertoire, linkable from demo ideas
 - [x] group chat — #general per band, channels, cursor-paged history, live via the hub
@@ -101,4 +101,4 @@ Waveforms: peaks are computed once and stored on the version (`DemoVersions.Peak
 
 UI kit: shadcn/ui is configured (`apps/web/components.json`, tokens bridged in `globals.css`) with `cn` re-exported from `@/lib/utils`. Add components with `pnpm dlx shadcn@latest add <name>` from `apps/web`; they land in `src/components/ui` already on the Bandroom palette.
 
-Dev storage/audio notes: presigned urls are audience-aware (`Storage:WorkerEndpoint=http://minio:9000` for the worker container; browser + api use localhost). Production: https://bandroom.io on the Tolk Hetzner box (see `deploy/README.md`). Next: the Expo app.
+Dev storage/audio notes: presigned urls are audience-aware (`Storage:WorkerEndpoint=http://minio:9000` for the worker container; browser + api use localhost). Bucket cors comes from `Storage:AllowedOrigins`, applied by the api at startup.. Production: https://bandroom.io on the Tolk Hetzner box (see `deploy/README.md`). Next: the Expo app.

@@ -18,7 +18,7 @@ fi
 fill() { grep -q "^$1=.\+" .env || sed -i "s|^$1=.*|$1=$2|" .env; }
 fill DB_PASSWORD "$(openssl rand -hex 24)"
 fill JWT_SIGNING_KEY "$(openssl rand -hex 48)"
-fill MINIO_ROOT_PASSWORD "$(openssl rand -hex 24)"
+fill S3_SECRET_KEY "$(openssl rand -hex 24)"
 
 if [ "${1:-}" != "" ]; then
   sed -i "s|^TAG=.*|TAG=$1|" .env

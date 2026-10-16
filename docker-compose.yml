@@ -16,19 +16,25 @@ services:
       timeout: 3s
       retries: 10
 
+  # S3-compatible object storage. RustFS (apache-2.0, amd64 + arm64) replaced
+  # minio when minio withdrew its community images in 2026. The service keeps
+  # the name `minio` so Storage:WorkerEndpoint and the worker's urls don't move.
+  # Bucket cors is set by the api at startup (Storage:AllowedOrigins).
   minio:
-    image: minio/minio:latest
-    command: server /data --console-address ":9001"
+    image: rustfs/rustfs:1.0.1
     environment:
-      MINIO_ROOT_USER: bandroom
-      MINIO_ROOT_PASSWORD: bandroom_dev
-      # Browser uploads/streams go straight to storage — allow the web origin.
-      MINIO_API_CORS_ALLOW_ORIGIN: "http://localhost:3000"
+      RUSTFS_ACCESS_KEY: bandroom
+      RUSTFS_SECRET_KEY: bandroom_dev
     ports:
       - "9000:9000"
       - "9001:9001"
     volumes:
       - minio-data:/data
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://localhost:9000/health || wget -qO- http://localhost:9000/health || exit 1"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
 
   worker:
     build: ./worker

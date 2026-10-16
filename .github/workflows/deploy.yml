@@ -19,7 +19,9 @@ permissions:
 
 jobs:
   images:
-    runs-on: ubuntu-latest
+    # tolk-1 is a Hetzner CAX (Ampere, arm64). GitHub's arm runners are free for
+    # public repos, so the images are built natively — no qemu.
+    runs-on: ubuntu-24.04-arm
     strategy:
       matrix:
         include:
@@ -45,6 +47,7 @@ jobs:
           context: ${{ matrix.context }}
           file: ${{ matrix.file }}
           push: true
+          platforms: linux/arm64
           tags: |
             ghcr.io/lassenorby1/bandroom/${{ matrix.name }}:latest
             ghcr.io/lassenorby1/bandroom/${{ matrix.name }}:${{ github.sha }}

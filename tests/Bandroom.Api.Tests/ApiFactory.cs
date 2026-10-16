@@ -8,7 +8,8 @@ using Microsoft.AspNetCore.TestHost;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
-using Testcontainers.Minio;
+using DotNet.Testcontainers.Builders;
+using DotNet.Testcontainers.Containers;
 using Testcontainers.PostgreSql;
 using Xunit;
 
@@ -25,9 +26,15 @@ public sealed class ApiFactory : WebApplicationFactory<Program>, IAsyncLifetime
 {
     private readonly PostgreSqlContainer _postgres = new PostgreSqlBuilder("postgres:17-alpine").Build();
 
-    private readonly MinioContainer _minio = new MinioBuilder("minio/minio:latest")
-        .WithUsername("bandroom")
-        .WithPassword("bandroom_dev")
+    // RustFS: s3-compatible, apache-2.0, published for amd64 + arm64. MinIO's
+    // community images were withdrawn from docker hub and quay in 2026, which
+    // took every ci run with them. Pinned tag — never :latest for a test dep.
+    private readonly IContainer _s3 = new ContainerBuilder("rustfs/rustfs:1.0.1")
+        .WithEnvironment("RUSTFS_ACCESS_KEY", "bandroom")
+        .WithEnvironment("RUSTFS_SECRET_KEY", "bandroom_dev")
+        .WithPortBinding(9000, true)
+        .WithWaitStrategy(Wait.ForUnixContainer().UntilHttpRequestIsSucceeded(r =>
+            r.ForPort(9000).ForPath("/").ForStatusCode(System.Net.HttpStatusCode.Forbidden)))
         .Build();
 
     public ApiFactory()
@@ -57,18 +64,20 @@ public sealed class ApiFactory : WebApplicationFactory<Program>, IAsyncLifetime
             services.RemoveAll<IFileStorage>();
             services.AddSingleton<IFileStorage>(_ => new S3FileStorage(new StorageOptions
             {
-                Endpoint = _minio.GetConnectionString(),
+                Endpoint = $"http://{_s3.Hostname}:{_s3.GetMappedPublicPort(9000)}",
                 Bucket = "bandroom-tests",
                 AccessKey = "bandroom",
                 SecretKey = "bandroom_dev",
                 EnsureBucket = true,
+                // Exercises the bucket-cors call against the real s3 server.
+                AllowedOrigins = ["http://localhost:3000"],
             }));
         });
     }
 
     public async Task InitializeAsync()
     {
-        await Task.WhenAll(_postgres.StartAsync(), _minio.StartAsync());
+        await Task.WhenAll(_postgres.StartAsync(), _s3.StartAsync());
 
         // Touching Services builds the host; migrations run before any test hits it.
         using var scope = Services.CreateScope();
@@ -79,6 +88,6 @@ public sealed class ApiFactory : WebApplicationFactory<Program>, IAsyncLifetime
     {
         await base.DisposeAsync();
         await _postgres.DisposeAsync();
-        await _minio.DisposeAsync();
+        await _s3.DisposeAsync();
     }
 }

@@ -11,14 +11,15 @@ Coolify ui. **Never the Clayton Power box.**
 | -------- | -------------------------------------- | -------------------- |
 | web      | `web`                                  | bandroom.io (+www)   |
 | api      | `api`                                  | api.bandroom.io      |
-| minio    | minio/minio                            | files.bandroom.io    |
+| minio    | rustfs/rustfs (s3-compatible)          | files.bandroom.io    |
 | worker   | `worker`                               | internal only        |
 | postgres | postgres:17-alpine                     | internal only        |
 
 Web and api are different origins; the api allows `https://bandroom.io` via
-CORS and the session cookie lives on the web origin (the BFF). MinIO is public
-because browsers upload and stream straight to presigned urls. R2 later is a
-config change (`Storage__*`).
+CORS and the session cookie lives on the web origin (the BFF). Object storage is
+public because browsers upload and stream straight to presigned urls; the api
+sets the bucket's cors rule at startup. R2 later is a config change (`Storage__*`).
+MinIO's community images were withdrawn in 2026, hence RustFS.
 
 ## Pipeline
 
