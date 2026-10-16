@@ -60,9 +60,9 @@ public static class PushJson
     public static readonly JsonSerializerOptions Options = new(JsonSerializerDefaults.Web);
 }
 
-public sealed class PushDeliveryJob(AppDbContext db, PushOptions options, IClock clock, ILogger<PushDeliveryJob> logger)
+public sealed class PushDeliveryJob(
+    AppDbContext db, PushOptions options, IHttpClientFactory httpClients, IClock clock, ILogger<PushDeliveryJob> logger)
 {
-    private static readonly PushServiceClient Client = new();
 
     public async Task DeliverAsync(Guid userId, string payloadJson, CancellationToken ct)
     {
@@ -79,6 +79,7 @@ public sealed class PushDeliveryJob(AppDbContext db, PushOptions options, IClock
 
         var tag = JsonSerializer.Deserialize<PushPayload>(payloadJson, PushJson.Options)?.Tag;
         var auth = new VapidAuthentication(options.PublicKey!, options.PrivateKey!) { Subject = options.Subject };
+        var client = new PushServiceClient(httpClients.CreateClient("push"));
         foreach (var sub in subscriptions)
         {
             var target = new Lib.Net.Http.WebPush.PushSubscription { Endpoint = sub.Endpoint };
@@ -87,7 +88,7 @@ public sealed class PushDeliveryJob(AppDbContext db, PushOptions options, IClock
             var message = new PushMessage(payloadJson) { Topic = tag, Urgency = PushMessageUrgency.High, TimeToLive = 60 * 60 * 24 };
             try
             {
-                await Client.RequestPushMessageDeliveryAsync(target, message, auth, ct);
+                await client.RequestPushMessageDeliveryAsync(target, message, auth, ct);
                 sub.LastUsedAt = clock.GetCurrentInstant();
             }
             catch (PushServiceClientException ex) when (ex.StatusCode is System.Net.HttpStatusCode.NotFound or System.Net.HttpStatusCode.Gone)

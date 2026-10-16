@@ -6,6 +6,8 @@ using Bandroom.Api.Features.Bands;
 using Bandroom.Api.Features.Events;
 using Bandroom.Api.Features.Push;
 using Bandroom.Api.Tests.Support;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using NodaTime;
 using Xunit;
 
@@ -90,6 +92,53 @@ public class PushTests(ApiFactory factory)
         var detail = await (await member.GetAsync($"/bands/{bandId}/events/{evt.Event.Id}")).ReadAsAsync<EventDetailResponse>();
         Assert.Equal(RsvpStatus.Going, detail.Rsvps.Single(r => r.MembershipId == memberMembershipId).Status);
     }
+
+    [Fact]
+    public async Task Delivery_EncryptsForEachDevice_AndForgetsDroppedOnes()
+    {
+        var client = await factory.RegisterUserAsync("Phones");
+        var me = await (await client.GetAsync("/auth/me")).ReadAsAsync<MeResponse>();
+        var live = $"https://push.example.test/live/{Guid.NewGuid():N}";
+        var gone = $"https://push.example.test/gone/{Guid.NewGuid():N}";
+        foreach (var endpoint in new[] { live, gone })
+        {
+            // Real browser-shaped keys: an uncompressed P-256 point and a 16-byte auth secret.
+            using var ecdh = System.Security.Cryptography.ECDiffieHellman.Create(System.Security.Cryptography.ECCurve.NamedCurves.nistP256);
+            var q = ecdh.ExportParameters(false).Q;
+            var p256dh = Base64Url(new byte[] { 4 }.Concat(q.X!).Concat(q.Y!).ToArray());
+            var auth = Base64Url(System.Security.Cryptography.RandomNumberGenerator.GetBytes(16));
+            var res = await client.PostAsJsonAsync("/push/subscriptions", new SubscribeRequest(endpoint, new SubscribeKeys(p256dh, auth)), TestJson.Options);
+            Assert.Equal(HttpStatusCode.NoContent, res.StatusCode);
+        }
+
+        var (publicKey, privateKey) = Vapid.GenerateKeys();
+        using var scope = factory.Services.CreateScope();
+        var job = new PushDeliveryJob(
+            scope.ServiceProvider.GetRequiredService<AppDbContext>(),
+            new PushOptions { PublicKey = publicKey, PrivateKey = privateKey },
+            scope.ServiceProvider.GetRequiredService<IHttpClientFactory>(),
+            scope.ServiceProvider.GetRequiredService<IClock>(),
+            scope.ServiceProvider.GetRequiredService<ILogger<PushDeliveryJob>>());
+        var payload = System.Text.Json.JsonSerializer.Serialize(new PushPayload("Hi", "there", "/home", "t-1"), PushJson.Options);
+        await job.DeliverAsync(me.Id, payload, CancellationToken.None);
+
+        var deliveries = factory.PushService.Deliveries.Where(d => d.Endpoint.ToString() is var e && (e == live || e == gone)).ToList();
+        Assert.Equal(2, deliveries.Count);
+        Assert.All(deliveries, d =>
+        {
+            Assert.StartsWith("vapid", d.Authorization);
+            Assert.Equal("aes128gcm", d.Encoding);
+            Assert.Equal("t-1", d.Topic);
+            Assert.True(d.BodyLength > payload.Length); // encrypted, with salt and key header
+        });
+
+        // The 410 endpoint is gone from the table; the live one stays.
+        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        var left = await Microsoft.EntityFrameworkCore.EntityFrameworkQueryableExtensions.ToListAsync(db.PushSubscriptions.Where(s => s.UserId == me.Id));
+        Assert.Equal([live], left.Select(s => s.Endpoint));
+    }
+
+    private static string Base64Url(byte[] bytes) => Convert.ToBase64String(bytes).TrimEnd('=').Replace('+', '-').Replace('/', '_');
 
     [Fact]
     public void RsvpTokens_ExpireAndBindToKey()

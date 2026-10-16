@@ -43,6 +43,8 @@ public sealed class ApiFactory : WebApplicationFactory<Program>, IAsyncLifetime
 
     public RecordingPushSender Push { get; } = new();
 
+    public FakePushServiceHandler PushService { get; } = new();
+
     public ApiFactory()
     {
         // Env vars are the one config source that reliably beats appsettings under
@@ -55,6 +57,9 @@ public sealed class ApiFactory : WebApplicationFactory<Program>, IAsyncLifetime
         Environment.SetEnvironmentVariable("Worker__Url", "http://localhost:59999");
         Environment.SetEnvironmentVariable("Billing__WebhookSecret", "test-webhook-secret");
         Environment.SetEnvironmentVariable("Billing__CheckoutUrl", "https://store.example.test/buy/pro");
+        // Push stays unconfigured in tests even when a dev machine has vapid keys in user-secrets.
+        Environment.SetEnvironmentVariable("Push__PublicKey", "");
+        Environment.SetEnvironmentVariable("Push__PrivateKey", "");
     }
 
     protected override void ConfigureWebHost(IWebHostBuilder builder)
@@ -71,6 +76,7 @@ public sealed class ApiFactory : WebApplicationFactory<Program>, IAsyncLifetime
 
             // One canned calendar feed and one canned model for every test.
             services.AddHttpClient("calendar").ConfigurePrimaryHttpMessageHandler(() => CalendarHandler);
+            services.AddHttpClient("push").ConfigurePrimaryHttpMessageHandler(() => PushService);
             services.RemoveAll<Bandroom.Api.Features.Push.IPushSender>();
             services.AddSingleton<Bandroom.Api.Features.Push.IPushSender>(Push);
             services.RemoveAll<Bandroom.Api.Features.Ai.IAiClient>();

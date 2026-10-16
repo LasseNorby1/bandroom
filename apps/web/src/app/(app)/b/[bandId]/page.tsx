@@ -266,12 +266,7 @@ function AddEvent({ bandId }: { bandId: string }) {
 }
 
 function PushNudge() {
-  return (
-    <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-line bg-surface px-5 py-3">
-      <p className="text-sm text-muted">Get proposals on your phone, answer from the notification.</p>
-      <PushToggle compact />
-    </div>
-  );
+  return <PushToggle compact nudge="Get proposals on your phone, answer from the notification." />;
 }
 
 function NextUp({ bandId, evt }: { bandId: string; evt: EventSummary }) {

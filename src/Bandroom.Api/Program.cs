@@ -38,6 +38,16 @@ Log.Logger = new LoggerConfiguration().WriteTo.Console().CreateBootstrapLogger()
 
 try
 {
+    // `--vapid`: print a fresh web-push key pair and exit. Needs no config at
+    // all, so it runs before the host is built (deploy.sh mints into .env).
+    if (args.Contains("--vapid"))
+    {
+        var (publicKey, privateKey) = Vapid.GenerateKeys();
+        Console.WriteLine($"PUSH_VAPID_PUBLIC_KEY={publicKey}");
+        Console.WriteLine($"PUSH_VAPID_PRIVATE_KEY={privateKey}");
+        return;
+    }
+
     var builder = WebApplication.CreateBuilder(args);
 
     // preserveStaticLogger: each host builds its own logger instead of freezing
@@ -229,6 +239,7 @@ try
     var pushOptions = builder.Configuration.GetSection("Push").Get<PushOptions>() ?? new PushOptions();
     builder.Services.AddSingleton(pushOptions);
     builder.Services.AddScoped<PushDeliveryJob>();
+    builder.Services.AddHttpClient("push", client => client.Timeout = TimeSpan.FromSeconds(20));
     if (jobsEnabled && pushOptions.IsConfigured)
     {
         builder.Services.AddSingleton<IPushSender, HangfirePushSender>();
@@ -339,15 +350,6 @@ try
         .AddDbContextCheck<AppDbContext>("database", tags: ["ready"]);
 
     var app = builder.Build();
-
-    // `--vapid`: print a fresh web-push key pair and exit (deploy.sh mints them into .env).
-    if (args.Contains("--vapid"))
-    {
-        var (publicKey, privateKey) = Vapid.GenerateKeys();
-        Console.WriteLine($"PUSH_VAPID_PUBLIC_KEY={publicKey}");
-        Console.WriteLine($"PUSH_VAPID_PRIVATE_KEY={privateKey}");
-        return;
-    }
 
     // `--migrate`: apply pending migrations and exit. Deploys run this as an
     // explicit step before the new api starts — never on app start against prod

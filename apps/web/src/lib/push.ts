@@ -3,7 +3,7 @@ import { api } from "./api";
 /// Web push for the installed pwa (spec principle 3). The service worker only
 /// handles notifications; registration happens from the account page.
 
-export type PushState = "unsupported" | "denied" | "off" | "on" | "needs-install";
+export type PushState = "server-off" | "unsupported" | "denied" | "off" | "on" | "needs-install";
 
 function isIosNotInstalled(): boolean {
   const ua = navigator.userAgent;
@@ -39,6 +39,9 @@ function toKey(base64url: string): Uint8Array {
 
 /** Is this browser currently subscribed (and does the server know)? */
 export async function currentState(): Promise<PushState> {
+  // No vapid keys on the server → the whole switch stays hidden.
+  const { data: keys } = await api.GET("/push/keys");
+  if (!keys?.enabled) return "server-off";
   const support = pushSupport();
   if (support !== "off") return support;
   try {
