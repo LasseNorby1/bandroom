@@ -54,10 +54,20 @@ jobs:
           cache-from: type=gha,scope=${{ matrix.name }}
           cache-to: type=gha,mode=max,scope=${{ matrix.name }}
 
-  deploy:
-    needs: images
+  # `secrets` isn't allowed in a job-level `if`, so a tiny job turns "is the
+  # deploy key configured?" into an output the deploy job can gate on.
+  gate:
     runs-on: ubuntu-latest
-    if: ${{ secrets.DEPLOY_SSH_KEY != '' }}
+    outputs:
+      enabled: ${{ steps.check.outputs.enabled }}
+    steps:
+      - id: check
+        run: echo "enabled=${{ secrets.DEPLOY_SSH_KEY != '' }}" >> "$GITHUB_OUTPUT"
+
+  deploy:
+    needs: [images, gate]
+    runs-on: ubuntu-latest
+    if: needs.gate.outputs.enabled == 'true'
     steps:
       - uses: appleboy/ssh-action@v1
         with:
