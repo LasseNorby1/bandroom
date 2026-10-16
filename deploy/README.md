@@ -40,6 +40,10 @@ the keys a human pastes in are `SMTP_PASSWORD` (Resend), `ANTHROPIC_API_KEY`
 Squeezy; point the store's webhook at `/billing/webhooks/lemonsqueezy`).
 After editing `.env`: `docker compose -f docker-compose.prod.yml up -d api`.
 
+Web push: the first deploy after the push release mints `PUSH_VAPID_PUBLIC_KEY`
+/ `PUSH_VAPID_PRIVATE_KEY` into `.env` (`--vapid` on the api image). Keep them
+with the backups — a new pair silently orphans every phone's subscription.
+
 ## First-time server setup (done 2026-10-16)
 
 ```bash
