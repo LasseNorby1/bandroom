@@ -45,6 +45,10 @@ services:
       Email__SmtpUser: ${SMTP_USER:-}
       Email__SmtpPassword: ${SMTP_PASSWORD:-}
       Email__FromAddress: ${EMAIL_FROM:-no-reply@bandroom.io}
+      # Optional: each feature stays dark until its key is set in .env.
+      Ai__ApiKey: ${ANTHROPIC_API_KEY:-}
+      Billing__CheckoutUrl: ${BILLING_CHECKOUT_URL:-}
+      Billing__WebhookSecret: ${BILLING_WEBHOOK_SECRET:-}
     depends_on:
       postgres: { condition: service_healthy }
       minio: { condition: service_started }

@@ -35,7 +35,10 @@ ssh -i ~/.ssh/tolk_hetzner root@62.238.53.162 'cd /opt/bandroom && git pull --ff
 `deploy.sh` pulls the pinned tag, starts postgres + minio, runs migrations as a
 one-shot container (`dotnet Bandroom.Api.dll --migrate`), then recreates the
 stack and waits for `/health/ready`. Secrets are minted into `.env` on first run;
-the Resend key is the one thing a human pastes in (`SMTP_PASSWORD`).
+the keys a human pastes in are `SMTP_PASSWORD` (Resend), `ANTHROPIC_API_KEY`
+(the roadie), and `BILLING_CHECKOUT_URL` + `BILLING_WEBHOOK_SECRET` (Lemon
+Squeezy; point the store's webhook at `/billing/webhooks/lemonsqueezy`).
+After editing `.env`: `docker compose -f docker-compose.prod.yml up -d api`.
 
 ## First-time server setup (done 2026-10-16)
 
