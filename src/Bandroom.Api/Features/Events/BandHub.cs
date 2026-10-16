@@ -26,7 +26,7 @@ public sealed class BandHub(AppDbContext db) : Hub
 
         var isMember = await db.Memberships
             .IgnoreQueryFilters()
-            .AnyAsync(m => m.BandId == bandId && m.UserId == userId);
+            .AnyAsync(m => m.BandId == bandId && m.UserId == userId && m.LeftAt == null);
         if (!isMember)
         {
             // Same posture as HTTP: for outsiders the band does not exist.

@@ -6,6 +6,7 @@ export type BandSummary = Schemas["BandSummaryResponse"];
 export type BandDetail = Schemas["BandDetailResponse"];
 export type Band = Schemas["BandResponse"];
 export type Member = Schemas["MemberResponse"];
+export type BandRole = Schemas["BandRole"];
 export type WeeklySlot = Schemas["WeeklySlot"];
 export type PracticeSlot = Schemas["PracticeSlot"];
 export type IsoDay = Exclude<Schemas["IsoDayOfWeek"], "none">;

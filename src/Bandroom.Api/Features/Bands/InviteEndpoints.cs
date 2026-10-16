@@ -136,6 +136,15 @@ public static class InviteEndpoints
             .SingleOrDefaultAsync(m => m.BandId == invite.BandId && m.UserId == userId, ct);
         if (existing is not null)
         {
+            if (existing.LeftAt is not null)
+            {
+                // Coming back: the old membership (and its history) is revived,
+                // as a plain member regardless of what they were before.
+                existing.LeftAt = null;
+                existing.Role = BandRole.Member;
+                await db.SaveChangesAsync(ct);
+            }
+
             return TypedResults.Ok(new AcceptInviteResponse(invite.BandId, bandName, existing.Id));
         }
 

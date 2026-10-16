@@ -43,4 +43,13 @@ public sealed class Membership : IBandScoped
     /// access to calendar data. Regenerable later.
     /// </summary>
     public required string IcsToken { get; init; }
+
+    /// <summary>
+    /// Soft departure. A member who leaves (or is removed, or deletes their
+    /// account) keeps their history — events they created, takes they uploaded,
+    /// comments — so the band's room stays intact; they simply stop being a
+    /// member: no access, not counted for quorum, not in the finder or digests.
+    /// Accepting an invite again clears it.
+    /// </summary>
+    public Instant? LeftAt { get; set; }
 }

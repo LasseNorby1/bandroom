@@ -1,6 +1,8 @@
 using Bandroom.Api.Data;
 using Bandroom.Api.Features.Bands;
+using Bandroom.Api.Features.Auth;
 using Bandroom.Api.Infrastructure;
+using Bandroom.Api.Infrastructure.Email;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.EntityFrameworkCore;
 using NodaTime;
@@ -124,7 +126,9 @@ public static class EventEndpoints
             .ThenBy(e => e.CreatedAt)
             .Select(e => new EventSummaryResponse(
                 e.Id, e.Type, e.Status, e.Date, e.Slot, e.StartTime, e.EndTime, e.Title, e.Location,
-                db.Rsvps.Count(r => r.EventId == e.Id && r.Status == RsvpStatus.Going)))
+                db.Rsvps.Count(r => r.EventId == e.Id && r.Status == RsvpStatus.Going),
+                e.CreatedByMembershipId,
+                e.QuorumWarnedAt != null))
             .ToListAsync(ct);
         return TypedResults.Ok(events);
     }
@@ -145,6 +149,8 @@ public static class EventEndpoints
         AppDbContext db,
         IClock clock,
         BandNotifier notifier,
+        IAppEmailSender email,
+        AuthOptions authOptions,
         CancellationToken ct)
     {
         if (request.Note is { Length: > 200 })
@@ -186,19 +192,53 @@ public static class EventEndpoints
         await db.SaveChangesAsync(ct);
 
         var action = "rsvp";
+        var band = bandContext.Band;
+        var memberCount = await db.Memberships.CountAsync(m => m.LeftAt == null, ct);
+        var quorum = Math.Max(1, Math.Min(band.Quorum, memberCount));
+        var going = await db.Rsvps.CountAsync(
+            r => r.EventId == eventId && r.Status == RsvpStatus.Going, ct);
+
         if (evt.Status == EventStatus.Proposed)
         {
             // Confirmation beats calculation (spec principle 2): quorum of real
             // yeses — clamped to the member count — flips the proposal.
-            var band = bandContext.Band;
-            var memberCount = await db.Memberships.CountAsync(ct);
-            var going = await db.Rsvps.CountAsync(
-                r => r.EventId == eventId && r.Status == RsvpStatus.Going, ct);
-            if (going >= Math.Max(1, Math.Min(band.Quorum, memberCount)))
+            if (going >= quorum)
             {
                 evt.Status = EventStatus.Confirmed;
                 await db.SaveChangesAsync(ct);
                 action = "confirmed";
+            }
+        }
+        else if (evt.Status == EventStatus.Confirmed)
+        {
+            // A late "can't make it" that drops a confirmed practice below quorum
+            // asks the organiser once whether to keep or cancel (spec §4). It
+            // re-arms if the count recovers and drops again.
+            if (going < quorum && evt.QuorumWarnedAt is null)
+            {
+                evt.QuorumWarnedAt = now;
+                await db.SaveChangesAsync(ct);
+                action = "belowQuorum";
+
+                var organiser = await db.Memberships
+                    .Where(m => m.Id == evt.CreatedByMembershipId && m.LeftAt == null)
+                    .Join(db.Users, m => m.UserId, u => u.Id, (m, u) => new { u.Email, u.DisplayName })
+                    .SingleOrDefaultAsync(ct);
+                if (organiser?.Email is not null)
+                {
+                    var summary = EventText.Summarize(evt, band);
+                    await email.SendAsync(
+                        organiser.Email,
+                        $"Below quorum: {summary}",
+                        $"Hi {organiser.DisplayName} — {going} of {quorum} are now going to {summary} on {evt.Date}. " +
+                        $"Keep it or cancel: {authOptions.WebBaseUrl}/b/{evt.BandId}/events/{evt.Id}",
+                        ct);
+                }
+            }
+            else if (going >= quorum && evt.QuorumWarnedAt is not null)
+            {
+                evt.QuorumWarnedAt = null;
+                await db.SaveChangesAsync(ct);
             }
         }
 
@@ -277,7 +317,7 @@ public static class EventEndpoints
         return new EventDetailResponse(
             new EventSummaryResponse(
                 evt.Id, evt.Type, evt.Status, evt.Date, evt.Slot, evt.StartTime, evt.EndTime,
-                evt.Title, evt.Location, going),
+                evt.Title, evt.Location, going, evt.CreatedByMembershipId, evt.QuorumWarnedAt != null),
             rsvpRows
                 .Select(r => new RsvpResponse(
                     r.MembershipId,

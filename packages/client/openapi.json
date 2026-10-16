@@ -275,6 +275,123 @@
             }
           }
         }
+      },
+      "delete": {
+        "tags": [
+          "auth"
+        ],
+        "summary": "Delete my account (anonymised; bands keep their history)",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DeleteAccountRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HttpValidationProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/auth/change-password": {
+      "post": {
+        "tags": [
+          "auth"
+        ],
+        "summary": "Change password (signs out every session)",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ChangePasswordRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HttpValidationProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/auth/change-email": {
+      "post": {
+        "tags": [
+          "auth"
+        ],
+        "summary": "Change email",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ChangeEmailRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HttpValidationProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/auth/me/export": {
+      "get": {
+        "tags": [
+          "auth"
+        ],
+        "summary": "Everything stored about me, as json",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AccountExport"
+                }
+              }
+            }
+          }
+        }
       }
     },
     "/bands": {
@@ -402,6 +519,134 @@
                 }
               }
             }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HttpValidationProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/bands/{bandId}/members/me": {
+      "delete": {
+        "tags": [
+          "bands"
+        ],
+        "summary": "Leave the band",
+        "parameters": [
+          {
+            "name": "bandId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          }
+        }
+      }
+    },
+    "/bands/{bandId}/members/{membershipId}": {
+      "delete": {
+        "tags": [
+          "bands"
+        ],
+        "summary": "Remove a member (admin)",
+        "parameters": [
+          {
+            "name": "membershipId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "bandId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "404": {
+            "description": "Not Found"
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HttpValidationProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      },
+      "patch": {
+        "tags": [
+          "bands"
+        ],
+        "summary": "Change a member's role (admin)",
+        "parameters": [
+          {
+            "name": "membershipId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "bandId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateMemberRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MemberResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found"
           },
           "400": {
             "description": "Bad Request",
@@ -549,11 +794,7 @@
             "name": "days",
             "in": "query",
             "schema": {
-              "pattern": "^-?(?:0|[1-9]\\d*)$",
-              "type": [
-                "integer",
-                "string"
-              ],
+              "type": "integer",
               "format": "int32",
               "default": 28
             }
@@ -767,11 +1008,7 @@
             "name": "days",
             "in": "query",
             "schema": {
-              "pattern": "^-?(?:0|[1-9]\\d*)$",
-              "type": [
-                "integer",
-                "string"
-              ],
+              "type": "integer",
               "format": "int32",
               "default": 21
             }
@@ -875,11 +1112,7 @@
             "name": "days",
             "in": "query",
             "schema": {
-              "pattern": "^-?(?:0|[1-9]\\d*)$",
-              "type": [
-                "integer",
-                "string"
-              ],
+              "type": "integer",
               "format": "int32",
               "default": 60
             }
@@ -2296,11 +2529,7 @@
             "name": "take",
             "in": "query",
             "schema": {
-              "pattern": "^-?(?:0|[1-9]\\d*)$",
-              "type": [
-                "integer",
-                "string"
-              ],
+              "type": "integer",
               "format": "int32",
               "default": 50
             }
@@ -2425,6 +2654,37 @@
           }
         }
       },
+      "AccountExport": {
+        "required": [
+          "exportedAt",
+          "userId",
+          "email",
+          "displayName",
+          "bands"
+        ],
+        "type": "object",
+        "properties": {
+          "exportedAt": {
+            "$ref": "#/components/schemas/Instant"
+          },
+          "userId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "email": {
+            "type": "string"
+          },
+          "displayName": {
+            "type": "string"
+          },
+          "bands": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ExportMembership"
+            }
+          }
+        }
+      },
       "BandAvailabilityResponse": {
         "required": [
           "from",
@@ -2437,11 +2697,7 @@
             "$ref": "#/components/schemas/LocalDate"
           },
           "days": {
-            "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": [
-              "integer",
-              "string"
-            ],
+            "type": "integer",
             "format": "int32"
           },
           "members": {
@@ -2484,6 +2740,7 @@
           "quorum",
           "defaultPracticeSlot",
           "rehearsalSpace",
+          "reminderHour",
           "plan",
           "storageUsedBytes",
           "storageQuotaBytes"
@@ -2501,11 +2758,7 @@
             "type": "string"
           },
           "quorum": {
-            "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": [
-              "integer",
-              "string"
-            ],
+            "type": "integer",
             "format": "int32"
           },
           "defaultPracticeSlot": {
@@ -2517,16 +2770,18 @@
               "string"
             ]
           },
+          "reminderHour": {
+            "type": "integer",
+            "format": "int32"
+          },
           "plan": {
             "$ref": "#/components/schemas/BandPlan"
           },
           "storageUsedBytes": {
-            "pattern": "^-?(?:0|[1-9]\\d*)$",
             "type": "integer",
             "format": "int64"
           },
           "storageQuotaBytes": {
-            "pattern": "^-?(?:0|[1-9]\\d*)$",
             "type": "integer",
             "format": "int64"
           }
@@ -2555,6 +2810,36 @@
           },
           "role": {
             "$ref": "#/components/schemas/BandRole"
+          }
+        }
+      },
+      "ChangeEmailRequest": {
+        "required": [
+          "password",
+          "newEmail"
+        ],
+        "type": "object",
+        "properties": {
+          "password": {
+            "type": "string"
+          },
+          "newEmail": {
+            "type": "string"
+          }
+        }
+      },
+      "ChangePasswordRequest": {
+        "required": [
+          "currentPassword",
+          "newPassword"
+        ],
+        "type": "object",
+        "properties": {
+          "currentPassword": {
+            "type": "string"
+          },
+          "newPassword": {
+            "type": "string"
           }
         }
       },
@@ -2617,7 +2902,6 @@
             "type": "string"
           },
           "atSeconds": {
-            "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?(?:[eE][+-]?\\d+)?$",
             "type": [
               "null",
               "number"
@@ -2642,7 +2926,6 @@
         "type": "object",
         "properties": {
           "durationSeconds": {
-            "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?(?:[eE][+-]?\\d+)?$",
             "type": [
               "null",
               "number"
@@ -2655,7 +2938,6 @@
               "array"
             ],
             "items": {
-              "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?(?:[eE][+-]?\\d+)?$",
               "type": "number",
               "format": "float"
             }
@@ -2710,7 +2992,6 @@
             "type": "string"
           },
           "atSeconds": {
-            "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?(?:[eE][+-]?\\d+)?$",
             "type": [
               "null",
               "number"
@@ -2809,20 +3090,16 @@
         "type": "object",
         "properties": {
           "maxUses": {
-            "pattern": "^-?(?:0|[1-9]\\d*)$",
             "type": [
               "null",
-              "integer",
-              "string"
+              "integer"
             ],
             "format": "int32"
           },
           "expiresInDays": {
-            "pattern": "^-?(?:0|[1-9]\\d*)$",
             "type": [
               "null",
-              "integer",
-              "string"
+              "integer"
             ],
             "format": "int32"
           }
@@ -2844,11 +3121,9 @@
             ]
           },
           "bpm": {
-            "pattern": "^-?(?:0|[1-9]\\d*)$",
             "type": [
               "null",
-              "integer",
-              "string"
+              "integer"
             ],
             "format": "int32"
           },
@@ -2857,6 +3132,17 @@
               "null",
               "string"
             ]
+          }
+        }
+      },
+      "DeleteAccountRequest": {
+        "required": [
+          "password"
+        ],
+        "type": "object",
+        "properties": {
+          "password": {
+            "type": "string"
           }
         }
       },
@@ -2896,7 +3182,9 @@
           "endTime",
           "title",
           "location",
-          "goingCount"
+          "goingCount",
+          "createdByMembershipId",
+          "belowQuorum"
         ],
         "type": "object",
         "properties": {
@@ -2956,12 +3244,15 @@
             ]
           },
           "goingCount": {
-            "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": [
-              "integer",
-              "string"
-            ],
+            "type": "integer",
             "format": "int32"
+          },
+          "createdByMembershipId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "belowQuorum": {
+            "type": "boolean"
           }
         }
       },
@@ -3000,6 +3291,75 @@
           }
         }
       },
+      "ExportMembership": {
+        "required": [
+          "bandId",
+          "bandName",
+          "role",
+          "instrument",
+          "joinedAt",
+          "leftAt",
+          "weeklyPattern",
+          "blockouts",
+          "rsvps",
+          "comments",
+          "messages",
+          "uploads"
+        ],
+        "type": "object",
+        "properties": {
+          "bandId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "bandName": {
+            "type": "string"
+          },
+          "role": {
+            "$ref": "#/components/schemas/BandRole"
+          },
+          "instrument": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "joinedAt": {
+            "$ref": "#/components/schemas/Instant"
+          },
+          "leftAt": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/Instant"
+              }
+            ]
+          },
+          "weeklyPattern": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/WeeklySlot"
+            }
+          },
+          "blockouts": {
+            "type": "array"
+          },
+          "rsvps": {
+            "type": "array"
+          },
+          "comments": {
+            "type": "array"
+          },
+          "messages": {
+            "type": "array"
+          },
+          "uploads": {
+            "type": "array"
+          }
+        }
+      },
       "FinderCandidateResponse": {
         "required": [
           "date",
@@ -3018,19 +3378,11 @@
             "$ref": "#/components/schemas/PracticeSlot"
           },
           "availableCount": {
-            "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": [
-              "integer",
-              "string"
-            ],
+            "type": "integer",
             "format": "int32"
           },
           "totalMembers": {
-            "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": [
-              "integer",
-              "string"
-            ],
+            "type": "integer",
             "format": "int32"
           },
           "everyoneAvailable": {
@@ -3057,6 +3409,38 @@
           },
           "displayName": {
             "type": "string"
+          }
+        }
+      },
+      "FinderMemberStatusDto": {
+        "required": [
+          "membershipId",
+          "displayName",
+          "openSlots",
+          "patternUpdatedAt"
+        ],
+        "type": "object",
+        "properties": {
+          "membershipId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "displayName": {
+            "type": "string"
+          },
+          "openSlots": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "patternUpdatedAt": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/Instant"
+              }
+            ]
           }
         }
       },
@@ -3087,11 +3471,9 @@
             ]
           },
           "status": {
-            "pattern": "^-?(?:0|[1-9]\\d*)$",
             "type": [
               "null",
-              "integer",
-              "string"
+              "integer"
             ],
             "format": "int32"
           },
@@ -3205,11 +3587,7 @@
             "format": "uuid"
           },
           "versionCount": {
-            "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": [
-              "integer",
-              "string"
-            ],
+            "type": "integer",
             "format": "int32"
           },
           "latestVersionAt": {
@@ -3246,7 +3624,6 @@
             "type": "string"
           },
           "sizeBytes": {
-            "pattern": "^-?(?:0|[1-9]\\d*)$",
             "type": "integer",
             "format": "int64"
           }
@@ -3299,7 +3676,6 @@
             "type": "string"
           },
           "sizeBytes": {
-            "pattern": "^-?(?:0|[1-9]\\d*)$",
             "type": "integer",
             "format": "int64"
           }
@@ -3341,7 +3717,6 @@
             "type": "string"
           },
           "sizeBytes": {
-            "pattern": "^-?(?:0|[1-9]\\d*)$",
             "type": "integer",
             "format": "int64"
           }
@@ -3392,11 +3767,9 @@
             "$ref": "#/components/schemas/Instant"
           },
           "maxUses": {
-            "pattern": "^-?(?:0|[1-9]\\d*)$",
             "type": [
               "null",
-              "integer",
-              "string"
+              "integer"
             ],
             "format": "int32"
           }
@@ -3423,19 +3796,13 @@
             "$ref": "#/components/schemas/Instant"
           },
           "useCount": {
-            "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": [
-              "integer",
-              "string"
-            ],
+            "type": "integer",
             "format": "int32"
           },
           "maxUses": {
-            "pattern": "^-?(?:0|[1-9]\\d*)$",
             "type": [
               "null",
-              "integer",
-              "string"
+              "integer"
             ],
             "format": "int32"
           }
@@ -3719,7 +4086,8 @@
           "days",
           "quorum",
           "slot",
-          "candidates"
+          "candidates",
+          "members"
         ],
         "type": "object",
         "properties": {
@@ -3727,19 +4095,11 @@
             "$ref": "#/components/schemas/LocalDate"
           },
           "days": {
-            "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": [
-              "integer",
-              "string"
-            ],
+            "type": "integer",
             "format": "int32"
           },
           "quorum": {
-            "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": [
-              "integer",
-              "string"
-            ],
+            "type": "integer",
             "format": "int32"
           },
           "slot": {
@@ -3749,6 +4109,12 @@
             "type": "array",
             "items": {
               "$ref": "#/components/schemas/FinderCandidateResponse"
+            }
+          },
+          "members": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/FinderMemberStatusDto"
             }
           }
         }
@@ -3781,7 +4147,6 @@
             "type": "string"
           },
           "sizeBytes": {
-            "pattern": "^-?(?:0|[1-9]\\d*)$",
             "type": "integer",
             "format": "int64"
           },
@@ -3963,11 +4328,9 @@
             ]
           },
           "bpm": {
-            "pattern": "^-?(?:0|[1-9]\\d*)$",
             "type": [
               "null",
-              "integer",
-              "string"
+              "integer"
             ],
             "format": "int32"
           },
@@ -4030,7 +4393,6 @@
             "type": "string"
           },
           "sizeBytes": {
-            "pattern": "^-?(?:0|[1-9]\\d*)$",
             "type": "integer",
             "format": "int64"
           },
@@ -4065,11 +4427,7 @@
             "type": "string"
           },
           "expiresInSeconds": {
-            "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": [
-              "integer",
-              "string"
-            ],
+            "type": "integer",
             "format": "int32"
           },
           "refreshToken": {
@@ -4100,11 +4458,9 @@
             ]
           },
           "quorum": {
-            "pattern": "^-?(?:0|[1-9]\\d*)$",
             "type": [
               "null",
-              "integer",
-              "string"
+              "integer"
             ],
             "format": "int32"
           },
@@ -4123,6 +4479,13 @@
               "null",
               "string"
             ]
+          },
+          "reminderHour": {
+            "type": [
+              "null",
+              "integer"
+            ],
+            "format": "int32"
           }
         }
       },
@@ -4156,6 +4519,17 @@
               "string"
             ],
             "format": "uuid"
+          }
+        }
+      },
+      "UpdateMemberRequest": {
+        "required": [
+          "role"
+        ],
+        "type": "object",
+        "properties": {
+          "role": {
+            "$ref": "#/components/schemas/BandRole"
           }
         }
       },
@@ -4196,11 +4570,9 @@
             ]
           },
           "bpm": {
-            "pattern": "^-?(?:0|[1-9]\\d*)$",
             "type": [
               "null",
-              "integer",
-              "string"
+              "integer"
             ],
             "format": "int32"
           },
@@ -4248,11 +4620,7 @@
             "format": "uuid"
           },
           "number": {
-            "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": [
-              "integer",
-              "string"
-            ],
+            "type": "integer",
             "format": "int32"
           },
           "kind": {
@@ -4265,12 +4633,10 @@
             "type": "string"
           },
           "sizeBytes": {
-            "pattern": "^-?(?:0|[1-9]\\d*)$",
             "type": "integer",
             "format": "int64"
           },
           "durationSeconds": {
-            "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?(?:[eE][+-]?\\d+)?$",
             "type": [
               "null",
               "number"
@@ -4283,7 +4649,6 @@
               "array"
             ],
             "items": {
-              "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?(?:[eE][+-]?\\d+)?$",
               "type": "number",
               "format": "float"
             }

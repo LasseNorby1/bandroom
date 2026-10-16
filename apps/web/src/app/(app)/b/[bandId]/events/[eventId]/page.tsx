@@ -24,7 +24,7 @@ export default function EventPage({
   params: Promise<{ bandId: string; eventId: string }>;
 }) {
   const { bandId, eventId } = use(params);
-  const { me, isAdmin } = useBandContext();
+  const { me, isAdmin, detail } = useBandContext();
   const queryClient = useQueryClient();
   const event = useEvent(bandId, eventId);
 
@@ -53,6 +53,9 @@ export default function EventPage({
 
   const { event: evt, rsvps } = event.data;
   const myRsvp = rsvps.find((rsvp) => rsvp.membershipId === me?.membershipId);
+  const mayManage = isAdmin || evt.createdByMembershipId === me?.membershipId;
+  const quorum = detail ? Math.max(1, Math.min(detail.band.quorum, detail.members.length)) : null;
+  const belowQuorum = evt.status === "confirmed" && quorum !== null && evt.goingCount < quorum;
   const title = evt.title ?? (evt.type === "practice" ? "Practice" : evt.type);
   const time = evt.startTime
     ? `${evt.startTime.slice(0, 5)}${evt.endTime ? `–${evt.endTime.slice(0, 5)}` : ""}`
@@ -76,11 +79,20 @@ export default function EventPage({
           <StatusChip status={evt.status} />
         </div>
 
+        {belowQuorum && (
+          <div className="rounded-lg border border-accent/30 bg-accent-soft px-4 py-3 text-sm">
+            <p className="font-medium">Below quorum: {evt.goingCount} of {quorum} going.</p>
+            <p className="text-muted">
+              Someone dropped out after this was confirmed. {mayManage ? "Keep it as it is, or cancel below." : "The organiser has been asked whether to keep it."}
+            </p>
+          </div>
+        )}
+
         {evt.status !== "cancelled" && (
           <RsvpButtons bandId={bandId} eventId={eventId} myStatus={myRsvp?.status} />
         )}
 
-        {isAdmin && evt.status !== "cancelled" && (
+        {mayManage && evt.status !== "cancelled" && (
           <div className="flex gap-2 border-t border-line pt-4">
             {evt.status === "proposed" && (
               <Button

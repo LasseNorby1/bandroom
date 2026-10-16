@@ -104,7 +104,7 @@ public static class BandEndpoints
         // Deliberately cross-band: my memberships across all bands.
         var summaries = await db.Memberships
             .IgnoreQueryFilters()
-            .Where(m => m.UserId == userId)
+            .Where(m => m.UserId == userId && m.LeftAt == null)
             .Join(db.Bands, m => m.BandId, b => b.Id, (m, b) => new { m, b })
             .OrderBy(x => x.b.Name)
             .Select(x => new BandSummaryResponse(x.b.Id, x.b.Name, x.m.Role))
@@ -123,6 +123,7 @@ public static class BandEndpoints
 
         // No explicit BandId clause — the global query filter supplies it.
         var members = await db.Memberships
+            .Where(m => m.LeftAt == null)
             .Join(db.Users, m => m.UserId, u => u.Id, (m, u) => new { m, u })
             .OrderBy(x => x.m.JoinedAt)
             .Select(x => new MemberResponse(x.m.Id, x.u.Id, x.u.DisplayName, x.m.Role, x.m.Instrument, x.m.JoinedAt))
@@ -163,6 +164,11 @@ public static class BandEndpoints
             errors["rehearsalSpace"] = ["Rehearsal space must be at most 200 characters."];
         }
 
+        if (request.ReminderHour is < 0 or > 23)
+        {
+            errors["reminderHour"] = ["Reminder hour must be between 0 and 23."];
+        }
+
         if (errors.Count > 0)
         {
             return TypedResults.ValidationProblem(errors);
@@ -194,12 +200,18 @@ public static class BandEndpoints
             band.RehearsalSpace = request.RehearsalSpace.Trim() is { Length: 0 } ? null : request.RehearsalSpace.Trim();
         }
 
+        if (request.ReminderHour is { } reminderHour)
+        {
+            band.ReminderHour = reminderHour;
+        }
+
         await db.SaveChangesAsync(ct);
         return TypedResults.Ok(ToBandResponse(band, clock.GetCurrentInstant(), entitlements));
     }
 
     private static BandResponse ToBandResponse(Band band, Instant now, EntitlementOptions entitlements) =>
         new(band.Id, band.Name, band.TimeZone, band.Quorum, band.DefaultPracticeSlot, band.RehearsalSpace,
+            band.ReminderHour,
             PlanLimits.IsPro(band, now, entitlements) ? BandPlan.Pro : BandPlan.Free,
             band.StorageUsedBytes,
             PlanLimits.StorageQuota(band, now, entitlements));

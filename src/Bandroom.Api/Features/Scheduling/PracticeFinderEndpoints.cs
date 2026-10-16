@@ -62,7 +62,9 @@ public static class PracticeFinderEndpoints
         var to = from.PlusDays(days - 1);
 
         var members = await db.Memberships
-            .Join(db.Users, m => m.UserId, u => u.Id, (m, u) => new { m.Id, u.DisplayName, m.WeeklyPattern })
+            .Where(m => m.LeftAt == null)
+            .Join(db.Users, m => m.UserId, u => u.Id, (m, u) => new { m.Id, u.DisplayName, m.WeeklyPattern, m.PatternUpdatedAt })
+            .OrderBy(m => m.DisplayName)
             .ToListAsync(ct);
         var exceptions = await db.AvailabilityExceptions
             .Where(e => e.To >= from && e.From <= to)
@@ -108,7 +110,10 @@ public static class PracticeFinderEndpoints
                 candidate.AvailableMembershipIds
                     .Select(id => new FinderMemberDto(id, names[id]))
                     .ToList()))
-            .ToList());
+            .ToList(),
+            members
+                .Select(m => new FinderMemberStatusDto(m.Id, m.DisplayName, m.WeeklyPattern.Count, m.PatternUpdatedAt))
+                .ToList());
         return TypedResults.Ok(response);
     }
 

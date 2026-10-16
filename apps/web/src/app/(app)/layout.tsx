@@ -11,7 +11,12 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
           <Link href="/home" aria-label="Home">
             <Wordmark />
           </Link>
-          <SignOutButton />
+          <nav className="flex items-center gap-1">
+            <Link href="/account" className="px-3 py-1.5 text-sm text-muted hover:text-ink">
+              Account
+            </Link>
+            <SignOutButton />
+          </nav>
         </header>
         <main className="flex-1 pb-16">{children}</main>
       </div>

@@ -11,7 +11,8 @@ public sealed record UpdateBandRequest(
     string? TimeZone,
     int? Quorum,
     PracticeSlot? DefaultPracticeSlot,
-    string? RehearsalSpace);
+    string? RehearsalSpace,
+    int? ReminderHour = null);
 
 public sealed record BandResponse(
     Guid Id,
@@ -20,6 +21,7 @@ public sealed record BandResponse(
     int Quorum,
     PracticeSlot DefaultPracticeSlot,
     string? RehearsalSpace,
+    int ReminderHour,
     BandPlan Plan,
     long StorageUsedBytes,
     long StorageQuotaBytes);
@@ -43,3 +45,5 @@ public sealed record InviteCreatedResponse(Guid Id, string Token, Instant Expire
 public sealed record InviteResponse(Guid Id, Instant CreatedAt, Instant ExpiresAt, int UseCount, int? MaxUses);
 
 public sealed record AcceptInviteResponse(Guid BandId, string BandName, Guid MembershipId);
+
+public sealed record UpdateMemberRequest(BandRole Role);

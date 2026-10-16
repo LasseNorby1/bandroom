@@ -38,7 +38,7 @@ public sealed class ReminderJob(AppDbContext db, IAppEmailSender email, IClock c
             .ToDictionaryAsync(b => b.Id, ct);
         var recipients = await db.Memberships
             .IgnoreQueryFilters()
-            .Where(m => bandIds.Contains(m.BandId))
+            .Where(m => bandIds.Contains(m.BandId) && m.LeftAt == null)
             .Join(db.Users, m => m.UserId, u => u.Id, (m, u) => new { m.BandId, u.Email, u.DisplayName })
             .ToListAsync(ct);
 
@@ -47,7 +47,7 @@ public sealed class ReminderJob(AppDbContext db, IAppEmailSender email, IClock c
         {
             var band = bands[evt.BandId];
             var local = now.InZone(BandTime.ZoneOf(band));
-            if (evt.Date != local.Date.PlusDays(1) || local.Hour < 17)
+            if (evt.Date != local.Date.PlusDays(1) || local.Hour < band.ReminderHour)
             {
                 continue;
             }

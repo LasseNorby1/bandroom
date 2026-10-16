@@ -51,4 +51,10 @@ public sealed class Event : IBandScoped
 
     /// <summary>Set by the reminder job so a day-before nudge is sent exactly once.</summary>
     public Instant? ReminderSentAt { get; set; }
+
+    /// <summary>
+    /// A confirmed event that dropped below quorum after a late "can't make it"
+    /// prompts the organiser once (spec §4); cleared when it climbs back.
+    /// </summary>
+    public Instant? QuorumWarnedAt { get; set; }
 }

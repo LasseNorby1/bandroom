@@ -29,6 +29,9 @@ public sealed class Band
 
     public string? RehearsalSpace { get; set; }
 
+    /// <summary>Band-local hour (0–23) after which the day-before reminder goes out.</summary>
+    public int ReminderHour { get; set; } = 17;
+
     /// <summary>Entitlements are per band, not per user (spec principle 4) —
     /// one member paying covers everyone. A provider webhook flips this later.</summary>
     public BandPlan Plan { get; set; } = BandPlan.Free;

@@ -75,7 +75,14 @@ export default function FinderPage({ params }: { params: Promise<{ bandId: strin
     return <p className="text-sm text-accent">Couldn&apos;t run the finder.</p>;
   }
 
-  const { candidates, days, quorum, slot } = finder.data;
+  const { candidates, days, quorum, slot, members } = finder.data;
+  const now = Date.now();
+  const stale = members
+    .map((member) => ({
+      ...member,
+      weeks: member.patternUpdatedAt ? Math.floor((now - Date.parse(member.patternUpdatedAt)) / 604_800_000) : null,
+    }))
+    .filter((member) => member.openSlots === 0 || (member.weeks ?? 0) >= 4);
 
   return (
     <div className="space-y-5">
@@ -89,6 +96,24 @@ export default function FinderPage({ params }: { params: Promise<{ bandId: strin
           proposing never books anyone.
         </p>
       </div>
+
+      {stale.length > 0 && (
+        <p className="rounded-lg border border-dashed border-line px-4 py-3 text-xs text-muted">
+          <span className="font-mono text-[10px] tracking-wider text-accent">heads up · </span>
+          {stale
+            .map((member) =>
+              member.openSlots === 0
+                ? `${member.displayName} hasn't set a pattern`
+                : `${member.displayName}'s pattern is ${member.weeks} weeks old`,
+            )
+            .join(" · ")}
+          . The finder trusts patterns — a quick{" "}
+          <Link href={`/b/${bandId}/availability`} className="underline underline-offset-4 hover:text-ink">
+            “anything changed?”
+          </Link>{" "}
+          keeps it honest.
+        </p>
+      )}
 
       {candidates.length === 0 ? (
         <div className="space-y-3 rounded-xl border border-line bg-surface p-5">

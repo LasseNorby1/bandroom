@@ -61,7 +61,7 @@ public sealed class BandMemberFilter(AppDbContext db, BandContext bandContext) :
         // handlers can mutate the band (storage accounting, settings) directly.
         var hit = await db.Memberships
             .IgnoreQueryFilters()
-            .Where(m => m.BandId == bandId && m.UserId == userId)
+            .Where(m => m.BandId == bandId && m.UserId == userId && m.LeftAt == null)
             .Join(db.Bands, m => m.BandId, b => b.Id, (m, b) => new { Membership = m, Band = b })
             .SingleOrDefaultAsync();
         if (hit is null)

@@ -1,8 +1,10 @@
 "use client";
 
 import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useRouter } from "next/navigation";
 import QRCode from "qrcode";
 import { use, useEffect, useState } from "react";
+import { ConfirmDialog } from "@/components/confirm-dialog";
 import { Button } from "@/components/ui/button";
 import { Field } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
@@ -11,7 +13,8 @@ import { useBandContext } from "@/lib/band-context";
 import { bandKeys, useInvites, useMyAvailability } from "@/lib/band-hooks";
 import { formatDay } from "@/lib/format";
 import { formatBytes } from "@/lib/upload";
-import type { InviteCreated, PracticeSlot } from "@/lib/types";
+import { cn } from "@/lib/cn";
+import type { BandRole, InviteCreated, PracticeSlot } from "@/lib/types";
 
 function CopyButton({ value, label = "Copy" }: { value: string; label?: string }) {
   const [copied, setCopied] = useState(false);
@@ -138,6 +141,112 @@ function Invites({ bandId }: { bandId: string }) {
   );
 }
 
+function Members({ bandId }: { bandId: string }) {
+  const { detail, me, isAdmin } = useBandContext();
+  const queryClient = useQueryClient();
+  const router = useRouter();
+
+  const invalidate = () => queryClient.invalidateQueries({ queryKey: bandKeys.detail(bandId) });
+
+  const setRole = useMutation({
+    mutationFn: async ({ membershipId, role }: { membershipId: string; role: BandRole }) => {
+      const { error } = await api.PATCH("/bands/{bandId}/members/{membershipId}", {
+        params: { path: { bandId, membershipId } },
+        body: { role },
+      });
+      if (error) throw error;
+    },
+    onSuccess: () => void invalidate(),
+  });
+
+  if (!detail) return null;
+  const admins = detail.members.filter((m) => m.role === "admin").length;
+
+  return (
+    <section className="space-y-4 rounded-xl border border-line bg-surface p-5">
+      <div>
+        <h2 className="font-medium">Members</h2>
+        <p className="text-sm text-muted">
+          {detail.members.length} in the room. Leaving keeps what you made here; the band just stops seeing you.
+        </p>
+      </div>
+      <ul className="divide-y divide-line rounded-lg border border-line">
+        {detail.members.map((member) => {
+          const self = member.membershipId === me?.membershipId;
+          const lastAdmin = member.role === "admin" && admins === 1;
+          return (
+            <li key={member.membershipId} className="flex flex-wrap items-center gap-x-3 gap-y-1 px-3.5 py-2.5 text-sm">
+              <span className="font-medium">{member.displayName}</span>
+              {self && <span className="font-mono text-[10px] text-faint">you</span>}
+              <span
+                className={cn(
+                  "rounded-full border px-2 py-0.5 font-mono text-[10px]",
+                  member.role === "admin" ? "border-ink text-ink" : "border-line text-muted",
+                )}
+              >
+                {member.role}
+              </span>
+              <span className="ml-auto flex items-center gap-3">
+                {isAdmin && !self && (
+                  <button
+                    type="button"
+                    disabled={setRole.isPending || lastAdmin}
+                    onClick={() =>
+                      setRole.mutate({ membershipId: member.membershipId, role: member.role === "admin" ? "member" : "admin" })
+                    }
+                    className="text-xs text-muted hover:text-ink disabled:opacity-40"
+                  >
+                    {member.role === "admin" ? "make member" : "make admin"}
+                  </button>
+                )}
+                {isAdmin && !self && (
+                  <ConfirmDialog
+                    title={`Remove ${member.displayName}?`}
+                    description="They lose access to the room. Their takes, comments and events stay."
+                    confirmLabel="Remove"
+                    onConfirm={async () => {
+                      const { error } = await api.DELETE("/bands/{bandId}/members/{membershipId}", {
+                        params: { path: { bandId, membershipId: member.membershipId } },
+                      });
+                      if (error) return "Couldn't remove them.";
+                      await invalidate();
+                      return null;
+                    }}
+                  >
+                    <button type="button" className="text-xs text-muted hover:text-accent">remove</button>
+                  </ConfirmDialog>
+                )}
+                {self && (
+                  <ConfirmDialog
+                    title="Leave the band?"
+                    description={
+                      detail.members.length === 1
+                        ? "You're the last one here — leaving deletes the band and everything in it."
+                        : lastAdmin
+                          ? "You're the only admin. The longest-standing member becomes admin when you go."
+                          : "You lose access to the room. What you made here stays. An invite link gets you back in."
+                    }
+                    confirmLabel={detail.members.length === 1 ? "Delete band" : "Leave"}
+                    onConfirm={async () => {
+                      const { error } = await api.DELETE("/bands/{bandId}/members/me", { params: { path: { bandId } } });
+                      if (error) return "Couldn't leave.";
+                      await queryClient.invalidateQueries({ queryKey: ["bands"] });
+                      router.push("/home");
+                      return null;
+                    }}
+                  >
+                    <button type="button" className="text-xs text-muted hover:text-accent">leave band</button>
+                  </ConfirmDialog>
+                )}
+              </span>
+            </li>
+          );
+        })}
+      </ul>
+    </section>
+  );
+}
+
 function CalendarFeed({ bandId }: { bandId: string }) {
   const mine = useMyAvailability(bandId);
   if (!mine.data) return null;
@@ -182,6 +291,7 @@ function BandSettings({ bandId }: { bandId: string }) {
       quorum: number | null;
       defaultPracticeSlot: PracticeSlot | null;
       rehearsalSpace: string | null;
+      reminderHour: number | null;
     }) => {
       const { data, error } = await api.PATCH("/bands/{bandId}", {
         params: { path: { bandId } },
@@ -205,7 +315,8 @@ function BandSettings({ bandId }: { bandId: string }) {
       <section className="space-y-2 rounded-xl border border-line bg-surface p-5 text-sm">
         <h2 className="font-medium">Band settings</h2>
         <p className="text-muted">
-          {band.timeZone} · quorum {band.quorum} · default {band.defaultPracticeSlot}
+          {band.timeZone} · quorum {band.quorum} · default {band.defaultPracticeSlot} · reminders at{" "}
+          {String(band.reminderHour).padStart(2, "0")}:00
           {band.rehearsalSpace && ` · ${band.rehearsalSpace}`}
         </p>
         <p className="text-xs text-faint">Only admins can change these.</p>
@@ -227,6 +338,7 @@ function BandSettings({ bandId }: { bandId: string }) {
             quorum: Number(data.get("quorum")) || null,
             defaultPracticeSlot: (String(data.get("slot")) as PracticeSlot) || null,
             rehearsalSpace: String(data.get("rehearsalSpace")),
+            reminderHour: Number(data.get("reminderHour")),
           });
         }}
       >
@@ -262,6 +374,18 @@ function BandSettings({ bandId }: { bandId: string }) {
           >
             <option value="evening">evening · 19–22</option>
             <option value="afternoon">afternoon · 14–17</option>
+          </select>
+        </Field>
+        <Field label="Reminder the day before, at" htmlFor="reminderHour">
+          <select
+            id="reminderHour"
+            name="reminderHour"
+            defaultValue={band.reminderHour}
+            className="h-10 w-full rounded-lg border border-line bg-surface px-3 text-sm"
+          >
+            {Array.from({ length: 24 }, (_, hour) => (
+              <option key={hour} value={hour}>{String(hour).padStart(2, "0")}:00</option>
+            ))}
           </select>
         </Field>
         <Field label="Rehearsal space" htmlFor="rehearsalSpace" className="sm:col-span-2">
@@ -318,6 +442,7 @@ export default function SettingsPage({ params }: { params: Promise<{ bandId: str
   return (
     <div className="space-y-6">
       <Invites bandId={bandId} />
+      <Members bandId={bandId} />
       <PlanAndStorage />
       <CalendarFeed bandId={bandId} />
       <BandSettings bandId={bandId} />

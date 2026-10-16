@@ -252,16 +252,18 @@ try
                 schema.Type = JsonSchemaType.String;
                 schema.Format = "time";
             }
-            else if (type == typeof(long))
+            else if (type == typeof(long) || type == typeof(int))
             {
-                // The generator unions int64/double with string (precision/NaN
+                // The generator unions integers/doubles with string (precision/NaN
                 // hedging); this api never sends either — keep clients numeric.
                 schema.Type = isNullable ? JsonSchemaType.Integer | JsonSchemaType.Null : JsonSchemaType.Integer;
-                schema.Format = "int64";
+                schema.Format = type == typeof(long) ? "int64" : "int32";
+                schema.Pattern = null;
             }
             else if (type == typeof(double) || type == typeof(float))
             {
                 schema.Type = isNullable ? JsonSchemaType.Number | JsonSchemaType.Null : JsonSchemaType.Number;
+                schema.Pattern = null;
             }
 
             return Task.CompletedTask;
@@ -355,7 +357,9 @@ try
     app.MapGet("/", () => Results.Ok(new { name = "bandroom-api", version = "0.1.0" }));
 
     app.MapAuthEndpoints();
+    app.MapAccountEndpoints();
     app.MapBandEndpoints();
+    app.MapMemberEndpoints();
     app.MapInviteEndpoints();
     app.MapAvailabilityEndpoints();
     app.MapPracticeFinderEndpoints();

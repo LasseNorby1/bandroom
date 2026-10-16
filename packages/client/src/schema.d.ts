@@ -400,6 +400,167 @@ export interface paths {
         };
         put?: never;
         post?: never;
+        /** Delete my account (anonymised; bands keep their history) */
+        delete: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["DeleteAccountRequest"];
+                };
+            };
+            responses: {
+                /** @description No Content */
+                204: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Bad Request */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["HttpValidationProblemDetails"];
+                    };
+                };
+            };
+        };
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/auth/change-password": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Change password (signs out every session) */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["ChangePasswordRequest"];
+                };
+            };
+            responses: {
+                /** @description No Content */
+                204: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Bad Request */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["HttpValidationProblemDetails"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/auth/change-email": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Change email */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["ChangeEmailRequest"];
+                };
+            };
+            responses: {
+                /** @description No Content */
+                204: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Bad Request */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["HttpValidationProblemDetails"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/auth/me/export": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Everything stored about me, as json */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["AccountExport"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -548,6 +709,138 @@ export interface paths {
         };
         trace?: never;
     };
+    "/bands/{bandId}/members/me": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Leave the band */
+        delete: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    bandId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description No Content */
+                204: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/bands/{bandId}/members/{membershipId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Remove a member (admin) */
+        delete: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    membershipId: string;
+                    bandId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description No Content */
+                204: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Bad Request */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["HttpValidationProblemDetails"];
+                    };
+                };
+                /** @description Not Found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        options?: never;
+        head?: never;
+        /** Change a member's role (admin) */
+        patch: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    membershipId: string;
+                    bandId: string;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["UpdateMemberRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["MemberResponse"];
+                    };
+                };
+                /** @description Bad Request */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["HttpValidationProblemDetails"];
+                    };
+                };
+                /** @description Not Found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        trace?: never;
+    };
     "/bands/{bandId}/invites": {
         parameters: {
             query?: never;
@@ -676,7 +969,7 @@ export interface paths {
         get: {
             parameters: {
                 query?: {
-                    days?: number | string;
+                    days?: number;
                 };
                 header?: never;
                 path: {
@@ -909,7 +1202,7 @@ export interface paths {
         get: {
             parameters: {
                 query?: {
-                    days?: number | string;
+                    days?: number;
                     slot?: string;
                 };
                 header?: never;
@@ -959,7 +1252,7 @@ export interface paths {
         get: {
             parameters: {
                 query?: {
-                    days?: number | string;
+                    days?: number;
                 };
                 header?: never;
                 path: {
@@ -2375,7 +2668,7 @@ export interface paths {
             parameters: {
                 query?: {
                     before?: string;
-                    take?: number | string;
+                    take?: number;
                 };
                 header?: never;
                 path: {
@@ -2475,10 +2768,18 @@ export interface components {
             /** Format: uuid */
             membershipId: string;
         };
+        AccountExport: {
+            exportedAt: components["schemas"]["Instant"];
+            /** Format: uuid */
+            userId: string;
+            email: string;
+            displayName: string;
+            bands: components["schemas"]["ExportMembership"][];
+        };
         BandAvailabilityResponse: {
             from: components["schemas"]["LocalDate"];
             /** Format: int32 */
-            days: number | string;
+            days: number;
             members: components["schemas"]["MemberAvailabilityResponse"][];
         };
         BandDetailResponse: {
@@ -2493,9 +2794,11 @@ export interface components {
             name: string;
             timeZone: string;
             /** Format: int32 */
-            quorum: number | string;
+            quorum: number;
             defaultPracticeSlot: components["schemas"]["PracticeSlot"];
             rehearsalSpace: null | string;
+            /** Format: int32 */
+            reminderHour: number;
             plan: components["schemas"]["BandPlan"];
             /** Format: int64 */
             storageUsedBytes: number;
@@ -2509,6 +2812,14 @@ export interface components {
             id: string;
             name: string;
             role: components["schemas"]["BandRole"];
+        };
+        ChangeEmailRequest: {
+            password: string;
+            newEmail: string;
+        };
+        ChangePasswordRequest: {
+            currentPassword: string;
+            newPassword: string;
         };
         ChannelResponse: {
             /** Format: uuid */
@@ -2576,16 +2887,19 @@ export interface components {
         };
         CreateInviteRequest: {
             /** Format: int32 */
-            maxUses: null | number | string;
+            maxUses: null | number;
             /** Format: int32 */
-            expiresInDays: null | number | string;
+            expiresInDays: null | number;
         };
         CreateSongRequest: {
             title: string;
             key?: null | string;
             /** Format: int32 */
-            bpm?: null | number | string;
+            bpm?: null | number;
             notes?: null | string;
+        };
+        DeleteAccountRequest: {
+            password: string;
         };
         EventDetailResponse: {
             event: components["schemas"]["EventSummaryResponse"];
@@ -2605,7 +2919,10 @@ export interface components {
             title: null | string;
             location: null | string;
             /** Format: int32 */
-            goingCount: number | string;
+            goingCount: number;
+            /** Format: uuid */
+            createdByMembershipId: string;
+            belowQuorum: boolean;
         };
         /** @enum {unknown} */
         EventType: "practice" | "gig" | "deadline" | "other";
@@ -2616,13 +2933,28 @@ export interface components {
             to: components["schemas"]["LocalDate"];
             note: null | string;
         };
+        ExportMembership: {
+            /** Format: uuid */
+            bandId: string;
+            bandName: string;
+            role: components["schemas"]["BandRole"];
+            instrument: null | string;
+            joinedAt: components["schemas"]["Instant"];
+            leftAt: null | components["schemas"]["Instant"];
+            weeklyPattern: components["schemas"]["WeeklySlot"][];
+            blockouts: unknown[];
+            rsvps: unknown[];
+            comments: unknown[];
+            messages: unknown[];
+            uploads: unknown[];
+        };
         FinderCandidateResponse: {
             date: components["schemas"]["LocalDate"];
             slot: components["schemas"]["PracticeSlot"];
             /** Format: int32 */
-            availableCount: number | string;
+            availableCount: number;
             /** Format: int32 */
-            totalMembers: number | string;
+            totalMembers: number;
             everyoneAvailable: boolean;
             availableMembers: components["schemas"]["FinderMemberDto"][];
         };
@@ -2631,6 +2963,14 @@ export interface components {
             membershipId: string;
             displayName: string;
         };
+        FinderMemberStatusDto: {
+            /** Format: uuid */
+            membershipId: string;
+            displayName: string;
+            /** Format: int32 */
+            openSlots: number;
+            patternUpdatedAt: null | components["schemas"]["Instant"];
+        };
         ForgotPasswordRequest: {
             email: string;
         };
@@ -2638,7 +2978,7 @@ export interface components {
             type?: null | string;
             title?: null | string;
             /** Format: int32 */
-            status?: null | number | string;
+            status?: null | number;
             detail?: null | string;
             instance?: null | string;
             errors?: {
@@ -2666,7 +3006,7 @@ export interface components {
             /** Format: uuid */
             songId: null | string;
             /** Format: int32 */
-            versionCount: number | string;
+            versionCount: number;
             latestVersionAt: null | components["schemas"]["Instant"];
             createdAt: components["schemas"]["Instant"];
         };
@@ -2720,7 +3060,7 @@ export interface components {
             token: string;
             expiresAt: components["schemas"]["Instant"];
             /** Format: int32 */
-            maxUses: null | number | string;
+            maxUses: null | number;
         };
         InviteResponse: {
             /** Format: uuid */
@@ -2728,9 +3068,9 @@ export interface components {
             createdAt: components["schemas"]["Instant"];
             expiresAt: components["schemas"]["Instant"];
             /** Format: int32 */
-            useCount: number | string;
+            useCount: number;
             /** Format: int32 */
-            maxUses: null | number | string;
+            maxUses: null | number;
         };
         /** @enum {unknown} */
         IsoDayOfWeek: "none" | "monday" | "tuesday" | "wednesday" | "thursday" | "friday" | "saturday" | "sunday";
@@ -2800,11 +3140,12 @@ export interface components {
         PracticeFinderResponse: {
             from: components["schemas"]["LocalDate"];
             /** Format: int32 */
-            days: number | string;
+            days: number;
             /** Format: int32 */
-            quorum: number | string;
+            quorum: number;
             slot: components["schemas"]["PracticeSlot"];
             candidates: components["schemas"]["FinderCandidateResponse"][];
+            members: components["schemas"]["FinderMemberStatusDto"][];
         };
         /** @enum {unknown} */
         PracticeSlot: "afternoon" | "evening";
@@ -2863,7 +3204,7 @@ export interface components {
             title: string;
             key: null | string;
             /** Format: int32 */
-            bpm: null | number | string;
+            bpm: null | number;
             status: components["schemas"]["SongStatus"];
             notes: null | string;
             createdAt: components["schemas"]["Instant"];
@@ -2889,22 +3230,27 @@ export interface components {
         TokenPairResponse: {
             accessToken: string;
             /** Format: int32 */
-            expiresInSeconds: number | string;
+            expiresInSeconds: number;
             refreshToken: string;
         };
         UpdateBandRequest: {
             name: null | string;
             timeZone: null | string;
             /** Format: int32 */
-            quorum: null | number | string;
+            quorum: null | number;
             defaultPracticeSlot: null | components["schemas"]["PracticeSlot"];
             rehearsalSpace: null | string;
+            /** Format: int32 */
+            reminderHour?: null | number;
         };
         UpdateIdeaRequest: {
             title: null | string;
             status: null | components["schemas"]["IdeaStatus"];
             /** Format: uuid */
             songId: null | string;
+        };
+        UpdateMemberRequest: {
+            role: components["schemas"]["BandRole"];
         };
         UpdatePatternRequest: {
             openSlots: components["schemas"]["WeeklySlot"][];
@@ -2913,7 +3259,7 @@ export interface components {
             title: null | string;
             key: null | string;
             /** Format: int32 */
-            bpm: null | number | string;
+            bpm: null | number;
             status: null | components["schemas"]["SongStatus"];
             notes: null | string;
         };
@@ -2923,7 +3269,7 @@ export interface components {
             /** Format: uuid */
             id: string;
             /** Format: int32 */
-            number: number | string;
+            number: number;
             kind: components["schemas"]["VersionKind"];
             fileName: string;
             contentType: string;

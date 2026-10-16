@@ -32,7 +32,7 @@ public sealed class DigestJob(AppDbContext db, IAppEmailSender email, IClock clo
                 .ToListAsync(ct);
             var members = await db.Memberships
                 .IgnoreQueryFilters()
-                .Where(m => m.BandId == band.Id)
+                .Where(m => m.BandId == band.Id && m.LeftAt == null)
                 .Join(db.Users, m => m.UserId, u => u.Id, (m, u) => new { u.Email, u.DisplayName })
                 .ToListAsync(ct);
 

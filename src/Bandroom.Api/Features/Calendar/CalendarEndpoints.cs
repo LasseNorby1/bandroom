@@ -33,7 +33,7 @@ public static class CalendarEndpoints
     {
         var membership = await db.Memberships
             .IgnoreQueryFilters()
-            .SingleOrDefaultAsync(m => m.IcsToken == icsToken, ct);
+            .SingleOrDefaultAsync(m => m.IcsToken == icsToken && m.LeftAt == null, ct);
         if (membership is null)
         {
             return TypedResults.NotFound();

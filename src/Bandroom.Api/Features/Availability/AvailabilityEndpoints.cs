@@ -147,6 +147,7 @@ public static class AvailabilityEndpoints
         var to = from.PlusDays(days - 1);
 
         var members = await db.Memberships
+            .Where(m => m.LeftAt == null)
             .Join(db.Users, m => m.UserId, u => u.Id, (m, u) => new { m, u })
             .OrderBy(x => x.m.JoinedAt)
             .Select(x => new { x.m.Id, x.u.DisplayName, x.m.WeeklyPattern, x.m.PatternUpdatedAt })

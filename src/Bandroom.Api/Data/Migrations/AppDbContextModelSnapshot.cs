@@ -18,7 +18,7 @@ namespace Bandroom.Api.Data.Migrations
         {
 #pragma warning disable 612, 618
             modelBuilder
-                .HasAnnotation("ProductVersion", "10.0.11")
+                .HasAnnotation("ProductVersion", "10.0.13")
                 .HasAnnotation("Relational:MaxIdentifierLength", 63);
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
@@ -158,6 +158,11 @@ namespace Bandroom.Api.Data.Migrations
                     b.Property<string>("RehearsalSpace")
                         .HasMaxLength(200)
                         .HasColumnType("character varying(200)");
+
+                    b.Property<int>("ReminderHour")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(17);
 
                     b.Property<long>("StorageUsedBytes")
                         .HasColumnType("bigint");
@@ -323,7 +328,7 @@ namespace Bandroom.Api.Data.Migrations
                     b.Property<int>("Number")
                         .HasColumnType("integer");
 
-                    b.Property<float[]>("Peaks")
+                    b.PrimitiveCollection<float[]>("Peaks")
                         .HasColumnType("real[]");
 
                     b.Property<long>("SizeBytes")
@@ -374,6 +379,9 @@ namespace Bandroom.Api.Data.Migrations
                     b.Property<string>("Location")
                         .HasMaxLength(200)
                         .HasColumnType("character varying(200)");
+
+                    b.Property<Instant?>("QuorumWarnedAt")
+                        .HasColumnType("timestamp with time zone");
 
                     b.Property<Instant?>("ReminderSentAt")
                         .HasColumnType("timestamp with time zone");
@@ -427,6 +435,9 @@ namespace Bandroom.Api.Data.Migrations
                         .HasColumnType("character varying(50)");
 
                     b.Property<Instant>("JoinedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Instant?>("LeftAt")
                         .HasColumnType("timestamp with time zone");
 
                     b.Property<Instant?>("PatternUpdatedAt")
