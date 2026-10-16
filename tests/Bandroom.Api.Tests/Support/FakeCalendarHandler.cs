@@ -19,6 +19,14 @@ public sealed class FakeCalendarHandler : HttpMessageHandler
             return Task.FromResult(new HttpResponseMessage(HttpStatusCode.NotFound));
         }
 
+        if (request.RequestUri.AbsolutePath.EndsWith(".md"))
+        {
+            return Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK)
+            {
+                Content = new StringContent("# Not a calendar\n\nJust a readme.", System.Text.Encoding.UTF8, "text/plain"),
+            });
+        }
+
         var allDay = Today.PlusDays(3);
         var evening = Today.PlusDays(5);
         var ics = $"""

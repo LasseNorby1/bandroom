@@ -91,6 +91,9 @@ public class BillingCalendarAiTests(ApiFactory factory)
 
         var bad = await client.PutAsJsonAsync($"/bands/{bandId}/availability/me/calendar", new CalendarImportRequest("https://cal.example.test/missing.ics"), TestJson.Options);
         Assert.Equal(HttpStatusCode.BadRequest, bad.StatusCode);
+        var notIcs = await client.PutAsJsonAsync($"/bands/{bandId}/availability/me/calendar", new CalendarImportRequest("https://cal.example.test/README.md"), TestJson.Options);
+        Assert.Equal(HttpStatusCode.BadRequest, notIcs.StatusCode);
+        Assert.Contains("ics calendar", await notIcs.Content.ReadAsStringAsync());
 
         var mine = await (await client.PutAsJsonAsync($"/bands/{bandId}/availability/me/calendar",
                 new CalendarImportRequest("webcal://cal.example.test/private.ics"), TestJson.Options))

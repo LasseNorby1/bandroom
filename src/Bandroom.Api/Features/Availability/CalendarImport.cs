@@ -49,9 +49,17 @@ public sealed class CalendarImporter(AppDbContext db, IHttpClientFactory httpCli
                 })
                 .ToList();
         }
-        catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException or InvalidOperationException or FormatException)
+        catch (OperationCanceledException) when (ct.IsCancellationRequested)
         {
-            error = ex.Message.Length > 200 ? ex.Message[..200] : ex.Message;
+            throw;
+        }
+        catch (Exception ex)
+        {
+            // The feed is untrusted input: anything the fetch or the parser throws
+            // (Ical.Net has several of its own) is "not a calendar", never a 500.
+            error = ex is HttpRequestException or TaskCanceledException or InvalidOperationException
+                ? (ex.Message.Length > 200 ? ex.Message[..200] : ex.Message)
+                : "That address doesn't serve an ics calendar.";
         }
 
         if (error is null)
