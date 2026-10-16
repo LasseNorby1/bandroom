@@ -14,10 +14,15 @@ if [ ! -f .env ]; then
   cp .env.example .env
 fi
 
-# First run: mint the secrets that nobody needs to know.
-fill() { grep -q "^$1=.\+" .env || sed -i "s|^$1=.*|$1=$2|" .env; }
+# First run: mint the secrets that nobody needs to know. A key that .env lacks
+# entirely (an .env older than the key) is appended, not silently skipped.
+fill() {
+  grep -q "^$1=" .env || echo "$1=" >> .env
+  grep -q "^$1=.\+" .env || sed -i "s|^$1=.*|$1=$2|" .env
+}
 fill DB_PASSWORD "$(openssl rand -hex 24)"
 fill JWT_SIGNING_KEY "$(openssl rand -hex 48)"
+fill S3_ACCESS_KEY "bandroom"
 fill S3_SECRET_KEY "$(openssl rand -hex 24)"
 
 if [ "${1:-}" != "" ]; then
