@@ -21,7 +21,10 @@ const auth: Middleware = {
 
     const token = await refreshSession();
     if (!token) {
-      window.location.assign("/login");
+      // Deliberately a full navigation: the in-memory session is gone, so a
+      // client-side route change would just render the same 401s again.
+      // eslint-disable-next-line @next/next/no-location-assign-relative-destination
+      window.location.href = "/login";
       return response;
     }
 

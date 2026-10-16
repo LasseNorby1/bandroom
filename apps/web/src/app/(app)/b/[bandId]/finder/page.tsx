@@ -75,12 +75,12 @@ export default function FinderPage({ params }: { params: Promise<{ bandId: strin
     return <p className="text-sm text-accent">Couldn&apos;t run the finder.</p>;
   }
 
-  const { candidates, days, quorum, slot, members } = finder.data;
-  const now = Date.now();
+  const { candidates, days, quorum, slot, members, from } = finder.data;
+  const today = Date.parse(`${from}T00:00:00Z`);
   const stale = members
     .map((member) => ({
       ...member,
-      weeks: member.patternUpdatedAt ? Math.floor((now - Date.parse(member.patternUpdatedAt)) / 604_800_000) : null,
+      weeks: member.patternUpdatedAt ? Math.floor((today - Date.parse(member.patternUpdatedAt)) / 604_800_000) : null,
     }))
     .filter((member) => member.openSlots === 0 || (member.weeks ?? 0) >= 4);
 

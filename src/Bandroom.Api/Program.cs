@@ -344,7 +344,10 @@ try
     app.UseAuthentication();
     app.UseAuthorization();
 
-    app.MapOpenApi();
+    if (app.Environment.IsDevelopment())
+    {
+        app.MapOpenApi();
+    }
 
     // Liveness must stay green while the database is down — coolify restarts on live,
     // and a db outage should never restart-loop the api.

@@ -31,6 +31,7 @@ public sealed record EventSummaryResponse(
     int GoingCount,
     Guid CreatedByMembershipId,
     /// <summary>Confirmed but short of quorum after a late "can't" — the organiser was asked to keep or cancel.</summary>
-    bool BelowQuorum);
+    bool BelowQuorum,
+    RsvpStatus? MyRsvp);
 
 public sealed record EventDetailResponse(EventSummaryResponse Event, IReadOnlyList<RsvpResponse> Rsvps);

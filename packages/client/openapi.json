@@ -3184,7 +3184,8 @@
           "location",
           "goingCount",
           "createdByMembershipId",
-          "belowQuorum"
+          "belowQuorum",
+          "myRsvp"
         ],
         "type": "object",
         "properties": {
@@ -3253,6 +3254,16 @@
           },
           "belowQuorum": {
             "type": "boolean"
+          },
+          "myRsvp": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/RsvpStatus"
+              }
+            ]
           }
         }
       },
@@ -4288,7 +4299,8 @@
         "enum": [
           "going",
           "notGoing",
-          "maybe"
+          "maybe",
+          null
         ]
       },
       "SendMessageRequest": {

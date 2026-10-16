@@ -1,7 +1,7 @@
 "use client";
 
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { use, useEffect, useMemo, useState } from "react";
+import { use, useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { api } from "@/lib/api";
@@ -18,15 +18,16 @@ const slotKey = (day: IsoDay, slot: PracticeSlot) => `${day}:${slot}`;
 function PatternEditor({ bandId }: { bandId: string }) {
   const queryClient = useQueryClient();
   const mine = useMyAvailability(bandId);
-  const [open, setOpen] = useState<Set<string>>(new Set());
-  const [dirty, setDirty] = useState(false);
-
-  useEffect(() => {
-    if (mine.data && !dirty) {
-      setOpen(new Set(mine.data.openSlots.map((slot) => slotKey(slot.day as IsoDay, slot.slot))));
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- sync from server until edited
-  }, [mine.data]);
+  // The grid shows the server's pattern until the first tap; from then on the
+  // local edits, until they're saved (which clears them and shows the server's
+  // again). Derived, not synced — no effect, no cascade.
+  const [edits, setEdits] = useState<Set<string> | null>(null);
+  const serverOpen = useMemo(
+    () => new Set((mine.data?.openSlots ?? []).map((slot) => slotKey(slot.day as IsoDay, slot.slot))),
+    [mine.data],
+  );
+  const open = edits ?? serverOpen;
+  const dirty = edits !== null;
 
   const save = useMutation({
     mutationFn: async () => {
@@ -42,7 +43,7 @@ function PatternEditor({ bandId }: { bandId: string }) {
       return data;
     },
     onSuccess: () => {
-      setDirty(false);
+      setEdits(null);
       void queryClient.invalidateQueries({ queryKey: bandKeys.availability(bandId) });
     },
   });
@@ -55,8 +56,7 @@ function PatternEditor({ bandId }: { bandId: string }) {
     } else {
       next.add(key);
     }
-    setOpen(next);
-    setDirty(true);
+    setEdits(next);
   }
 
   return (

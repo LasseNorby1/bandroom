@@ -227,7 +227,7 @@ export default function Landing() {
         <section className="space-y-8">
           <div className="max-w-2xl space-y-3">
             <Eyebrow>04 — the rules it keeps</Eyebrow>
-            <h2 className="font-display text-2xl font-semibold tracking-tight sm:text-3xl">Built for a band, not for a band's paperwork</h2>
+            <h2 className="font-display text-2xl font-semibold tracking-tight sm:text-3xl">Built for a band, not for a band&rsquo;s paperwork</h2>
           </div>
           <div className="grid gap-3 sm:grid-cols-2">
             {[

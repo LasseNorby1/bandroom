@@ -89,7 +89,7 @@ export default function EventPage({
         )}
 
         {evt.status !== "cancelled" && (
-          <RsvpButtons bandId={bandId} eventId={eventId} myStatus={myRsvp?.status} />
+          <RsvpButtons bandId={bandId} eventId={eventId} myStatus={myRsvp?.status ?? undefined} />
         )}
 
         {mayManage && evt.status !== "cancelled" && (
@@ -127,7 +127,7 @@ export default function EventPage({
                 <p className="text-sm font-medium">{rsvp.displayName}</p>
                 {rsvp.note && <p className="text-xs text-muted">{rsvp.note}</p>}
               </div>
-              <span className="font-mono text-[11px] text-muted">{rsvpLabel[rsvp.status]}</span>
+              <span className="font-mono text-[11px] text-muted">{rsvp.status ? rsvpLabel[rsvp.status] : ""}</span>
             </li>
           ))}
           {rsvps.length === 0 && (

@@ -4,7 +4,6 @@ using Bandroom.Api.Features.Events;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.EntityFrameworkCore;
 using NodaTime;
-using NodaTime.Text;
 
 namespace Bandroom.Api.Features.Chat;
 
@@ -119,41 +118,41 @@ public static class ChatEndpoints
             return TypedResults.NotFound();
         }
 
-        Instant? beforeInstant = null;
+        // The cursor is a message id. Ids are uuidv7, so ordering by id is
+        // ordering by creation time — with no ties, unlike CreatedAt, where two
+        // messages in the same instant could be skipped or repeated across pages.
+        Guid? beforeId = null;
         if (before is not null)
         {
-            var parsed = InstantPattern.ExtendedIso.Parse(before);
-            if (!parsed.Success)
+            if (!Guid.TryParse(before, out var parsed))
             {
                 return TypedResults.ValidationProblem(new Dictionary<string, string[]>
                 {
-                    ["before"] = ["Cursor must be an iso-8601 instant."],
+                    ["before"] = ["Cursor must be a message id."],
                 });
             }
 
-            beforeInstant = parsed.Value;
+            beforeId = parsed;
         }
 
         var query = db.Messages.Where(m => m.ChannelId == channelId);
-        if (beforeInstant is { } cursor)
+        if (beforeId is { } cursor)
         {
-            query = query.Where(m => m.CreatedAt < cursor);
+            query = query.Where(m => m.Id.CompareTo(cursor) < 0);
         }
 
         var page = await query
-            .OrderByDescending(m => m.CreatedAt)
+            .OrderByDescending(m => m.Id)
             .Take(take)
             .Join(db.Memberships, m => m.AuthorMembershipId, mem => mem.Id, (m, mem) => new { m, mem })
             .Join(db.Users, x => x.mem.UserId, u => u.Id, (x, u) => new { x.m, u.DisplayName })
             .ToListAsync(ct);
 
         var items = page
-            .OrderBy(x => x.m.CreatedAt)
+            .OrderBy(x => x.m.Id)
             .Select(x => new MessageResponse(x.m.Id, x.m.AuthorMembershipId, x.DisplayName, x.m.Body, x.m.CreatedAt))
             .ToList();
-        var nextBefore = page.Count == take
-            ? InstantPattern.ExtendedIso.Format(page.Min(x => x.m.CreatedAt))
-            : null;
+        var nextBefore = page.Count == take ? items[0].Id.ToString() : null;
         return TypedResults.Ok(new MessagesPage(items, nextBefore));
     }
 

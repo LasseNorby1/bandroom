@@ -2923,6 +2923,7 @@ export interface components {
             /** Format: uuid */
             createdByMembershipId: string;
             belowQuorum: boolean;
+            myRsvp: null | components["schemas"]["RsvpStatus"];
         };
         /** @enum {unknown} */
         EventType: "practice" | "gig" | "deadline" | "other";
@@ -3194,7 +3195,7 @@ export interface components {
             note: null | string;
         };
         /** @enum {unknown} */
-        RsvpStatus: "going" | "notGoing" | "maybe";
+        RsvpStatus: "going" | "notGoing" | "maybe" | null;
         SendMessageRequest: {
             body: string;
         };

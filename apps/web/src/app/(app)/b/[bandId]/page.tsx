@@ -6,7 +6,7 @@ import { RsvpButtons } from "@/components/rsvp-buttons";
 import { StatusChip } from "@/components/status-chip";
 import { Button } from "@/components/ui/button";
 import { useBandContext } from "@/lib/band-context";
-import { useEvent, useEvents, useMyAvailability } from "@/lib/band-hooks";
+import { useEvents, useMyAvailability } from "@/lib/band-hooks";
 import { formatDay, formatDayLong, SLOT_LABEL } from "@/lib/format";
 import type { EventSummary } from "@/lib/types";
 
@@ -23,9 +23,7 @@ function eventTimeLabel(evt: EventSummary): string {
 }
 
 function NextUp({ bandId, evt }: { bandId: string; evt: EventSummary }) {
-  const { me, detail } = useBandContext();
-  const fullEvent = useEvent(bandId, evt.id);
-  const myRsvp = fullEvent.data?.rsvps.find((rsvp) => rsvp.membershipId === me?.membershipId);
+  const { detail } = useBandContext();
 
   return (
     <section className="space-y-4 rounded-xl border border-line bg-surface p-5">
@@ -46,7 +44,7 @@ function NextUp({ bandId, evt }: { bandId: string; evt: EventSummary }) {
         <StatusChip status={evt.status} />
       </div>
       {evt.status !== "cancelled" && (
-        <RsvpButtons bandId={bandId} eventId={evt.id} myStatus={myRsvp?.status} />
+        <RsvpButtons bandId={bandId} eventId={evt.id} myStatus={evt.myRsvp ?? undefined} />
       )}
       {evt.status === "proposed" && detail && (
         <p className="text-xs text-faint">

@@ -98,7 +98,7 @@ public static class EventEndpoints
         await notifier.EventChangedAsync(evt.BandId, evt.Id, "created", ct);
 
         return TypedResults.Created(
-            $"/bands/{evt.BandId}/events/{evt.Id}", await LoadDetailAsync(db, evt.Id, ct));
+            $"/bands/{evt.BandId}/events/{evt.Id}", await LoadDetailAsync(db, evt.Id, bandContext.MembershipId!.Value, ct));
     }
 
     private static async Task<Results<Ok<List<EventSummaryResponse>>, ValidationProblem>> ListAsync(
@@ -120,6 +120,7 @@ public static class EventEndpoints
         var from = BandTime.TodayIn(band, clock.GetCurrentInstant());
         var to = from.PlusDays(days - 1);
 
+        var me = bandContext.MembershipId!.Value;
         var events = await db.Events
             .Where(e => e.Date >= from && e.Date <= to)
             .OrderBy(e => e.Date)
@@ -128,18 +129,20 @@ public static class EventEndpoints
                 e.Id, e.Type, e.Status, e.Date, e.Slot, e.StartTime, e.EndTime, e.Title, e.Location,
                 db.Rsvps.Count(r => r.EventId == e.Id && r.Status == RsvpStatus.Going),
                 e.CreatedByMembershipId,
-                e.QuorumWarnedAt != null))
+                e.QuorumWarnedAt != null,
+                db.Rsvps.Where(r => r.EventId == e.Id && r.MembershipId == me).Select(r => (RsvpStatus?)r.Status).FirstOrDefault()))
             .ToListAsync(ct);
         return TypedResults.Ok(events);
     }
 
     private static async Task<Results<Ok<EventDetailResponse>, NotFound>> DetailAsync(
         Guid eventId,
+        BandContext bandContext,
         AppDbContext db,
         CancellationToken ct)
     {
         var exists = await db.Events.AnyAsync(e => e.Id == eventId, ct);
-        return exists ? TypedResults.Ok(await LoadDetailAsync(db, eventId, ct)) : TypedResults.NotFound();
+        return exists ? TypedResults.Ok(await LoadDetailAsync(db, eventId, bandContext.MembershipId!.Value, ct)) : TypedResults.NotFound();
     }
 
     private static async Task<Results<Ok<EventDetailResponse>, NotFound, ValidationProblem>> RsvpAsync(
@@ -243,7 +246,7 @@ public static class EventEndpoints
         }
 
         await notifier.EventChangedAsync(evt.BandId, evt.Id, action, ct);
-        return TypedResults.Ok(await LoadDetailAsync(db, eventId, ct));
+        return TypedResults.Ok(await LoadDetailAsync(db, eventId, bandContext.MembershipId!.Value, ct));
     }
 
     private static Task<Results<Ok<EventDetailResponse>, NotFound, ValidationProblem, ForbidHttpResult>> ConfirmAsync(
@@ -299,10 +302,11 @@ public static class EventEndpoints
             await notifier.EventChangedAsync(evt.BandId, evt.Id, action, ct);
         }
 
-        return TypedResults.Ok(await LoadDetailAsync(db, eventId, ct));
+        return TypedResults.Ok(await LoadDetailAsync(db, eventId, bandContext.MembershipId!.Value, ct));
     }
 
-    private static async Task<EventDetailResponse> LoadDetailAsync(AppDbContext db, Guid eventId, CancellationToken ct)
+    private static async Task<EventDetailResponse> LoadDetailAsync(
+        AppDbContext db, Guid eventId, Guid membershipId, CancellationToken ct)
     {
         var evt = await db.Events.SingleAsync(e => e.Id == eventId, ct);
         var memberNames = await db.Memberships
@@ -317,7 +321,8 @@ public static class EventEndpoints
         return new EventDetailResponse(
             new EventSummaryResponse(
                 evt.Id, evt.Type, evt.Status, evt.Date, evt.Slot, evt.StartTime, evt.EndTime,
-                evt.Title, evt.Location, going, evt.CreatedByMembershipId, evt.QuorumWarnedAt != null),
+                evt.Title, evt.Location, going, evt.CreatedByMembershipId, evt.QuorumWarnedAt != null,
+                rsvpRows.Where(r => r.MembershipId == membershipId).Select(r => (RsvpStatus?)r.Status).FirstOrDefault()),
             rsvpRows
                 .Select(r => new RsvpResponse(
                     r.MembershipId,

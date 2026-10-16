@@ -51,8 +51,9 @@ export function DemoPlayer({ bandId, version }: { bandId: string; version: DemoV
   const [playing, setPlaying] = useState(false);
   const [position, setPosition] = useState(0);
   const [touched, setTouched] = useState(false);
+  const [mediaDuration, setMediaDuration] = useState(0);
   const peaks = usePeaks(version.peaks, url, touched);
-  const duration = version.durationSeconds ?? audioRef.current?.duration ?? 0;
+  const duration = version.durationSeconds ?? mediaDuration;
 
   useEffect(() => {
     let cancelled = false;
@@ -72,11 +73,16 @@ export function DemoPlayer({ bandId, version }: { bandId: string; version: DemoV
     if (!audio) return;
     const onTime = () => setPosition(audio.currentTime);
     const onEnd = () => setPlaying(false);
+    const onDuration = () => setMediaDuration(Number.isFinite(audio.duration) ? audio.duration : 0);
     audio.addEventListener("timeupdate", onTime);
     audio.addEventListener("ended", onEnd);
+    audio.addEventListener("loadedmetadata", onDuration);
+    audio.addEventListener("durationchange", onDuration);
     return () => {
       audio.removeEventListener("timeupdate", onTime);
       audio.removeEventListener("ended", onEnd);
+      audio.removeEventListener("loadedmetadata", onDuration);
+      audio.removeEventListener("durationchange", onDuration);
     };
   }, [url]);
 
