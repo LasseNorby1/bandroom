@@ -1,0 +1,70 @@
+name: deploy
+
+# Builds the three images on every push to main and publishes them to ghcr.io
+# (public, like the repo). The deploy job then ssh's to the server and runs
+# deploy.sh at this commit's sha — but only once the DEPLOY_SSH_KEY secret
+# exists; until then deploy by hand: `ssh root@tolk-1 'cd /opt/bandroom && git pull && bash deploy/deploy.sh <sha>'`.
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-production
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  images:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        include:
+          - name: api
+            context: .
+            file: Dockerfile
+          - name: web
+            context: .
+            file: apps/web/Dockerfile
+          - name: worker
+            context: worker
+            file: worker/Dockerfile
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - uses: docker/build-push-action@v6
+        with:
+          context: ${{ matrix.context }}
+          file: ${{ matrix.file }}
+          push: true
+          tags: |
+            ghcr.io/lassenorby1/bandroom/${{ matrix.name }}:latest
+            ghcr.io/lassenorby1/bandroom/${{ matrix.name }}:${{ github.sha }}
+          build-args: |
+            NEXT_PUBLIC_API_URL=https://api.bandroom.io
+            NEXT_PUBLIC_HUB_URL=https://api.bandroom.io/hubs/band
+          cache-from: type=gha,scope=${{ matrix.name }}
+          cache-to: type=gha,mode=max,scope=${{ matrix.name }}
+
+  deploy:
+    needs: images
+    runs-on: ubuntu-latest
+    if: ${{ secrets.DEPLOY_SSH_KEY != '' }}
+    steps:
+      - uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.DEPLOY_HOST }}
+          username: root
+          key: ${{ secrets.DEPLOY_SSH_KEY }}
+          script: |
+            set -e
+            cd /opt/bandroom && git pull --ff-only
+            bash deploy/deploy.sh ${{ github.sha }}

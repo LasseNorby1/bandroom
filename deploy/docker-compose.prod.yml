@@ -1,0 +1,162 @@
+# Bandroom on the tolk-1 box (Hetzner, Coolify). Coolify's traefik is the edge:
+# it routes any container on the `coolify` network that carries traefik labels,
+# so this stack is plain compose under /opt/bandroom and needs nothing from the
+# Coolify ui. Images are built by .github/workflows/deploy.yml and pulled here
+# at a pinned tag (TAG in .env, set by deploy.sh).
+name: bandroom
+
+x-edge: &edge
+  networks: [default, coolify]
+  restart: unless-stopped
+  logging:
+    driver: json-file
+    options: { max-size: "10m", max-file: "3" }
+
+services:
+  api:
+    <<: *edge
+    image: ghcr.io/lassenorby1/bandroom/api:${TAG:-latest}
+    environment:
+      ASPNETCORE_ENVIRONMENT: Production
+      ConnectionStrings__Database: Host=postgres;Port=5432;Database=bandroom;Username=bandroom;Password=${DB_PASSWORD}
+      Auth__JwtSigningKey: ${JWT_SIGNING_KEY}
+      Auth__WebBaseUrl: https://${WEB_DOMAIN}
+      Cors__AllowedOrigins__0: https://${WEB_DOMAIN}
+      Cors__AllowedOrigins__1: https://www.${WEB_DOMAIN}
+      ForwardedHeaders__Enabled: "true"
+      Storage__Endpoint: http://minio:9000
+      Storage__PublicEndpoint: https://${FILES_DOMAIN}
+      Storage__WorkerEndpoint: http://minio:9000
+      Storage__Bucket: bandroom
+      Storage__AccessKey: ${MINIO_ROOT_USER}
+      Storage__SecretKey: ${MINIO_ROOT_PASSWORD}
+      Storage__EnsureBucket: "true"
+      Worker__Url: http://worker:8090
+      Entitlements__EveryBandPro: ${EVERY_BAND_PRO:-true}
+      Email__SmtpHost: ${SMTP_HOST:-}
+      Email__SmtpPort: ${SMTP_PORT:-587}
+      Email__SmtpUser: ${SMTP_USER:-}
+      Email__SmtpPassword: ${SMTP_PASSWORD:-}
+      Email__FromAddress: ${EMAIL_FROM:-no-reply@bandroom.io}
+    depends_on:
+      postgres: { condition: service_healthy }
+      minio: { condition: service_started }
+    mem_limit: 768m
+    labels:
+      - traefik.enable=true
+      - traefik.docker.network=coolify
+      - traefik.http.middlewares.bandroom-https.redirectscheme.scheme=https
+      - traefik.http.routers.bandroom-api-http.entryPoints=http
+      - traefik.http.routers.bandroom-api-http.rule=Host(`${API_DOMAIN}`)
+      - traefik.http.routers.bandroom-api-http.middlewares=bandroom-https
+      - traefik.http.routers.bandroom-api.entryPoints=https
+      - traefik.http.routers.bandroom-api.rule=Host(`${API_DOMAIN}`)
+      - traefik.http.routers.bandroom-api.tls=true
+      - traefik.http.routers.bandroom-api.tls.certresolver=letsencrypt
+      - traefik.http.services.bandroom-api.loadbalancer.server.port=8080
+
+  web:
+    <<: *edge
+    image: ghcr.io/lassenorby1/bandroom/web:${TAG:-latest}
+    environment:
+      API_URL: http://api:8080
+    depends_on: [api]
+    mem_limit: 512m
+    labels:
+      - traefik.enable=true
+      - traefik.docker.network=coolify
+      - traefik.http.middlewares.bandroom-gzip.compress=true
+      - traefik.http.middlewares.bandroom-www.redirectregex.regex=^https://www\.(.*)
+      - traefik.http.middlewares.bandroom-www.redirectregex.replacement=https://$${1}
+      - traefik.http.middlewares.bandroom-www.redirectregex.permanent=true
+      - traefik.http.routers.bandroom-web-http.entryPoints=http
+      - traefik.http.routers.bandroom-web-http.rule=Host(`${WEB_DOMAIN}`) || Host(`www.${WEB_DOMAIN}`)
+      - traefik.http.routers.bandroom-web-http.middlewares=bandroom-https
+      - traefik.http.routers.bandroom-web.entryPoints=https
+      - traefik.http.routers.bandroom-web.rule=Host(`${WEB_DOMAIN}`) || Host(`www.${WEB_DOMAIN}`)
+      - traefik.http.routers.bandroom-web.middlewares=bandroom-www,bandroom-gzip
+      - traefik.http.routers.bandroom-web.tls=true
+      - traefik.http.routers.bandroom-web.tls.certresolver=letsencrypt
+      - traefik.http.services.bandroom-web.loadbalancer.server.port=3000
+
+  worker:
+    image: ghcr.io/lassenorby1/bandroom/worker:${TAG:-latest}
+    restart: unless-stopped
+    # Polish jobs decode every stem into float64 — the one thing on this box that
+    # can spike. Capped so a big session can't squeeze the tolk demo next door.
+    mem_limit: 2g
+    logging:
+      driver: json-file
+      options: { max-size: "10m", max-file: "3" }
+
+  minio:
+    <<: *edge
+    image: minio/minio:RELEASE.2025-09-07T16-13-09Z
+    command: server /data
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD}
+      # Browser uploads and streams hit storage directly via presigned urls.
+      MINIO_API_CORS_ALLOW_ORIGIN: https://${WEB_DOMAIN}
+    volumes:
+      - minio-data:/data
+    healthcheck:
+      test: ["CMD", "mc", "ready", "local"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    mem_limit: 512m
+    labels:
+      - traefik.enable=true
+      - traefik.docker.network=coolify
+      - traefik.http.routers.bandroom-files-http.entryPoints=http
+      - traefik.http.routers.bandroom-files-http.rule=Host(`${FILES_DOMAIN}`)
+      - traefik.http.routers.bandroom-files-http.middlewares=bandroom-https
+      - traefik.http.routers.bandroom-files.entryPoints=https
+      - traefik.http.routers.bandroom-files.rule=Host(`${FILES_DOMAIN}`)
+      - traefik.http.routers.bandroom-files.tls=true
+      - traefik.http.routers.bandroom-files.tls.certresolver=letsencrypt
+      - traefik.http.services.bandroom-files.loadbalancer.server.port=9000
+
+  postgres:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: bandroom
+      POSTGRES_USER: bandroom
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U bandroom -d bandroom"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    mem_limit: 512m
+    logging:
+      driver: json-file
+      options: { max-size: "10m", max-file: "3" }
+
+  # One-shot: `docker compose run --rm migrate`. deploy.sh runs it before `up`.
+  migrate:
+    image: ghcr.io/lassenorby1/bandroom/api:${TAG:-latest}
+    command: ["--migrate"]
+    environment:
+      ASPNETCORE_ENVIRONMENT: Production
+      ConnectionStrings__Database: Host=postgres;Port=5432;Database=bandroom;Username=bandroom;Password=${DB_PASSWORD}
+      Auth__JwtSigningKey: ${JWT_SIGNING_KEY}
+      Storage__Endpoint: http://minio:9000
+      Storage__AccessKey: ${MINIO_ROOT_USER}
+      Storage__SecretKey: ${MINIO_ROOT_PASSWORD}
+      Jobs__Enabled: "false"
+    depends_on:
+      postgres: { condition: service_healthy }
+    profiles: [migrate]
+
+networks:
+  coolify:
+    external: true
+
+volumes:
+  postgres-data:
+  minio-data:

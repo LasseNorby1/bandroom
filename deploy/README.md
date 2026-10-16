@@ -1,77 +1,58 @@
 # Deploying Bandroom
 
-Target: a small VPS of its own (e.g. Hetzner CX22) running its own Coolify —
-**never the Clayton Power box**. Three containers plus Traefik routing.
+Lives on `tolk-1` (Hetzner CX32, Helsinki, 4 vCPU / 8 GB) next to the Tolk
+demo. Coolify runs that box; its traefik (`coolify-proxy`) is the edge and
+routes any container on the `coolify` docker network with traefik labels, so
+bandroom is a plain compose stack: `/opt/bandroom` is a git checkout of this
+repo and everything runs from its `deploy/` folder — nothing is clicked in the
+Coolify ui. **Never the Clayton Power box.**
 
-## Containers
+| service  | image (ghcr.io/lassenorby1/bandroom/…) | host                 |
+| -------- | -------------------------------------- | -------------------- |
+| web      | `web`                                  | bandroom.io (+www)   |
+| api      | `api`                                  | api.bandroom.io      |
+| minio    | minio/minio                            | files.bandroom.io    |
+| worker   | `worker`                               | internal only        |
+| postgres | postgres:17-alpine                     | internal only        |
 
-| service  | image source            | port | notes                                        |
-| -------- | ----------------------- | ---- | -------------------------------------------- |
-| api      | `Dockerfile` (root)     | 8080 | ASP.NET Core                                 |
-| web      | `apps/web/Dockerfile`   | 3000 | build context = repo root                    |
-| postgres | `postgres:17-alpine`    | —    | named volume; not exposed publicly           |
+Web and api are different origins; the api allows `https://bandroom.io` via
+CORS and the session cookie lives on the web origin (the BFF). MinIO is public
+because browsers upload and stream straight to presigned urls. R2 later is a
+config change (`Storage__*`).
 
-## Routing (same origin — no CORS in production)
+## Pipeline
 
-One domain, e.g. `bandroom.dk`:
-
-- `/api/*` → **api** container, with the `/api` prefix stripped
-- `/hubs/*` → **api** (SignalR websockets — enable websocket upgrade)
-- `/calendar/*` → **api** (ics feeds)
-- `/hangfire` → **api** (dashboard is dev-only by default; leave unrouted in prod)
-- everything else → **web**
-
-In Coolify this is per-service domain + path config; under the hood it emits the
-Traefik rules. Strip-prefix only applies to `/api`.
-
-## Environment
-
-api:
-```
-ConnectionStrings__Database=Host=postgres;Port=5432;Database=bandroom;Username=bandroom;Password=<strong>
-Auth__JwtSigningKey=<64 random chars — startup refuses under 32>
-Auth__WebBaseUrl=https://bandroom.dk
-Email__SmtpHost=smtp.resend.com        # or postmark etc — plain smtp
-Email__SmtpPort=587
-Email__SmtpUser=resend
-Email__SmtpPassword=<api key>
-Email__FromAddress=no-reply@bandroom.dk
-ASPNETCORE_ENVIRONMENT=Production
-```
-Leave `Cors__AllowedOrigins` unset in production (same-origin makes it moot).
-
-web (build args, not runtime): `NEXT_PUBLIC_API_URL=/api`,
-`NEXT_PUBLIC_HUB_URL=/hubs/band` (the Dockerfile defaults). Runtime:
-`API_URL=http://<api-internal>:8080` for the session BFF routes.
-
-## Migrations
-
-Applied explicitly, never on app start. From your machine through an ssh tunnel:
+Push to `main` → `.github/workflows/deploy.yml` builds api, web and worker and
+pushes them to ghcr at `:latest` and `:<sha>`. With `DEPLOY_SSH_KEY` and
+`DEPLOY_HOST` set as repo secrets it then ssh's in and runs `deploy.sh <sha>`.
+Without them, deploy by hand:
 
 ```bash
-ssh -L 55432:localhost:5432 root@<vps>
-dotnet ef database update --connection "Host=localhost;Port=55432;Database=bandroom;Username=bandroom;Password=<pw>" --project src/Bandroom.Api --startup-project src/Bandroom.Api
+ssh -i ~/.ssh/tolk_hetzner root@62.238.53.162 'cd /opt/bandroom && git pull --ff-only && bash deploy/deploy.sh <sha>'
 ```
 
-## Backups
+`deploy.sh` pulls the pinned tag, starts postgres + minio, runs migrations as a
+one-shot container (`dotnet Bandroom.Api.dll --migrate`), then recreates the
+stack and waits for `/health/ready`. Secrets are minted into `.env` on first run;
+the Resend key is the one thing a human pastes in (`SMTP_PASSWORD`).
 
-Nightly dump, kept 14 days, on the vps (adjust paths):
+## First-time server setup (done 2026-10-16)
 
+```bash
+git clone https://github.com/LasseNorby1/bandroom.git /opt/bandroom
+bash /opt/bandroom/deploy/deploy.sh            # mints .env secrets, pulls :latest, migrates, starts
+(crontab -l 2>/dev/null; echo '0 3 * * * bash /opt/bandroom/deploy/backup.sh') | crontab -
 ```
-0 3 * * * docker exec bandroom-postgres pg_dump -U bandroom bandroom | gzip > /var/backups/bandroom/$(date +\%F).sql.gz && find /var/backups/bandroom -mtime +14 -delete
+
+DNS: A records for `bandroom.io`, `www`, `api`, `files` → 62.238.53.162.
+Traefik gets Let's Encrypt certs on first request once DNS resolves.
+
+## Rollback
+
+```bash
+bash /opt/bandroom/deploy/deploy.sh <previous sha>
 ```
 
-Ship them off-box (rclone to any object storage owned by the Bandroom project —
-not Clayton Power's buckets).
-
-## Checklist
-
-- [ ] domain + dns → vps
-- [ ] coolify installed, this repo connected (github)
-- [ ] postgres service + volume + strong password
-- [ ] api service (root Dockerfile) + env above + healthcheck `/health/ready`
-- [ ] web service (apps/web/Dockerfile, context = repo root) + `API_URL`
-- [ ] routing rules incl. websocket upgrade on `/hubs`
-- [ ] run migrations
-- [ ] smtp creds live → register, check the welcome mail arrives
-- [ ] backup cron + one restore rehearsal
+Images reverse; migrations don't. Backups: nightly dump in
+`/var/backups/bandroom`, 14 days (`backup.sh`, root cron 03:00). Restore rehearsal: pipe a dump into
+`docker compose exec -T postgres psql -U bandroom bandroom`.

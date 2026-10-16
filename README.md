@@ -101,4 +101,4 @@ Waveforms: peaks are computed once and stored on the version (`DemoVersions.Peak
 
 UI kit: shadcn/ui is configured (`apps/web/components.json`, tokens bridged in `globals.css`) with `cn` re-exported from `@/lib/utils`. Add components with `pnpm dlx shadcn@latest add <name>` from `apps/web`; they land in `src/components/ui` already on the Bandroom palette.
 
-Dev storage/audio notes: presigned urls are audience-aware (`Storage:WorkerEndpoint=http://minio:9000` for the worker container; browser + api use localhost). Next: pick a host (NOT the Clayton Power coolify box — own VPS or a PaaS, decision pending), then the Expo app.
+Dev storage/audio notes: presigned urls are audience-aware (`Storage:WorkerEndpoint=http://minio:9000` for the worker container; browser + api use localhost). Production: https://bandroom.io on the Tolk Hetzner box (see `deploy/README.md`). Next: the Expo app.

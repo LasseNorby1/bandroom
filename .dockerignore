@@ -1,0 +1,9 @@
+**/bin/
+**/obj/
+**/node_modules/
+**/.next/
+**/playwright-report/
+.git/
+.claude/
+deploy/
+tests/

@@ -21,6 +21,7 @@ using Hangfire;
 using Hangfire.PostgreSql;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
+using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
@@ -61,6 +62,21 @@ try
 
     builder.Services.AddSingleton(authOptions);
     builder.Services.AddSingleton<IClock>(SystemClock.Instance);
+
+    // Behind a reverse proxy (traefik in production) the client ip lives in
+    // X-Forwarded-For; without this the per-ip auth rate limiter would put every
+    // user in the proxy's single bucket. Off by default: the api port is only
+    // reachable through the proxy in production, and dev/test talk to it directly.
+    var behindProxy = builder.Configuration.GetValue("ForwardedHeaders:Enabled", false);
+    if (behindProxy)
+    {
+        builder.Services.Configure<ForwardedHeadersOptions>(forwarded =>
+        {
+            forwarded.ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto;
+            forwarded.KnownIPNetworks.Clear();
+            forwarded.KnownProxies.Clear();
+        });
+    }
 
     builder.Services.ConfigureHttpJsonOptions(json =>
     {
@@ -289,6 +305,25 @@ try
         .AddDbContextCheck<AppDbContext>("database", tags: ["ready"]);
 
     var app = builder.Build();
+
+    // `--migrate`: apply pending migrations and exit. Deploys run this as an
+    // explicit step before the new api starts — never on app start against prod
+    // (foundation rules). Nothing is listening and no hosted service runs here.
+    if (args.Contains("--migrate"))
+    {
+        using var scope = app.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        var pending = (await db.Database.GetPendingMigrationsAsync()).ToList();
+        Log.Information("applying {Count} pending migration(s): {Names}", pending.Count, pending);
+        await db.Database.MigrateAsync();
+        Log.Information("migrations applied");
+        return;
+    }
+
+    if (behindProxy)
+    {
+        app.UseForwardedHeaders();
+    }
 
     app.UseExceptionHandler();
     app.UseStatusCodePages();
