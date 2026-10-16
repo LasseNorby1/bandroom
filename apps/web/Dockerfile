@@ -13,8 +13,12 @@ COPY apps/web apps/web
 # Public env is baked at build time; same-origin defaults for traefik routing.
 ARG NEXT_PUBLIC_API_URL=/api
 ARG NEXT_PUBLIC_HUB_URL=/hubs/band
+ARG NEXT_PUBLIC_SITE_URL=https://bandroom.io
+ARG NEXT_PUBLIC_GOATCOUNTER=
 ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL \
     NEXT_PUBLIC_HUB_URL=$NEXT_PUBLIC_HUB_URL \
+    NEXT_PUBLIC_SITE_URL=$NEXT_PUBLIC_SITE_URL \
+    NEXT_PUBLIC_GOATCOUNTER=$NEXT_PUBLIC_GOATCOUNTER \
     NEXT_TELEMETRY_DISABLED=1
 RUN pnpm --filter web build
 

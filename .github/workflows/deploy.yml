@@ -54,6 +54,8 @@ jobs:
           build-args: |
             NEXT_PUBLIC_API_URL=https://api.bandroom.io
             NEXT_PUBLIC_HUB_URL=https://api.bandroom.io/hubs/band
+            NEXT_PUBLIC_SITE_URL=https://bandroom.io
+            NEXT_PUBLIC_GOATCOUNTER=${{ vars.GOATCOUNTER_CODE }}
           cache-from: type=gha,scope=${{ matrix.name }}
           cache-to: type=gha,mode=max,scope=${{ matrix.name }}
 

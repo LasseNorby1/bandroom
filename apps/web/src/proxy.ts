@@ -7,6 +7,11 @@ export default function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
   const isAuthPage = pathname === "/login" || pathname === "/register";
 
+  // The root is the landing page for strangers and the app for members.
+  if (pathname === "/") {
+    return hasSession ? NextResponse.redirect(new URL("/home", request.url)) : NextResponse.next();
+  }
+
   if (!hasSession && !isAuthPage) {
     return NextResponse.redirect(new URL("/login", request.url));
   }
