@@ -91,10 +91,14 @@ public static class AvailabilityEndpoints
             });
         }
 
+        // A feed that can't be read doesn't replace the one that could.
+        var (previousUrl, previousAt, previousError) = (membership.CalendarImportUrl, membership.CalendarImportedAt, membership.CalendarImportError);
         membership.CalendarImportUrl = uri.Scheme == "webcal" ? "https" + url[6..] : url;
         var error = await importer.ImportAsync(membership, bandContext.Band, ct);
         if (error is not null)
         {
+            (membership.CalendarImportUrl, membership.CalendarImportedAt, membership.CalendarImportError) = (previousUrl, previousAt, previousError);
+            await db.SaveChangesAsync(ct);
             return TypedResults.ValidationProblem(new Dictionary<string, string[]>
             {
                 ["url"] = [$"Couldn't read that calendar: {error}"],
