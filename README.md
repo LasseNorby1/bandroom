@@ -35,6 +35,9 @@ dotnet run --project src/Bandroom.Api
 - Songs: `POST|GET|PATCH /bands/{id}/songs`
 - Chat: `GET|POST /bands/{id}/channels`, `GET|POST .../channels/{cid}/messages` (cursor-paged)
 - Live updates: SignalR hub `/hubs/band` (`JoinBand`; server pushes `eventChanged`, `demoChanged`, `messageAdded`)
+- Members: `DELETE /bands/{id}/members/me`, `DELETE|PATCH /bands/{id}/members/{membershipId}` (admin) · Notice: `PUT /bands/{id}/notice`
+- Account: `POST /auth/change-password|change-email`, `GET /auth/me/export`, `DELETE /auth/me`
+- Reactions: `PUT|DELETE /bands/{id}/versions/{vid}/fire` · Song files: `GET|POST /bands/{id}/songs/{songId}/files[/uploads]`, `POST .../song-files/{fid}/confirm`, `GET .../song-files/{fid}/download`
 - Calendar: `GET /calendar/{icsToken}.ics` (per-member capability url) · Hangfire dashboard at `/hangfire` (dev-only)
 
 ```bash
@@ -96,6 +99,10 @@ Phase 2/3 features (built pre-deploy, verified locally):
 - [x] reference mastering — a band-level reference library (`/bands/{id}/references`, uploads like versions) or any earlier take; matchering shapes eq/loudness/width toward the reference, standard −14 LUFS master otherwise
 - [x] reference mixing — the mix stage can chase a reference of its own: per-stem gains matched to its band balance (±6 dB around the by-ear staging), pan spread to its stereo width, glue to its density; mix and master can chase different tracks
 - [x] billing skeleton — band plan + quota gates; checkout via a merchant of record comes at open-up (spec p4)
+- [x] members & accounts — leave/remove/roles (soft departure keeps history), change email/password, export my data, delete account (anonymised), reminder hour, below-quorum organiser prompt, pattern staleness in the finder
+- [x] phase 3 bits — 🔥 reactions on versions, the pinned noticeboard, files on songs (lyrics/chords/charts via presigned upload), standing practice day (daily job proposes two weeks ahead), record a take in the browser, bpm + key per version from the worker (`/analyze`, derived `VersionAnalyses` table)
+
+Not built yet, by decision: the Expo app with push (phase 2's biggest piece), billing checkout, calendar import, and the llm features (natural-language blockouts, catch-up digest, transcription, search) — those need an Anthropic key and a model choice first.
 
 Waveforms: peaks are computed once and stored on the version (`DemoVersions.Peaks`, migration `VersionPeaks`) — the uploader's browser decodes the file it already has and sends them at confirm; the worker returns them for ai mixes. The player never downloads a take just to draw it; versions without stored peaks decode lazily on first play.
 

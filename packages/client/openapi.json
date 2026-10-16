@@ -533,6 +533,56 @@
         }
       }
     },
+    "/bands/{bandId}/notice": {
+      "put": {
+        "tags": [
+          "bands"
+        ],
+        "summary": "Replace the pinned notice (admin); empty clears it",
+        "parameters": [
+          {
+            "name": "bandId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateNoticeRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BandResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HttpValidationProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/bands/{bandId}/members/me": {
       "delete": {
         "tags": [
@@ -1504,6 +1554,242 @@
         }
       }
     },
+    "/bands/{bandId}/songs/{songId}/files": {
+      "get": {
+        "tags": [
+          "songs"
+        ],
+        "summary": "Files on a song",
+        "parameters": [
+          {
+            "name": "songId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "bandId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/SongFileResponse"
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found"
+          }
+        }
+      }
+    },
+    "/bands/{bandId}/songs/{songId}/files/uploads": {
+      "post": {
+        "tags": [
+          "songs"
+        ],
+        "summary": "Start a file upload (presigned url)",
+        "parameters": [
+          {
+            "name": "songId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "bandId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/InitSongFileUploadRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InitSongFileUploadResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found"
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HttpValidationProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/bands/{bandId}/song-files/{fileId}/confirm": {
+      "post": {
+        "tags": [
+          "songs"
+        ],
+        "summary": "Finish a file upload",
+        "parameters": [
+          {
+            "name": "fileId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "bandId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SongFileResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found"
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HttpValidationProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/bands/{bandId}/song-files/{fileId}/download": {
+      "get": {
+        "tags": [
+          "songs"
+        ],
+        "summary": "Presigned download url",
+        "parameters": [
+          {
+            "name": "fileId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "bandId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DownloadUrlResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found"
+          }
+        }
+      }
+    },
+    "/bands/{bandId}/song-files/{fileId}": {
+      "delete": {
+        "tags": [
+          "songs"
+        ],
+        "summary": "Delete a file (uploader/admin)",
+        "parameters": [
+          {
+            "name": "fileId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "bandId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "404": {
+            "description": "Not Found"
+          }
+        }
+      }
+    },
     "/bands/{bandId}/song-ideas": {
       "get": {
         "tags": [
@@ -2030,6 +2316,88 @@
         "responses": {
           "204": {
             "description": "No Content"
+          },
+          "404": {
+            "description": "Not Found"
+          }
+        }
+      }
+    },
+    "/bands/{bandId}/versions/{versionId}/fire": {
+      "put": {
+        "tags": [
+          "demos"
+        ],
+        "summary": "🔥 this version",
+        "parameters": [
+          {
+            "name": "versionId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "bandId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FireResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found"
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "demos"
+        ],
+        "summary": "Take the 🔥 back",
+        "parameters": [
+          {
+            "name": "versionId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "bandId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FireResponse"
+                }
+              }
+            }
           },
           "404": {
             "description": "Not Found"
@@ -2741,6 +3109,9 @@
           "defaultPracticeSlot",
           "rehearsalSpace",
           "reminderHour",
+          "recurringPracticeDay",
+          "notice",
+          "noticeUpdatedAt",
           "plan",
           "storageUsedBytes",
           "storageQuotaBytes"
@@ -2773,6 +3144,32 @@
           "reminderHour": {
             "type": "integer",
             "format": "int32"
+          },
+          "recurringPracticeDay": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/IsoDayOfWeek"
+              }
+            ]
+          },
+          "notice": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "noticeUpdatedAt": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/Instant"
+              }
+            ]
           },
           "plan": {
             "$ref": "#/components/schemas/BandPlan"
@@ -3146,6 +3543,17 @@
           }
         }
       },
+      "DownloadUrlResponse": {
+        "required": [
+          "url"
+        ],
+        "type": "object",
+        "properties": {
+          "url": {
+            "type": "string"
+          }
+        }
+      },
       "EventDetailResponse": {
         "required": [
           "event",
@@ -3455,6 +3863,22 @@
           }
         }
       },
+      "FireResponse": {
+        "required": [
+          "fireCount",
+          "firedByMe"
+        ],
+        "type": "object",
+        "properties": {
+          "fireCount": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "firedByMe": {
+            "type": "boolean"
+          }
+        }
+      },
       "ForgotPasswordRequest": {
         "required": [
           "email"
@@ -3649,6 +4073,51 @@
         "type": "object",
         "properties": {
           "referenceId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "uploadUrl": {
+            "type": "string"
+          },
+          "expiresAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "InitSongFileUploadRequest": {
+        "required": [
+          "title",
+          "fileName",
+          "contentType",
+          "sizeBytes"
+        ],
+        "type": "object",
+        "properties": {
+          "title": {
+            "type": "string"
+          },
+          "fileName": {
+            "type": "string"
+          },
+          "contentType": {
+            "type": "string"
+          },
+          "sizeBytes": {
+            "type": "integer",
+            "format": "int64"
+          }
+        }
+      },
+      "InitSongFileUploadResponse": {
+        "required": [
+          "fileId",
+          "uploadUrl",
+          "expiresAt"
+        ],
+        "type": "object",
+        "properties": {
+          "fileId": {
             "type": "string",
             "format": "uuid"
           },
@@ -4314,6 +4783,48 @@
           }
         }
       },
+      "SongFileResponse": {
+        "required": [
+          "id",
+          "songId",
+          "title",
+          "fileName",
+          "contentType",
+          "sizeBytes",
+          "uploaderName",
+          "createdAt"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "songId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "title": {
+            "type": "string"
+          },
+          "fileName": {
+            "type": "string"
+          },
+          "contentType": {
+            "type": "string"
+          },
+          "sizeBytes": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "uploaderName": {
+            "type": "string"
+          },
+          "createdAt": {
+            "$ref": "#/components/schemas/Instant"
+          }
+        }
+      },
       "SongResponse": {
         "required": [
           "id",
@@ -4498,6 +5009,20 @@
               "integer"
             ],
             "format": "int32"
+          },
+          "recurringPracticeDay": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/IsoDayOfWeek"
+              }
+            ]
+          },
+          "clearRecurringPracticeDay": {
+            "type": "boolean",
+            "default": false
           }
         }
       },
@@ -4542,6 +5067,20 @@
         "properties": {
           "role": {
             "$ref": "#/components/schemas/BandRole"
+          }
+        }
+      },
+      "UpdateNoticeRequest": {
+        "required": [
+          "text"
+        ],
+        "type": "object",
+        "properties": {
+          "text": {
+            "type": [
+              "null",
+              "string"
+            ]
           }
         }
       },
@@ -4623,7 +5162,11 @@
           "durationSeconds",
           "peaks",
           "uploaderName",
-          "createdAt"
+          "createdAt",
+          "fireCount",
+          "firedByMe",
+          "bpm",
+          "key"
         ],
         "type": "object",
         "properties": {
@@ -4670,6 +5213,26 @@
           },
           "createdAt": {
             "$ref": "#/components/schemas/Instant"
+          },
+          "fireCount": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "firedByMe": {
+            "type": "boolean"
+          },
+          "bpm": {
+            "type": [
+              "null",
+              "number"
+            ],
+            "format": "double"
+          },
+          "key": {
+            "type": [
+              "null",
+              "string"
+            ]
           }
         }
       },

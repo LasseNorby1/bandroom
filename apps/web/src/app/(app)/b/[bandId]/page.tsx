@@ -1,7 +1,10 @@
 "use client";
 
 import Link from "next/link";
-import { use } from "react";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { use, useState } from "react";
+import { api } from "@/lib/api";
+import { bandKeys } from "@/lib/band-hooks";
 import { RsvpButtons } from "@/components/rsvp-buttons";
 import { StatusChip } from "@/components/status-chip";
 import { Button } from "@/components/ui/button";
@@ -20,6 +23,85 @@ function eventTimeLabel(evt: EventSummary): string {
     return `${evt.startTime.slice(0, 5)}${evt.endTime ? `–${evt.endTime.slice(0, 5)}` : ""}`;
   }
   return evt.slot ? SLOT_LABEL[evt.slot] : "";
+}
+
+function Noticeboard({ bandId }: { bandId: string }) {
+  const { detail, isAdmin } = useBandContext();
+  const queryClient = useQueryClient();
+  const [editing, setEditing] = useState(false);
+  const [text, setText] = useState("");
+
+  const save = useMutation({
+    mutationFn: async (value: string) => {
+      const { error } = await api.PUT("/bands/{bandId}/notice", { params: { path: { bandId } }, body: { text: value } });
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      setEditing(false);
+      void queryClient.invalidateQueries({ queryKey: bandKeys.detail(bandId) });
+    },
+  });
+
+  if (!detail) return null;
+  const notice = detail.band.notice;
+  if (!notice && !isAdmin) return null;
+
+  if (editing) {
+    return (
+      <form
+        className="space-y-2 rounded-xl border border-line bg-surface p-5"
+        onSubmit={(event) => {
+          event.preventDefault();
+          save.mutate(text);
+        }}
+      >
+        <p className="font-mono text-xs tracking-wider text-accent">noticeboard</p>
+        <textarea
+          value={text}
+          onChange={(event) => setText(event.target.value)}
+          maxLength={2000}
+          rows={3}
+          autoFocus
+          placeholder="Door code, load-in time, the one thing everyone should know."
+          className="w-full rounded-lg border border-line bg-paper px-3.5 py-2 text-sm text-ink placeholder:text-faint focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-accent"
+        />
+        <div className="flex gap-2">
+          <Button type="submit" size="sm" disabled={save.isPending}>Pin it</Button>
+          <Button type="button" size="sm" variant="ghost" onClick={() => setEditing(false)}>Cancel</Button>
+          {notice && (
+            <Button type="button" size="sm" variant="ghost" className="ml-auto text-accent" onClick={() => save.mutate("")}>
+              Take down
+            </Button>
+          )}
+        </div>
+      </form>
+    );
+  }
+
+  return (
+    <section className="flex items-start justify-between gap-4 rounded-xl border border-line bg-surface p-5">
+      <div className="min-w-0 space-y-1">
+        <p className="font-mono text-xs tracking-wider text-accent">noticeboard</p>
+        {notice ? (
+          <p className="whitespace-pre-wrap text-sm">{notice}</p>
+        ) : (
+          <p className="text-sm text-muted">Nothing pinned. The one note the whole band should see goes here.</p>
+        )}
+      </div>
+      {isAdmin && (
+        <button
+          type="button"
+          onClick={() => {
+            setText(notice ?? "");
+            setEditing(true);
+          }}
+          className="shrink-0 text-xs text-muted hover:text-ink"
+        >
+          {notice ? "edit" : "pin a note"}
+        </button>
+      )}
+    </section>
+  );
 }
 
 function NextUp({ bandId, evt }: { bandId: string; evt: EventSummary }) {
@@ -73,6 +155,7 @@ export default function BandHomePage({ params }: { params: Promise<{ bandId: str
 
   return (
     <div className="space-y-6">
+      <Noticeboard bandId={bandId} />
       {mine.data && mine.data.openSlots.length === 0 && (
         <div className="flex items-center justify-between gap-4 rounded-xl border border-accent/30 bg-accent-soft px-5 py-4">
           <p className="text-sm">

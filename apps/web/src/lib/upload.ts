@@ -139,6 +139,40 @@ export async function uploadReference(
   return reference;
 }
 
+const documentTypes: Record<string, string> = {
+  ".pdf": "application/pdf",
+  ".txt": "text/plain",
+  ".md": "text/markdown",
+  ".png": "image/png",
+  ".jpg": "image/jpeg",
+  ".jpeg": "image/jpeg",
+  ".webp": "image/webp",
+};
+
+export async function uploadSongFile(
+  bandId: string,
+  songId: string,
+  file: File,
+  onProgress?: (fraction: number) => void,
+) {
+  const dot = file.name.lastIndexOf(".");
+  const contentType = file.type || (dot >= 0 && documentTypes[file.name.slice(dot).toLowerCase()]) || "application/pdf";
+  const title = file.name.replace(/\.[^.]+$/, "");
+  const { data: init, error } = await api.POST("/bands/{bandId}/songs/{songId}/files/uploads", {
+    params: { path: { bandId, songId } },
+    body: { title, fileName: file.name, contentType, sizeBytes: file.size },
+  });
+  if (error || !init) throw error ?? new Error("init failed");
+
+  await putWithProgress(init.uploadUrl, file, contentType, onProgress);
+
+  const { data: saved, error: confirmError } = await api.POST("/bands/{bandId}/song-files/{fileId}/confirm", {
+    params: { path: { bandId, fileId: init.fileId } },
+  });
+  if (confirmError || !saved) throw confirmError ?? new Error("confirm failed");
+  return saved;
+}
+
 export function formatBytes(bytes: number): string {
   if (bytes < 1024 * 1024) return `${Math.max(1, Math.round(bytes / 1024))} KB`;
   if (bytes < 1024 * 1024 * 1024) return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;

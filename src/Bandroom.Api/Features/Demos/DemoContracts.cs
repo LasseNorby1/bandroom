@@ -32,7 +32,11 @@ public sealed record VersionResponse(
     double? DurationSeconds,
     float[]? Peaks,
     string UploaderName,
-    Instant CreatedAt);
+    Instant CreatedAt,
+    int FireCount,
+    bool FiredByMe,
+    double? Bpm,
+    string? Key);
 
 public sealed record StemResponse(
     Guid Id,

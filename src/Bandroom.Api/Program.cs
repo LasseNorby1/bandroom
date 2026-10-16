@@ -218,13 +218,17 @@ try
         builder.Configuration.GetSection("Worker").Get<WorkerOptions>() ?? new WorkerOptions());
     builder.Services.AddHttpClient("worker", client => client.Timeout = TimeSpan.FromMinutes(15));
     builder.Services.AddScoped<PolishJobRunner>();
+    builder.Services.AddScoped<AnalysisJobRunner>();
+    builder.Services.AddScoped<RecurringPracticeJob>();
     if (jobsEnabled)
     {
         builder.Services.AddSingleton<IPolishQueue, HangfirePolishQueue>();
+        builder.Services.AddSingleton<IAnalysisQueue, HangfireAnalysisQueue>();
     }
     else
     {
         builder.Services.AddSingleton<IPolishQueue, NoopPolishQueue>();
+        builder.Services.AddSingleton<IAnalysisQueue, NoopAnalysisQueue>();
     }
 
     builder.Services.AddOpenApi(openApi =>
@@ -368,7 +372,9 @@ try
     app.MapPracticeFinderEndpoints();
     app.MapEventEndpoints();
     app.MapSongEndpoints();
+    app.MapSongFileEndpoints();
     app.MapDemoEndpoints();
+    app.MapReactionEndpoints();
     app.MapPolishEndpoints();
     app.MapReferenceEndpoints();
     app.MapCommentEndpoints();
@@ -386,6 +392,8 @@ try
             "event-reminders", job => job.RunAsync(CancellationToken.None), "0 * * * *");
         RecurringJob.AddOrUpdate<DigestJob>(
             "weekly-digest", job => job.RunAsync(CancellationToken.None), "0 8 * * MON");
+        RecurringJob.AddOrUpdate<RecurringPracticeJob>(
+            "standing-practices", job => job.RunAsync(CancellationToken.None), "0 6 * * *");
     }
 
     app.Run();

@@ -85,6 +85,7 @@ public static class DemoEndpoints
 
     private static async Task<Results<Ok<IdeaDetailResponse>, NotFound>> IdeaDetailAsync(
         Guid ideaId,
+        BandContext bandContext,
         AppDbContext db,
         CancellationToken ct)
     {
@@ -98,13 +99,26 @@ public static class DemoEndpoints
             .Join(db.Users, m => m.UserId, u => u.Id, (m, u) => new { m.Id, u.DisplayName })
             .ToDictionaryAsync(x => x.Id, x => x.DisplayName, ct);
 
-        var versions = (await db.DemoVersions
-                .Where(v => v.SongIdeaId == ideaId && v.Status == VersionStatus.Ready)
-                .OrderByDescending(v => v.Number)
-                .ToListAsync(ct))
+        var versionRows = await db.DemoVersions
+            .Where(v => v.SongIdeaId == ideaId && v.Status == VersionStatus.Ready)
+            .OrderByDescending(v => v.Number)
+            .ToListAsync(ct);
+        var versionIds = versionRows.Select(v => v.Id).ToList();
+        var me = bandContext.MembershipId!.Value;
+        var fires = await db.Reactions
+            .Where(r => versionIds.Contains(r.VersionId))
+            .GroupBy(r => r.VersionId)
+            .Select(g => new { VersionId = g.Key, Count = g.Count(), Mine = g.Any(r => r.MembershipId == me) })
+            .ToDictionaryAsync(x => x.VersionId, ct);
+        var analyses = await db.VersionAnalyses
+            .Where(a => versionIds.Contains(a.VersionId) && a.Status == AnalysisStatus.Done)
+            .ToDictionaryAsync(a => a.VersionId, ct);
+        var versions = versionRows
             .Select(v => new VersionResponse(
                 v.Id, v.Number, v.Kind, v.FileName, v.ContentType, v.SizeBytes, v.DurationSeconds, v.Peaks,
-                memberNames.GetValueOrDefault(v.UploadedByMembershipId, "?"), v.CreatedAt))
+                memberNames.GetValueOrDefault(v.UploadedByMembershipId, "?"), v.CreatedAt,
+                fires.GetValueOrDefault(v.Id)?.Count ?? 0, fires.GetValueOrDefault(v.Id)?.Mine ?? false,
+                analyses.GetValueOrDefault(v.Id)?.Bpm, analyses.GetValueOrDefault(v.Id)?.Key))
             .ToList();
 
         var stems = await db.Stems
@@ -236,6 +250,8 @@ public static class DemoEndpoints
         AppDbContext db,
         IFileStorage storage,
         BandNotifier notifier,
+        IAnalysisQueue analysisQueue,
+        IClock clock,
         CancellationToken ct)
     {
         var version = await db.DemoVersions.SingleOrDefaultAsync(v => v.Id == versionId, ct);
@@ -263,6 +279,10 @@ public static class DemoEndpoints
             bandContext.Band.StorageUsedBytes += size.Value;
             await db.SaveChangesAsync(ct);
             await notifier.DemoChangedAsync(version.BandId, version.SongIdeaId, "version", ct);
+
+            // Bpm + key arrive later, from the worker — never in this request.
+            await AnalysisJobRunner.QueueAsync(db, version.BandId, version.Id, clock.GetCurrentInstant(), ct);
+            analysisQueue.Enqueue(version.Id);
         }
 
         var uploaderName = await db.Memberships
@@ -271,7 +291,8 @@ public static class DemoEndpoints
             .SingleOrDefaultAsync(ct) ?? "?";
         return TypedResults.Ok(new VersionResponse(
             version.Id, version.Number, version.Kind, version.FileName, version.ContentType,
-            version.SizeBytes, version.DurationSeconds, version.Peaks, uploaderName, version.CreatedAt));
+            version.SizeBytes, version.DurationSeconds, version.Peaks, uploaderName, version.CreatedAt,
+            0, false, null, null));
     }
 
     private static async Task<Results<Ok<StreamUrlResponse>, NotFound>> StreamAsync(

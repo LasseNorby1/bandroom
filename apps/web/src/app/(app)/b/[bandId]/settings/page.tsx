@@ -14,7 +14,8 @@ import { bandKeys, useInvites, useMyAvailability } from "@/lib/band-hooks";
 import { formatDay } from "@/lib/format";
 import { formatBytes } from "@/lib/upload";
 import { cn } from "@/lib/cn";
-import type { BandRole, InviteCreated, PracticeSlot } from "@/lib/types";
+import type { BandRole, InviteCreated, IsoDay, PracticeSlot } from "@/lib/types";
+import { DAY_ORDER } from "@/lib/format";
 
 function CopyButton({ value, label = "Copy" }: { value: string; label?: string }) {
   const [copied, setCopied] = useState(false);
@@ -292,6 +293,8 @@ function BandSettings({ bandId }: { bandId: string }) {
       defaultPracticeSlot: PracticeSlot | null;
       rehearsalSpace: string | null;
       reminderHour: number | null;
+      recurringPracticeDay: IsoDay | null;
+      clearRecurringPracticeDay: boolean;
     }) => {
       const { data, error } = await api.PATCH("/bands/{bandId}", {
         params: { path: { bandId } },
@@ -339,6 +342,8 @@ function BandSettings({ bandId }: { bandId: string }) {
             defaultPracticeSlot: (String(data.get("slot")) as PracticeSlot) || null,
             rehearsalSpace: String(data.get("rehearsalSpace")),
             reminderHour: Number(data.get("reminderHour")),
+            recurringPracticeDay: (String(data.get("recurringDay")) as IsoDay) || null,
+            clearRecurringPracticeDay: !data.get("recurringDay"),
           });
         }}
       >
@@ -385,6 +390,19 @@ function BandSettings({ bandId }: { bandId: string }) {
           >
             {Array.from({ length: 24 }, (_, hour) => (
               <option key={hour} value={hour}>{String(hour).padStart(2, "0")}:00</option>
+            ))}
+          </select>
+        </Field>
+        <Field label="Standing practice day" htmlFor="recurringDay">
+          <select
+            id="recurringDay"
+            name="recurringDay"
+            defaultValue={band.recurringPracticeDay ?? ""}
+            className="h-10 w-full rounded-lg border border-line bg-surface px-3 text-sm"
+          >
+            <option value="">none — the finder proposes</option>
+            {DAY_ORDER.map((day) => (
+              <option key={day} value={day}>every {day}</option>
             ))}
           </select>
         </Field>

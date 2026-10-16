@@ -709,6 +709,57 @@ export interface paths {
         };
         trace?: never;
     };
+    "/bands/{bandId}/notice": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Replace the pinned notice (admin); empty clears it */
+        put: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    bandId: string;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["UpdateNoticeRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["BandResponse"];
+                    };
+                };
+                /** @description Bad Request */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["HttpValidationProblemDetails"];
+                    };
+                };
+            };
+        };
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/bands/{bandId}/members/me": {
         parameters: {
             query?: never;
@@ -1672,6 +1723,256 @@ export interface paths {
         };
         trace?: never;
     };
+    "/bands/{bandId}/songs/{songId}/files": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Files on a song */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    songId: string;
+                    bandId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["SongFileResponse"][];
+                    };
+                };
+                /** @description Not Found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/bands/{bandId}/songs/{songId}/files/uploads": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Start a file upload (presigned url) */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    songId: string;
+                    bandId: string;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["InitSongFileUploadRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["InitSongFileUploadResponse"];
+                    };
+                };
+                /** @description Bad Request */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["HttpValidationProblemDetails"];
+                    };
+                };
+                /** @description Not Found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/bands/{bandId}/song-files/{fileId}/confirm": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Finish a file upload */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    fileId: string;
+                    bandId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["SongFileResponse"];
+                    };
+                };
+                /** @description Bad Request */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["HttpValidationProblemDetails"];
+                    };
+                };
+                /** @description Not Found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/bands/{bandId}/song-files/{fileId}/download": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Presigned download url */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    fileId: string;
+                    bandId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["DownloadUrlResponse"];
+                    };
+                };
+                /** @description Not Found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/bands/{bandId}/song-files/{fileId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Delete a file (uploader/admin) */
+        delete: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    fileId: string;
+                    bandId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description No Content */
+                204: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Not Found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/bands/{bandId}/song-ideas": {
         parameters: {
             query?: never;
@@ -2185,6 +2486,82 @@ export interface paths {
                         [name: string]: unknown;
                     };
                     content?: never;
+                };
+                /** @description Not Found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/bands/{bandId}/versions/{versionId}/fire": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** 🔥 this version */
+        put: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    versionId: string;
+                    bandId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["FireResponse"];
+                    };
+                };
+                /** @description Not Found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        post?: never;
+        /** Take the 🔥 back */
+        delete: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    versionId: string;
+                    bandId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["FireResponse"];
+                    };
                 };
                 /** @description Not Found */
                 404: {
@@ -2799,6 +3176,9 @@ export interface components {
             rehearsalSpace: null | string;
             /** Format: int32 */
             reminderHour: number;
+            recurringPracticeDay: null | components["schemas"]["IsoDayOfWeek"];
+            notice: null | string;
+            noticeUpdatedAt: null | components["schemas"]["Instant"];
             plan: components["schemas"]["BandPlan"];
             /** Format: int64 */
             storageUsedBytes: number;
@@ -2901,6 +3281,9 @@ export interface components {
         DeleteAccountRequest: {
             password: string;
         };
+        DownloadUrlResponse: {
+            url: string;
+        };
         EventDetailResponse: {
             event: components["schemas"]["EventSummaryResponse"];
             rsvps: components["schemas"]["RsvpResponse"][];
@@ -2972,6 +3355,11 @@ export interface components {
             openSlots: number;
             patternUpdatedAt: null | components["schemas"]["Instant"];
         };
+        FireResponse: {
+            /** Format: int32 */
+            fireCount: number;
+            firedByMe: boolean;
+        };
         ForgotPasswordRequest: {
             email: string;
         };
@@ -3021,6 +3409,20 @@ export interface components {
         InitReferenceUploadResponse: {
             /** Format: uuid */
             referenceId: string;
+            uploadUrl: string;
+            /** Format: date-time */
+            expiresAt: string;
+        };
+        InitSongFileUploadRequest: {
+            title: string;
+            fileName: string;
+            contentType: string;
+            /** Format: int64 */
+            sizeBytes: number;
+        };
+        InitSongFileUploadResponse: {
+            /** Format: uuid */
+            fileId: string;
             uploadUrl: string;
             /** Format: date-time */
             expiresAt: string;
@@ -3199,6 +3601,19 @@ export interface components {
         SendMessageRequest: {
             body: string;
         };
+        SongFileResponse: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            songId: string;
+            title: string;
+            fileName: string;
+            contentType: string;
+            /** Format: int64 */
+            sizeBytes: number;
+            uploaderName: string;
+            createdAt: components["schemas"]["Instant"];
+        };
         SongResponse: {
             /** Format: uuid */
             id: string;
@@ -3243,6 +3658,9 @@ export interface components {
             rehearsalSpace: null | string;
             /** Format: int32 */
             reminderHour?: null | number;
+            recurringPracticeDay?: null | components["schemas"]["IsoDayOfWeek"];
+            /** @default false */
+            clearRecurringPracticeDay: boolean;
         };
         UpdateIdeaRequest: {
             title: null | string;
@@ -3252,6 +3670,9 @@ export interface components {
         };
         UpdateMemberRequest: {
             role: components["schemas"]["BandRole"];
+        };
+        UpdateNoticeRequest: {
+            text: null | string;
         };
         UpdatePatternRequest: {
             openSlots: components["schemas"]["WeeklySlot"][];
@@ -3281,6 +3702,12 @@ export interface components {
             peaks: null | number[];
             uploaderName: string;
             createdAt: components["schemas"]["Instant"];
+            /** Format: int32 */
+            fireCount: number;
+            firedByMe: boolean;
+            /** Format: double */
+            bpm: null | number;
+            key: null | string;
         };
         /** @enum {unknown} */
         VersionStatus: "uploading" | "ready" | "failed";

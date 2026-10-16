@@ -170,6 +170,7 @@ public sealed class PolishJobRunner(
     WorkerOptions worker,
     BandNotifier notifier,
     IClock clock,
+    IAnalysisQueue analysisQueue,
     ILogger<PolishJobRunner> logger)
 {
     private static readonly JsonSerializerOptions WorkerJson = new()
@@ -275,6 +276,9 @@ public sealed class PolishJobRunner(
             job.CompletedAt = clock.GetCurrentInstant();
             await db.SaveChangesAsync(ct);
             await notifier.DemoChangedAsync(job.BandId, job.SongIdeaId, "polishDone", ct);
+
+            await AnalysisJobRunner.QueueAsync(db, job.BandId, outputVersionId, clock.GetCurrentInstant(), ct);
+            analysisQueue.Enqueue(outputVersionId);
         }
         catch (Exception ex)
         {

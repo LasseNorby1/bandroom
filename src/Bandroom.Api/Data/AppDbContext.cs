@@ -53,6 +53,12 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options, IBandCo
 
     public DbSet<ReferenceTrack> ReferenceTracks => Set<ReferenceTrack>();
 
+    public DbSet<Reaction> Reactions => Set<Reaction>();
+
+    public DbSet<SongFile> SongFiles => Set<SongFile>();
+
+    public DbSet<VersionAnalysis> VersionAnalyses => Set<VersionAnalysis>();
+
     private static readonly JsonSerializerOptions PatternJsonOptions = new()
     {
         PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
@@ -87,6 +93,8 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options, IBandCo
             band.Property(b => b.DefaultPracticeSlot).HasConversion<string>().HasMaxLength(20);
             band.Property(b => b.Plan).HasConversion<string>().HasMaxLength(20);
             band.Property(b => b.ReminderHour).HasDefaultValue(17);
+            band.Property(b => b.Notice).HasMaxLength(2000);
+            band.Property(b => b.RecurringPracticeDay).HasConversion<string>().HasMaxLength(20);
         });
 
         builder.Entity<Membership>(membership =>
@@ -266,6 +274,38 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options, IBandCo
             reference.HasOne<Membership>().WithMany().HasForeignKey(r => r.UploadedByMembershipId)
                 .OnDelete(DeleteBehavior.Cascade);
             reference.HasQueryFilter(r => r.BandId == _bandContext.BandId);
+        });
+
+        builder.Entity<Reaction>(reaction =>
+        {
+            reaction.HasIndex(r => new { r.VersionId, r.MembershipId }).IsUnique();
+            reaction.HasOne<DemoVersion>().WithMany().HasForeignKey(r => r.VersionId).OnDelete(DeleteBehavior.Cascade);
+            reaction.HasOne<Membership>().WithMany().HasForeignKey(r => r.MembershipId).OnDelete(DeleteBehavior.Cascade);
+            reaction.HasQueryFilter(r => r.BandId == _bandContext.BandId);
+        });
+
+        builder.Entity<SongFile>(file =>
+        {
+            file.Property(f => f.Title).HasMaxLength(120);
+            file.Property(f => f.FileKey).HasMaxLength(300);
+            file.Property(f => f.FileName).HasMaxLength(200);
+            file.Property(f => f.ContentType).HasMaxLength(100);
+            file.Property(f => f.Status).HasConversion<string>().HasMaxLength(20);
+            file.HasIndex(f => f.SongId);
+            file.HasOne<Song>().WithMany().HasForeignKey(f => f.SongId).OnDelete(DeleteBehavior.Cascade);
+            file.HasOne<Membership>().WithMany().HasForeignKey(f => f.UploadedByMembershipId).OnDelete(DeleteBehavior.Cascade);
+            file.HasQueryFilter(f => f.BandId == _bandContext.BandId);
+        });
+
+        builder.Entity<VersionAnalysis>(analysis =>
+        {
+            analysis.HasKey(a => a.VersionId);
+            analysis.Property(a => a.ModelVersion).HasMaxLength(40);
+            analysis.Property(a => a.Key).HasMaxLength(12);
+            analysis.Property(a => a.Error).HasMaxLength(500);
+            analysis.Property(a => a.Status).HasConversion<string>().HasMaxLength(20);
+            analysis.HasOne<DemoVersion>().WithOne().HasForeignKey<VersionAnalysis>(a => a.VersionId).OnDelete(DeleteBehavior.Cascade);
+            analysis.HasQueryFilter(a => a.BandId == _bandContext.BandId);
         });
 
         builder.Entity<PolishJob>(job =>

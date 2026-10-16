@@ -111,6 +111,16 @@ export function DemoPlayer({ bandId, version }: { bandId: string; version: DemoV
     }
   }, []);
 
+  const fire = useMutation({
+    mutationFn: async () => {
+      const path = "/bands/{bandId}/versions/{versionId}/fire" as const;
+      const params = { params: { path: { bandId, versionId: version.id } } };
+      const { error } = version.firedByMe ? await api.DELETE(path, params) : await api.PUT(path, params);
+      if (error) throw error;
+    },
+    onSuccess: () => void queryClient.invalidateQueries({ queryKey: bandKeys.demos(bandId) }),
+  });
+
   const remove = useMutation({
     mutationFn: async () => {
       const { error } = await api.DELETE("/bands/{bandId}/versions/{versionId}", {
@@ -138,10 +148,28 @@ export function DemoPlayer({ bandId, version }: { bandId: string; version: DemoV
             ai mix
           </span>
         )}
+        {(version.bpm != null || version.key) && (
+          <span className="rounded-full border border-line px-2 py-0.5 font-mono text-[10px] text-muted" title="Estimated by the worker">
+            {[version.bpm != null && `${Math.round(version.bpm)} bpm`, version.key?.replace("#", "♯")].filter(Boolean).join(" · ")}
+          </span>
+        )}
         <span className="font-mono text-[11px] text-faint">
           {version.uploaderName} · {formatBytes(version.sizeBytes)}
           {version.durationSeconds != null && ` · ${formatSeconds(version.durationSeconds)}`}
         </span>
+        <button
+          type="button"
+          onClick={() => fire.mutate()}
+          disabled={fire.isPending}
+          aria-pressed={version.firedByMe}
+          aria-label={version.firedByMe ? "Take the fire back" : "Fire"}
+          className={cn(
+            "rounded-full border px-2 py-0.5 font-mono text-[11px] transition-colors",
+            version.firedByMe ? "border-accent/50 bg-accent-soft text-accent" : "border-line text-muted hover:border-ink hover:text-ink",
+          )}
+        >
+          🔥{version.fireCount > 0 && ` ${version.fireCount}`}
+        </button>
         {(isAdmin || me?.displayName === version.uploaderName) && (
           <button
             type="button"

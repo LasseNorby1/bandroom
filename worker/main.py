@@ -243,6 +243,78 @@ def health() -> dict[str, bool]:
     return {"ok": True}
 
 
+# ---------------------------------------------------------------------------
+# /analyze — bpm + key for one take (spec §5.5 "demo auto-metadata": mir, not
+# an llm). Tempo from librosa's beat tracker; key by Krumhansl-Schmuckler
+# template correlation on a mean chroma. Both are estimates — the api stores
+# them in a derived table and the ui shows them as chips, never as truth.
+# ---------------------------------------------------------------------------
+
+KEY_NAMES = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"]
+MAJOR_PROFILE = np.array([6.35, 2.23, 3.48, 2.33, 4.38, 4.09, 2.52, 5.19, 2.39, 3.66, 2.29, 2.88])
+MINOR_PROFILE = np.array([6.33, 2.68, 3.52, 5.38, 2.60, 3.53, 2.54, 4.75, 3.98, 2.69, 3.34, 3.17])
+
+
+class AnalyzeRequest(BaseModel):
+    url: str
+
+
+class AnalyzeResponse(BaseModel):
+    bpm: float | None
+    key: str | None
+    key_confidence: float | None
+
+
+def estimate_key(chroma_mean: np.ndarray) -> tuple[str | None, float | None]:
+    """Best-correlating of 24 rotated major/minor profiles, with the margin to
+    the runner-up as a 0..1 confidence."""
+    scores: list[tuple[float, str]] = []
+    for shift in range(12):
+        rolled = np.roll(chroma_mean, -shift)
+        scores.append((float(np.corrcoef(rolled, MAJOR_PROFILE)[0, 1]), KEY_NAMES[shift]))
+        scores.append((float(np.corrcoef(rolled, MINOR_PROFILE)[0, 1]), KEY_NAMES[shift] + "m"))
+    scores = [(0.0 if np.isnan(s) else s, k) for s, k in scores]
+    scores.sort(reverse=True)
+    best, second = scores[0], scores[1]
+    if best[0] <= 0:
+        return None, None
+    confidence = float(np.clip((best[0] - second[0]) / max(best[0], 1e-6) * 4, 0.0, 1.0))
+    return best[1], round(confidence, 2)
+
+
+def analyze_audio(audio: np.ndarray) -> AnalyzeResponse:
+    import librosa  # heavy import, only when the endpoint is used
+
+    mono = audio.mean(axis=1).astype(np.float32)
+    # Up to 90 seconds is plenty for tempo and key, and keeps this cheap.
+    mono = mono[: SR * 90]
+    bpm: float | None = None
+    try:
+        tempo, _ = librosa.beat.beat_track(y=mono, sr=SR)
+        tempo = float(np.atleast_1d(tempo)[0])
+        if 30 < tempo < 300:
+            bpm = round(tempo, 1)
+    except Exception:  # noqa: BLE001 — bpm is optional
+        bpm = None
+    key: str | None = None
+    confidence: float | None = None
+    try:
+        chroma = librosa.feature.chroma_cqt(y=mono, sr=SR)
+        key, confidence = estimate_key(chroma.mean(axis=1))
+    except Exception:  # noqa: BLE001 — key is optional
+        key, confidence = None, None
+    return AnalyzeResponse(bpm=bpm, key=key, key_confidence=confidence)
+
+
+@app.post("/analyze", response_model=AnalyzeResponse)
+async def analyze(request: AnalyzeRequest) -> AnalyzeResponse:
+    async with httpx.AsyncClient(timeout=300) as client:
+        response = await client.get(request.url)
+        response.raise_for_status()
+        audio = decode_to_stereo(response.content)
+    return await asyncio.to_thread(analyze_audio, audio)
+
+
 @app.post("/polish", response_model=PolishResponse)
 async def polish(request: PolishRequest) -> PolishResponse:
     if not request.stems:

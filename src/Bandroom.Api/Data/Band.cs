@@ -32,6 +32,19 @@ public sealed class Band
     /// <summary>Band-local hour (0–23) after which the day-before reminder goes out.</summary>
     public int ReminderHour { get; set; } = 17;
 
+    /// <summary>The one pinned note (spec §5.3) — "gig 12/6, load-in 17:00", "new code for the door".</summary>
+    public string? Notice { get; set; }
+
+    public Instant? NoticeUpdatedAt { get; set; }
+
+    public Guid? NoticeByMembershipId { get; set; }
+
+    /// <summary>
+    /// A standing practice day ("we play thursdays"): the recurring-practice job
+    /// proposes it a fortnight ahead so the rsvp round still happens.
+    /// </summary>
+    public IsoDayOfWeek? RecurringPracticeDay { get; set; }
+
     /// <summary>Entitlements are per band, not per user (spec principle 4) —
     /// one member paying covers everyone. A provider webhook flips this later.</summary>
     public BandPlan Plan { get; set; } = BandPlan.Free;

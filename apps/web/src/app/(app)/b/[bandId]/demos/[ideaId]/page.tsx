@@ -3,6 +3,7 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { use, useRef, useState } from "react";
 import { DemoPlayer } from "@/components/demo-player";
+import { Recorder } from "@/components/recorder";
 import { Button } from "@/components/ui/button";
 import { api } from "@/lib/api";
 import { bandKeys, useIdea, useReferences } from "@/lib/band-hooks";
@@ -184,15 +185,23 @@ export default function IdeaPage({
           <p className="font-mono text-xs tracking-wider text-accent">song idea</p>
           <h2 className="font-display text-xl font-semibold tracking-tight">{detail.title}</h2>
         </div>
-        <UploadButton
-          label="Upload a take"
-          busyLabel="Uploading"
-          accept="audio/*"
-          onFile={async (file, onProgress) => {
-            await uploadDemoVersion(bandId, ideaId, file, onProgress);
-            invalidate();
-          }}
-        />
+        <div className="flex flex-wrap items-center gap-2">
+          <Recorder
+            onRecorded={async (file) => {
+              await uploadDemoVersion(bandId, ideaId, file);
+              invalidate();
+            }}
+          />
+          <UploadButton
+            label="Upload a take"
+            busyLabel="Uploading"
+            accept="audio/*"
+            onFile={async (file, onProgress) => {
+              await uploadDemoVersion(bandId, ideaId, file, onProgress);
+              invalidate();
+            }}
+          />
+        </div>
       </div>
 
       {detail.versions.length === 0 ? (

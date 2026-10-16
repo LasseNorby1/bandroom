@@ -25,6 +25,9 @@ public static class BandEndpoints
         band.MapPatch("/", UpdateAsync)
             .AddEndpointFilter<RequireBandAdminFilter>()
             .WithSummary("Update band settings (admin)");
+        band.MapPut("/notice", UpdateNoticeAsync)
+            .AddEndpointFilter<RequireBandAdminFilter>()
+            .WithSummary("Replace the pinned notice (admin); empty clears it");
 
         return routes;
     }
@@ -205,13 +208,48 @@ public static class BandEndpoints
             band.ReminderHour = reminderHour;
         }
 
+        if (request.ClearRecurringPracticeDay)
+        {
+            band.RecurringPracticeDay = null;
+        }
+        else if (request.RecurringPracticeDay is { } day && day != IsoDayOfWeek.None)
+        {
+            band.RecurringPracticeDay = day;
+        }
+
         await db.SaveChangesAsync(ct);
         return TypedResults.Ok(ToBandResponse(band, clock.GetCurrentInstant(), entitlements));
     }
 
+    private static async Task<Results<Ok<BandResponse>, ValidationProblem>> UpdateNoticeAsync(
+        UpdateNoticeRequest request,
+        BandContext bandContext,
+        AppDbContext db,
+        IClock clock,
+        EntitlementOptions entitlements,
+        CancellationToken ct)
+    {
+        var text = request.Text?.Trim();
+        if (text is { Length: > 2000 })
+        {
+            return TypedResults.ValidationProblem(new Dictionary<string, string[]>
+            {
+                ["text"] = ["The notice must be at most 2000 characters."],
+            });
+        }
+
+        var band = bandContext.Band;
+        var now = clock.GetCurrentInstant();
+        band.Notice = string.IsNullOrEmpty(text) ? null : text;
+        band.NoticeUpdatedAt = band.Notice is null ? null : now;
+        band.NoticeByMembershipId = band.Notice is null ? null : bandContext.MembershipId;
+        await db.SaveChangesAsync(ct);
+        return TypedResults.Ok(ToBandResponse(band, now, entitlements));
+    }
+
     private static BandResponse ToBandResponse(Band band, Instant now, EntitlementOptions entitlements) =>
         new(band.Id, band.Name, band.TimeZone, band.Quorum, band.DefaultPracticeSlot, band.RehearsalSpace,
-            band.ReminderHour,
+            band.ReminderHour, band.RecurringPracticeDay, band.Notice, band.NoticeUpdatedAt,
             PlanLimits.IsPro(band, now, entitlements) ? BandPlan.Pro : BandPlan.Free,
             band.StorageUsedBytes,
             PlanLimits.StorageQuota(band, now, entitlements));
