@@ -5,8 +5,10 @@
 # at a pinned tag (TAG in .env, set by deploy.sh).
 name: bandroom
 
+# Every service gets a bandroom-* alias and is addressed only by that name:
+# api/web/minio also sit on Coolify's `coolify` network, where plain names like
+# `postgres` resolve to Coolify's own database (and did — 28P01 on first deploy).
 x-edge: &edge
-  networks: [default, coolify]
   restart: unless-stopped
   logging:
     driver: json-file
@@ -16,23 +18,27 @@ services:
   api:
     <<: *edge
     image: ghcr.io/lassenorby1/bandroom/api:${TAG:-latest}
+    networks:
+      default:
+        aliases: [bandroom-api]
+      coolify: {}
     environment:
       ASPNETCORE_ENVIRONMENT: Production
-      ConnectionStrings__Database: Host=postgres;Port=5432;Database=bandroom;Username=bandroom;Password=${DB_PASSWORD}
+      ConnectionStrings__Database: Host=bandroom-db;Port=5432;Database=bandroom;Username=bandroom;Password=${DB_PASSWORD}
       Auth__JwtSigningKey: ${JWT_SIGNING_KEY}
       Auth__WebBaseUrl: https://${WEB_DOMAIN}
       Cors__AllowedOrigins__0: https://${WEB_DOMAIN}
       Cors__AllowedOrigins__1: https://www.${WEB_DOMAIN}
       ForwardedHeaders__Enabled: "true"
-      Storage__Endpoint: http://minio:9000
+      Storage__Endpoint: http://bandroom-s3:9000
       Storage__PublicEndpoint: https://${FILES_DOMAIN}
-      Storage__WorkerEndpoint: http://minio:9000
+      Storage__WorkerEndpoint: http://bandroom-s3:9000
       Storage__Bucket: bandroom
       Storage__AccessKey: ${S3_ACCESS_KEY}
       Storage__SecretKey: ${S3_SECRET_KEY}
       Storage__EnsureBucket: "true"
       Storage__AllowedOrigins__0: https://${WEB_DOMAIN}
-      Worker__Url: http://worker:8090
+      Worker__Url: http://bandroom-worker:8090
       Entitlements__EveryBandPro: ${EVERY_BAND_PRO:-true}
       Email__SmtpHost: ${SMTP_HOST:-}
       Email__SmtpPort: ${SMTP_PORT:-587}
@@ -62,8 +68,12 @@ services:
   web:
     <<: *edge
     image: ghcr.io/lassenorby1/bandroom/web:${TAG:-latest}
+    networks:
+      default:
+        aliases: [bandroom-web]
+      coolify: {}
     environment:
-      API_URL: http://api:8080
+      API_URL: http://bandroom-api:8080
     depends_on: [api]
     mem_limit: 512m
     labels:
@@ -86,6 +96,9 @@ services:
 
   worker:
     image: ghcr.io/lassenorby1/bandroom/worker:${TAG:-latest}
+    networks:
+      default:
+        aliases: [bandroom-worker]
     restart: unless-stopped
     # Polish jobs decode every stem into float64 — the one thing on this box that
     # can spike. Capped so a big session can't squeeze the tolk demo next door.
@@ -100,6 +113,10 @@ services:
   minio:
     <<: *edge
     image: rustfs/rustfs:1.0.1
+    networks:
+      default:
+        aliases: [bandroom-s3]
+      coolify: {}
     environment:
       RUSTFS_ACCESS_KEY: ${S3_ACCESS_KEY}
       RUSTFS_SECRET_KEY: ${S3_SECRET_KEY}
@@ -127,6 +144,9 @@ services:
 
   postgres:
     image: postgres:17-alpine
+    networks:
+      default:
+        aliases: [bandroom-db]
     restart: unless-stopped
     environment:
       POSTGRES_DB: bandroom
@@ -147,12 +167,15 @@ services:
   # One-shot: `docker compose run --rm migrate`. deploy.sh runs it before `up`.
   migrate:
     image: ghcr.io/lassenorby1/bandroom/api:${TAG:-latest}
+    networks:
+      default:
+        aliases: [bandroom-migrate]
     command: ["--migrate"]
     environment:
       ASPNETCORE_ENVIRONMENT: Production
-      ConnectionStrings__Database: Host=postgres;Port=5432;Database=bandroom;Username=bandroom;Password=${DB_PASSWORD}
+      ConnectionStrings__Database: Host=bandroom-db;Port=5432;Database=bandroom;Username=bandroom;Password=${DB_PASSWORD}
       Auth__JwtSigningKey: ${JWT_SIGNING_KEY}
-      Storage__Endpoint: http://minio:9000
+      Storage__Endpoint: http://bandroom-s3:9000
       Storage__AccessKey: ${S3_ACCESS_KEY}
       Storage__SecretKey: ${S3_SECRET_KEY}
       Jobs__Enabled: "false"
