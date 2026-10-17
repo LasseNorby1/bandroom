@@ -34,6 +34,7 @@ function SongFiles({ bandId, songId }: { bandId: string; songId: string }) {
   const invalidate = () => {
     void queryClient.invalidateQueries({ queryKey: key });
     void queryClient.invalidateQueries({ queryKey: bandKeys.detail(bandId) });
+    void queryClient.invalidateQueries({ queryKey: bandKeys.songs(bandId) });
   };
 
   const remove = useMutation({
@@ -334,7 +335,7 @@ export default function SongsPage({ params }: { params: Promise<{ bandId: string
                       aria-expanded={openSong === song.id}
                       className="font-mono text-[11px] text-muted hover:text-ink"
                     >
-                      files
+                      {song.fileCount > 0 ? `files · ${song.fileCount}` : "files +"}
                     </button>
                     <button
                       type="button"

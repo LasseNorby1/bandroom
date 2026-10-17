@@ -6240,7 +6240,8 @@
           "durationSeconds",
           "chords",
           "fireCount",
-          "firedByMe"
+          "firedByMe",
+          "fileCount"
         ],
         "type": "object",
         "properties": {
@@ -6295,6 +6296,10 @@
           },
           "firedByMe": {
             "type": "boolean"
+          },
+          "fileCount": {
+            "type": "integer",
+            "format": "int32"
           }
         }
       },

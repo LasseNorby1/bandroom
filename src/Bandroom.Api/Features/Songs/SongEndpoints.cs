@@ -15,7 +15,7 @@ public sealed record UpdateSongRequest(
 
 public sealed record SongResponse(
     Guid Id, string Title, string? Key, int? Bpm, SongStatus Status, string? Notes, Instant CreatedAt,
-    int? DurationSeconds, string? Chords, int FireCount, bool FiredByMe);
+    int? DurationSeconds, string? Chords, int FireCount, bool FiredByMe, int FileCount);
 
 public sealed record SongFireResponse(int FireCount, bool FiredByMe);
 
@@ -83,7 +83,8 @@ public static class SongEndpoints
             .Select(s => new SongResponse(
                 s.Id, s.Title, s.Key, s.Bpm, s.Status, s.Notes, s.CreatedAt, s.DurationSeconds, s.Chords,
                 db.SongReactions.Count(r => r.SongId == s.Id),
-                db.SongReactions.Any(r => r.SongId == s.Id && r.MembershipId == me)))
+                db.SongReactions.Any(r => r.SongId == s.Id && r.MembershipId == me),
+                db.SongFiles.Count(f => f.SongId == s.Id && f.Status == VersionStatus.Ready)))
             .ToListAsync(ct);
         return TypedResults.Ok(songs);
     }
@@ -91,7 +92,8 @@ public static class SongEndpoints
     private static async Task<SongResponse> ToResponseAsync(AppDbContext db, Song song, Guid me, CancellationToken ct) =>
         new(song.Id, song.Title, song.Key, song.Bpm, song.Status, song.Notes, song.CreatedAt, song.DurationSeconds, song.Chords,
             await db.SongReactions.CountAsync(r => r.SongId == song.Id, ct),
-            await db.SongReactions.AnyAsync(r => r.SongId == song.Id && r.MembershipId == me, ct));
+            await db.SongReactions.AnyAsync(r => r.SongId == song.Id && r.MembershipId == me, ct),
+            await db.SongFiles.CountAsync(f => f.SongId == song.Id && f.Status == VersionStatus.Ready, ct));
 
     private static async Task<Results<Ok<SongFireResponse>, NotFound>> FireAsync(
         Guid songId, BandContext bandContext, AppDbContext db, IClock clock, CancellationToken ct)

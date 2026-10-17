@@ -4548,6 +4548,8 @@ export interface components {
             /** Format: int32 */
             fireCount: number;
             firedByMe: boolean;
+            /** Format: int32 */
+            fileCount: number;
         };
         /** @enum {unknown} */
         SongStatus: "active" | "retired";
