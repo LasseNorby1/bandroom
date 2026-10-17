@@ -1,13 +1,16 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { use, useState } from "react";
+import { UploadButton } from "@/components/upload-button";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { api } from "@/lib/api";
 import { bandKeys, useSongIdeas } from "@/lib/band-hooks";
 import { formatDay } from "@/lib/format";
+import { uploadDemoVersion } from "@/lib/upload";
 
 const statusLabel: Record<string, string> = {
   idea: "idea",
@@ -18,9 +21,24 @@ const statusLabel: Record<string, string> = {
 
 export default function DemosPage({ params }: { params: Promise<{ bandId: string }> }) {
   const { bandId } = use(params);
+  const router = useRouter();
   const queryClient = useQueryClient();
   const ideas = useSongIdeas(bandId);
   const [title, setTitle] = useState("");
+
+  // "Upload here" has to mean here: a take dropped on the overview starts an
+  // idea named after the file and lands as its first version.
+  async function uploadAsNewIdea(file: File, onProgress: (fraction: number) => void) {
+    const name = file.name.replace(/\.[^.]+$/, "").replace(/[_-]+/g, " ").trim() || "New idea";
+    const { data: idea, error } = await api.POST("/bands/{bandId}/song-ideas", {
+      params: { path: { bandId } },
+      body: { title: name.slice(0, 120) },
+    });
+    if (error || !idea) throw error ?? new Error("couldn't start the idea");
+    await uploadDemoVersion(bandId, idea.id, file, onProgress);
+    void queryClient.invalidateQueries({ queryKey: bandKeys.demos(bandId) });
+    router.push(`/b/${bandId}/demos/${idea.id}`);
+  }
 
   const create = useMutation({
     mutationFn: async (name: string) => {
@@ -64,6 +82,10 @@ export default function DemosPage({ params }: { params: Promise<{ bandId: string
           Start idea
         </Button>
       </form>
+      <div className="flex flex-wrap items-center gap-3">
+        <UploadButton label="Upload a take" busyLabel="Uploading" accept="audio/*" variant="outline" onFile={uploadAsNewIdea} />
+        <span className="text-xs text-faint">A take uploaded here starts an idea named after the file. Recording and more takes live inside each idea.</span>
+      </div>
 
       {ideas.data.length === 0 ? (
         <div className="space-y-2 rounded-xl border border-line bg-surface p-5">
@@ -72,7 +94,7 @@ export default function DemosPage({ params }: { params: Promise<{ bandId: string
           </h2>
           <p className="text-sm text-muted">
             One idea per song; versions stack underneath — no more fourteen files named
-            new_song_final_2.m4a. Record in your voice memo app, upload here.
+            new_song_final_2.m4a. Upload a take above, or start an idea and record straight into it.
           </p>
         </div>
       ) : (
