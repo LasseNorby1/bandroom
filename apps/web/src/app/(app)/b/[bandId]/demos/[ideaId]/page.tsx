@@ -10,10 +10,46 @@ import { Button } from "@/components/ui/button";
 import { api } from "@/lib/api";
 import { bandKeys, useIdea, useReferences, useSongs } from "@/lib/band-hooks";
 import { cn } from "@/lib/cn";
-import type { StemLabel } from "@/lib/types";
+import type { IdeaStatus, StemLabel } from "@/lib/types";
 import { formatBytes, uploadDemoVersion, uploadReference, uploadStem } from "@/lib/upload";
 
 const stemLabels: StemLabel[] = ["drums", "bass", "guitar", "keys", "vocals", "other"];
+
+const STATUS_LABEL: Record<IdeaStatus, string> = { idea: "idea", inProgress: "in progress", finished: "finished", parked: "parked" };
+
+/** Where the idea is in its life — the only sorting the demos overview needs. */
+function StatusPicker({ bandId, ideaId, status }: { bandId: string; ideaId: string; status: IdeaStatus }) {
+  const queryClient = useQueryClient();
+  const set = useMutation({
+    mutationFn: async (next: IdeaStatus) => {
+      const { error } = await api.PATCH("/bands/{bandId}/song-ideas/{ideaId}", {
+        params: { path: { bandId, ideaId } },
+        body: { title: null, status: next, songId: null, clearSong: false },
+      });
+      if (error) throw error;
+    },
+    onSuccess: () => void queryClient.invalidateQueries({ queryKey: bandKeys.demos(bandId) }),
+  });
+  return (
+    <div className="mt-2 flex flex-wrap gap-1.5" role="group" aria-label="Status">
+      {(Object.keys(STATUS_LABEL) as IdeaStatus[]).map((s) => (
+        <button
+          key={s}
+          type="button"
+          onClick={() => s !== status && set.mutate(s)}
+          aria-pressed={s === status}
+          disabled={set.isPending}
+          className={cn(
+            "rounded-full border px-2.5 py-0.5 font-mono text-[11px] transition-colors",
+            s === status ? "border-ink bg-ink text-paper" : "border-line text-muted hover:border-ink hover:text-ink",
+          )}
+        >
+          {STATUS_LABEL[s]}
+        </button>
+      ))}
+    </div>
+  );
+}
 
 /** The idea's place in the repertoire: takes live here, the song's paper lives on the song. */
 function SongLink({ bandId, ideaId, songId, songTitle }: { bandId: string; ideaId: string; songId: string | null; songTitle: string | null }) {
@@ -189,6 +225,7 @@ export default function IdeaPage({
           <p className="font-mono text-xs tracking-wider text-accent">song idea</p>
           <h2 className="font-display text-xl font-semibold tracking-tight">{detail.title}</h2>
           <SongLink bandId={bandId} ideaId={ideaId} songId={detail.songId ?? null} songTitle={detail.songTitle ?? null} />
+          <StatusPicker bandId={bandId} ideaId={ideaId} status={detail.status} />
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <Recorder

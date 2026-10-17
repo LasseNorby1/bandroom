@@ -9,8 +9,20 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { api } from "@/lib/api";
 import { bandKeys, useSongIdeas } from "@/lib/band-hooks";
+import { cn } from "@/lib/cn";
 import { formatDay } from "@/lib/format";
 import { uploadDemoVersion } from "@/lib/upload";
+
+/**
+ * Order without filing: ideas fall into place by where they are in their life,
+ * and the done and the parked fold away. No folders to maintain (principle 1).
+ */
+const GROUPS: { key: string; label: string; statuses: string[]; folded: boolean }[] = [
+  { key: "working", label: "in progress", statuses: ["inProgress"], folded: false },
+  { key: "ideas", label: "ideas", statuses: ["idea"], folded: false },
+  { key: "finished", label: "finished", statuses: ["finished"], folded: true },
+  { key: "parked", label: "parked", statuses: ["parked"], folded: true },
+];
 
 const statusLabel: Record<string, string> = {
   idea: "idea",
@@ -25,6 +37,7 @@ export default function DemosPage({ params }: { params: Promise<{ bandId: string
   const queryClient = useQueryClient();
   const ideas = useSongIdeas(bandId);
   const [title, setTitle] = useState("");
+  const [openGroups, setOpenGroups] = useState<string[]>([]);
 
   // "Upload here" has to mean here: a take dropped on the overview starts an
   // idea named after the file and lands as its first version.
@@ -98,28 +111,52 @@ export default function DemosPage({ params }: { params: Promise<{ bandId: string
           </p>
         </div>
       ) : (
-        <ul className="space-y-3">
-          {ideas.data.map((idea) => (
-            <li key={idea.id}>
-              <Link
-                href={`/b/${bandId}/demos/${idea.id}`}
-                className="flex items-center justify-between gap-3 rounded-xl border border-line bg-surface px-5 py-4 transition-colors hover:border-ink"
-              >
-                <div className="min-w-0">
-                  <p className="truncate font-medium">{idea.title}</p>
-                  <p className="text-xs text-muted">
-                    {idea.songTitle && <span className="text-ink">{idea.songTitle} · </span>}
-                    {idea.versionCount} version{idea.versionCount === 1 ? "" : "s"}
-                    {idea.latestVersionAt && ` · latest ${formatDay(idea.latestVersionAt.slice(0, 10))}`}
-                  </p>
-                </div>
-                <span className="rounded-full border border-line px-2.5 py-0.5 font-mono text-[11px] text-muted">
-                  {statusLabel[idea.status] ?? idea.status}
-                </span>
-              </Link>
-            </li>
-          ))}
-        </ul>
+        <div className="space-y-6">
+          {GROUPS.map((group) => {
+            const members = ideas.data
+              .filter((idea) => group.statuses.includes(idea.status))
+              .sort((a, b) => (b.latestVersionAt ?? b.createdAt).localeCompare(a.latestVersionAt ?? a.createdAt));
+            if (members.length === 0) return null;
+            const folded = group.folded && !openGroups.includes(group.key);
+            return (
+              <section key={group.key} className="space-y-2">
+                <button
+                  type="button"
+                  onClick={() => group.folded && setOpenGroups(folded ? [...openGroups, group.key] : openGroups.filter((k) => k !== group.key))}
+                  aria-expanded={group.folded ? !folded : undefined}
+                  className={cn("flex items-center gap-2 font-mono text-xs tracking-wider text-muted", group.folded && "hover:text-ink")}
+                >
+                  {group.label} · {members.length}
+                  {group.folded && <span className="text-faint">{folded ? "show" : "hide"}</span>}
+                </button>
+                {!folded && (
+                  <ul className="space-y-3">
+                    {members.map((idea) => (
+                      <li key={idea.id}>
+                        <Link
+                          href={`/b/${bandId}/demos/${idea.id}`}
+                          className="flex items-center justify-between gap-3 rounded-xl border border-line bg-surface px-5 py-4 transition-colors hover:border-ink"
+                        >
+                          <div className="min-w-0">
+                            <p className="truncate font-medium">{idea.title}</p>
+                            <p className="text-xs text-muted">
+                              {idea.songTitle && <span className="text-ink">{idea.songTitle} · </span>}
+                              {idea.versionCount} version{idea.versionCount === 1 ? "" : "s"}
+                              {idea.latestVersionAt && ` · latest ${formatDay(idea.latestVersionAt.slice(0, 10))}`}
+                            </p>
+                          </div>
+                          <span className="rounded-full border border-line px-2.5 py-0.5 font-mono text-[11px] text-muted">
+                            {statusLabel[idea.status] ?? idea.status}
+                          </span>
+                        </Link>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </section>
+            );
+          })}
+        </div>
       )}
     </div>
   );
