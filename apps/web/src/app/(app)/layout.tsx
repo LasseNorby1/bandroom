@@ -1,3 +1,4 @@
+import { InstallBanner } from "@/components/install-banner";
 import { Wordmark } from "@/components/wordmark";
 import { Providers } from "./providers";
 import { SignOutButton } from "./sign-out-button";
@@ -18,7 +19,10 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
             <SignOutButton />
           </nav>
         </header>
-        <main className="flex-1 pb-16">{children}</main>
+        <main className="flex-1 pb-16">
+          <InstallBanner />
+          {children}
+        </main>
       </div>
     </Providers>
   );

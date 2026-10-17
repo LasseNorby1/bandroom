@@ -34,7 +34,7 @@ export function PushToggle({ compact = false, nudge }: { compact?: boolean; nudg
   if (state === "needs-install") {
     return (
       <p className="text-sm text-muted">
-        On iPhone, notifications work once Bandroom is on your home screen: Share → <span className="font-medium text-ink">Add to Home Screen</span>, then open it from there.
+        On iPhone, notifications work once Bandroom is on your home screen (Share → <span className="font-medium text-ink">Add to Home Screen</span>). Open it from there and this switch appears.
       </p>
     );
   }
