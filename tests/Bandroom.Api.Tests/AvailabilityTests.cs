@@ -4,6 +4,7 @@ using Bandroom.Api.Data;
 using Bandroom.Api.Features.Availability;
 using Bandroom.Api.Features.Bands;
 using Bandroom.Api.Tests.Support;
+using Bandroom.Api.Features.Scheduling;
 using Bandroom.Domain.Scheduling;
 using NodaTime;
 using Xunit;
@@ -121,5 +122,51 @@ public class AvailabilityTests(ApiFactory factory)
         Assert.Equal(3, lasse.OpenSlots.Count);
         var sofie = Assert.Single(overview.Members, m => m.DisplayName == "Sofie");
         Assert.Single(sofie.Exceptions);
+    }
+
+    [Fact]
+    public async Task Pattern_CanAlternateEveryOtherWeek_AndTheFinderFollowsIt()
+    {
+        var (admin, other, bandId) = await BandWithTwoMembersAsync();
+        var allEvenings = Enum.GetValues<IsoDayOfWeek>().Where(d => d != IsoDayOfWeek.None)
+            .Select(d => new WeeklySlot(d, PracticeSlot.Evening)).ToList();
+        await other.PutAsJsonAsync($"/bands/{bandId}/availability/me/pattern", new UpdatePatternRequest(allEvenings), TestJson.Options);
+
+        // Anchor on this week's Monday: this week open every evening, next week nothing (the kids).
+        var probe = await (await admin.GetAsync($"/bands/{bandId}/practice-finder?days=21")).ReadAsAsync<PracticeFinderResponse>();
+        var today = probe.From.PlusDays(-1);
+        var thisMonday = today.PlusDays(-((int)today.DayOfWeek - 1));
+
+        var notMonday = await admin.PutAsJsonAsync($"/bands/{bandId}/availability/me/pattern",
+            new UpdatePatternRequest(allEvenings, [], thisMonday.PlusDays(1)), TestJson.Options);
+        Assert.Equal(System.Net.HttpStatusCode.BadRequest, notMonday.StatusCode);
+        var noAnchor = await admin.PutAsJsonAsync($"/bands/{bandId}/availability/me/pattern",
+            new UpdatePatternRequest(allEvenings, []), TestJson.Options);
+        Assert.Equal(System.Net.HttpStatusCode.BadRequest, noAnchor.StatusCode);
+
+        var saved = await (await admin.PutAsJsonAsync($"/bands/{bandId}/availability/me/pattern",
+            new UpdatePatternRequest(allEvenings, [], thisMonday), TestJson.Options)).ReadAsAsync<MyAvailabilityResponse>();
+        Assert.Equal(thisMonday, saved.AnchorMonday);
+        Assert.Empty(saved.AlternateOpenSlots);
+        Assert.Equal(7, saved.OpenSlots.Count);
+
+        var overview = await (await admin.GetAsync($"/bands/{bandId}/availability?days=14")).ReadAsAsync<BandAvailabilityResponse>();
+        Assert.Contains(overview.Members, m => m.AnchorMonday == thisMonday);
+
+        var finder = await (await admin.GetAsync($"/bands/{bandId}/practice-finder?days=21")).ReadAsAsync<PracticeFinderResponse>();
+        Assert.NotEmpty(finder.Candidates);
+        foreach (var candidate in finder.Candidates)
+        {
+            var monday = candidate.Date.PlusDays(-((int)candidate.Date.DayOfWeek - 1));
+            var weeksOut = Period.Between(thisMonday, monday, PeriodUnits.Weeks).Weeks;
+            var expected = weeksOut % 2 == 0 ? 2 : 1;
+            Assert.Equal(expected, candidate.AvailableCount);
+        }
+
+        // Back to the same every week: the alternate set and anchor are dropped.
+        var plain = await (await admin.PutAsJsonAsync($"/bands/{bandId}/availability/me/pattern",
+            new UpdatePatternRequest(allEvenings), TestJson.Options)).ReadAsAsync<MyAvailabilityResponse>();
+        Assert.Null(plain.AnchorMonday);
+        Assert.Empty(plain.AlternateOpenSlots);
     }
 }

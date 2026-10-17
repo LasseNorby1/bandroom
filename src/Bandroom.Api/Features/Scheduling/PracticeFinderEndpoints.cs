@@ -63,7 +63,7 @@ public static class PracticeFinderEndpoints
 
         var members = await db.Memberships
             .Where(m => m.LeftAt == null)
-            .Join(db.Users, m => m.UserId, u => u.Id, (m, u) => new { m.Id, u.DisplayName, m.WeeklyPattern, m.PatternUpdatedAt })
+            .Join(db.Users, m => m.UserId, u => u.Id, (m, u) => new { m.Id, u.DisplayName, m.WeeklyPattern, m.AlternatePattern, m.PatternAnchor, m.PatternUpdatedAt })
             .OrderBy(m => m.DisplayName)
             .ToListAsync(ct);
         var exceptions = await db.AvailabilityExceptions
@@ -90,7 +90,12 @@ public static class PracticeFinderEndpoints
         var domainMembers = members
             .Select(member => new MemberAvailability(
                 member.Id,
-                new WeeklyPattern(member.WeeklyPattern.Select(s => (s.Day, s.Slot))),
+                member.PatternAnchor is { } anchor
+                    ? new WeeklyPattern(
+                        member.WeeklyPattern.Select(s => (s.Day, s.Slot)),
+                        member.AlternatePattern.Select(s => (s.Day, s.Slot)),
+                        anchor)
+                    : new WeeklyPattern(member.WeeklyPattern.Select(s => (s.Day, s.Slot))),
                 exceptions
                     .Where(e => e.MembershipId == member.Id)
                     .Select(e => new DateInterval(e.From, e.To))
@@ -121,7 +126,8 @@ public static class PracticeFinderEndpoints
                     .ToList()))
             .ToList(),
             members
-                .Select(m => new FinderMemberStatusDto(m.Id, m.DisplayName, m.WeeklyPattern.Count, m.PatternUpdatedAt))
+                .Select(m => new FinderMemberStatusDto(
+                    m.Id, m.DisplayName, m.WeeklyPattern.Count + (m.PatternAnchor is null ? 0 : m.AlternatePattern.Count), m.PatternUpdatedAt))
                 .ToList());
         return TypedResults.Ok(response);
     }

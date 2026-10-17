@@ -13,5 +13,5 @@ public sealed record MemberAvailability(
     IReadOnlyList<DateInterval> Blockouts)
 {
     public bool IsAvailable(LocalDate date, PracticeSlot slot) =>
-        Pattern.IsOpen(date.DayOfWeek, slot) && !Blockouts.Any(blockout => blockout.Contains(date));
+        Pattern.IsOpen(date, slot) && !Blockouts.Any(blockout => blockout.Contains(date));
 }

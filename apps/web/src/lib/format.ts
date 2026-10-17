@@ -40,6 +40,26 @@ export function isoDayOfDate(isoDate: string): IsoDay {
   ] as IsoDay[])[jsDay];
 }
 
+/** The Monday of the week an iso date falls in. */
+export function mondayOf(isoDate: string): string {
+  const offset = DAY_ORDER.indexOf(isoDayOfDate(isoDate));
+  return addDays(isoDate, -offset);
+}
+
+/** Whole weeks from one Monday to another (negative when `to` is earlier). */
+export function weeksBetween(fromMonday: string, toMonday: string): number {
+  const ms = new Date(`${toMonday}T00:00:00`).getTime() - new Date(`${fromMonday}T00:00:00`).getTime();
+  return Math.round(ms / (7 * 24 * 60 * 60 * 1000));
+}
+
+/** Today as an iso date in the browser's zone (band-local is close enough for "which week is it"). */
+export function todayIso(): string {
+  const now = new Date();
+  const month = String(now.getMonth() + 1).padStart(2, "0");
+  const dayOfMonth = String(now.getDate()).padStart(2, "0");
+  return `${now.getFullYear()}-${month}-${dayOfMonth}`;
+}
+
 export function addDays(isoDate: string, days: number): string {
   const date = new Date(`${isoDate}T00:00:00`);
   date.setDate(date.getDate() + days);

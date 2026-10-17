@@ -56,6 +56,8 @@ public static class AvailabilityEndpoints
             .ToListAsync(ct);
         return new MyAvailabilityResponse(
             membership.WeeklyPattern,
+            membership.PatternAnchor is null ? [] : membership.AlternatePattern,
+            membership.PatternAnchor,
             membership.PatternUpdatedAt,
             exceptions,
             $"/calendar/{membership.IcsToken}.ics",
@@ -120,16 +122,36 @@ public static class AvailabilityEndpoints
         IClock clock,
         CancellationToken ct)
     {
+        var errors = new Dictionary<string, string[]>();
         if (request.OpenSlots is null || request.OpenSlots.Count > 14)
         {
-            return TypedResults.ValidationProblem(new Dictionary<string, string[]>
-            {
-                ["openSlots"] = ["Open slots are required (at most 14 entries — 7 days × 2 slots)."],
-            });
+            errors["openSlots"] = ["Open slots are required (at most 14 entries — 7 days × 2 slots)."];
+        }
+
+        var alternates = request.AlternateOpenSlots is not null;
+        if (request.AlternateOpenSlots is { Count: > 14 })
+        {
+            errors["alternateOpenSlots"] = ["At most 14 entries — 7 days × 2 slots."];
+        }
+
+        if (alternates && request.AnchorMonday is null)
+        {
+            errors["anchorMonday"] = ["Say which week the first set applies to: a Monday."];
+        }
+        else if (alternates && request.AnchorMonday!.Value.DayOfWeek != IsoDayOfWeek.Monday)
+        {
+            errors["anchorMonday"] = ["The anchor must be a Monday."];
+        }
+
+        if (errors.Count > 0)
+        {
+            return TypedResults.ValidationProblem(errors);
         }
 
         var membership = await db.Memberships.SingleAsync(m => m.Id == bandContext.MembershipId, ct);
-        membership.WeeklyPattern = request.OpenSlots.Distinct().ToList();
+        membership.WeeklyPattern = request.OpenSlots!.Distinct().ToList();
+        membership.AlternatePattern = alternates ? request.AlternateOpenSlots!.Distinct().ToList() : [];
+        membership.PatternAnchor = alternates ? request.AnchorMonday : null;
         membership.PatternUpdatedAt = clock.GetCurrentInstant();
         await db.SaveChangesAsync(ct);
 
@@ -214,7 +236,7 @@ public static class AvailabilityEndpoints
             .Where(m => m.LeftAt == null)
             .Join(db.Users, m => m.UserId, u => u.Id, (m, u) => new { m, u })
             .OrderBy(x => x.m.JoinedAt)
-            .Select(x => new { x.m.Id, x.u.DisplayName, x.m.WeeklyPattern, x.m.PatternUpdatedAt })
+            .Select(x => new { x.m.Id, x.u.DisplayName, x.m.WeeklyPattern, x.m.AlternatePattern, x.m.PatternAnchor, x.m.PatternUpdatedAt })
             .ToListAsync(ct);
 
         var exceptions = await db.AvailabilityExceptions
@@ -230,6 +252,8 @@ public static class AvailabilityEndpoints
                 member.Id,
                 member.DisplayName,
                 member.WeeklyPattern,
+                member.PatternAnchor is null ? [] : member.AlternatePattern,
+                member.PatternAnchor,
                 member.PatternUpdatedAt,
                 exceptions
                     .Where(e => e.MembershipId == member.Id)

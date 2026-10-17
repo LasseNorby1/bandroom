@@ -3829,6 +3829,8 @@ export interface components {
             joinedAt: components["schemas"]["Instant"];
             leftAt: null | components["schemas"]["Instant"];
             weeklyPattern: components["schemas"]["WeeklySlot"][];
+            alternatePattern: components["schemas"]["WeeklySlot"][];
+            patternAnchor: null | components["schemas"]["LocalDate"];
             blockouts: unknown[];
             rsvps: unknown[];
             comments: unknown[];
@@ -3993,6 +3995,8 @@ export interface components {
             membershipId: string;
             displayName: string;
             openSlots: components["schemas"]["WeeklySlot"][];
+            alternateOpenSlots: components["schemas"]["WeeklySlot"][];
+            anchorMonday: null | components["schemas"]["LocalDate"];
             patternUpdatedAt: null | components["schemas"]["Instant"];
             exceptions: components["schemas"]["ExceptionResponse"][];
             importedBusy: components["schemas"]["BusyDayResponse"][];
@@ -4028,6 +4032,8 @@ export interface components {
         };
         MyAvailabilityResponse: {
             openSlots: components["schemas"]["WeeklySlot"][];
+            alternateOpenSlots: components["schemas"]["WeeklySlot"][];
+            anchorMonday: null | components["schemas"]["LocalDate"];
             patternUpdatedAt: null | components["schemas"]["Instant"];
             exceptions: components["schemas"]["ExceptionResponse"][];
             calendarFeedPath: string;
@@ -4221,6 +4227,9 @@ export interface components {
         };
         UpdatePatternRequest: {
             openSlots: components["schemas"]["WeeklySlot"][];
+            alternateOpenSlots?: null | components["schemas"]["WeeklySlot"][];
+            /** Format: date */
+            anchorMonday?: string;
         };
         UpdateSongRequest: {
             title: null | string;

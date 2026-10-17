@@ -25,6 +25,8 @@ public sealed record ExportMembership(
     Instant JoinedAt,
     Instant? LeftAt,
     List<WeeklySlot> WeeklyPattern,
+    List<WeeklySlot> AlternatePattern,
+    LocalDate? PatternAnchor,
     IReadOnlyList<object> Blockouts,
     IReadOnlyList<object> Rsvps,
     IReadOnlyList<object> Comments,
@@ -158,7 +160,7 @@ public static class AccountEndpoints
         {
             var id = x.m.Id;
             bands.Add(new ExportMembership(
-                x.m.BandId, x.BandName, x.m.Role, x.m.Instrument, x.m.JoinedAt, x.m.LeftAt, x.m.WeeklyPattern,
+                x.m.BandId, x.BandName, x.m.Role, x.m.Instrument, x.m.JoinedAt, x.m.LeftAt, x.m.WeeklyPattern, x.m.AlternatePattern, x.m.PatternAnchor,
                 await db.AvailabilityExceptions.IgnoreQueryFilters().Where(e => e.MembershipId == id)
                     .Select(e => (object)new { e.From, e.To, e.Note }).ToListAsync(ct),
                 await db.Rsvps.IgnoreQueryFilters().Where(r => r.MembershipId == id)

@@ -3,7 +3,16 @@ using NodaTime;
 
 namespace Bandroom.Api.Features.Availability;
 
-public sealed record UpdatePatternRequest(IReadOnlyList<WeeklySlot> OpenSlots);
+/// <summary>
+/// Same every week: just <paramref name="OpenSlots"/>. Every other week: also
+/// <paramref name="AlternateOpenSlots"/> plus <paramref name="AnchorMonday"/>, a
+/// Monday whose week uses the primary set (the ui sends this or next Monday
+/// from "which one is this week?").
+/// </summary>
+public sealed record UpdatePatternRequest(
+    IReadOnlyList<WeeklySlot> OpenSlots,
+    IReadOnlyList<WeeklySlot>? AlternateOpenSlots = null,
+    LocalDate? AnchorMonday = null);
 
 public sealed record CreateExceptionRequest(LocalDate From, LocalDate To, string? Note);
 
@@ -17,6 +26,8 @@ public sealed record CalendarImportStatus(string? Url, Instant? ImportedAt, stri
 
 public sealed record MyAvailabilityResponse(
     IReadOnlyList<WeeklySlot> OpenSlots,
+    IReadOnlyList<WeeklySlot> AlternateOpenSlots,
+    LocalDate? AnchorMonday,
     Instant? PatternUpdatedAt,
     IReadOnlyList<ExceptionResponse> Exceptions,
     string CalendarFeedPath,
@@ -27,6 +38,8 @@ public sealed record MemberAvailabilityResponse(
     Guid MembershipId,
     string DisplayName,
     IReadOnlyList<WeeklySlot> OpenSlots,
+    IReadOnlyList<WeeklySlot> AlternateOpenSlots,
+    LocalDate? AnchorMonday,
     Instant? PatternUpdatedAt,
     IReadOnlyList<ExceptionResponse> Exceptions,
     IReadOnlyList<BusyDayResponse> ImportedBusy);

@@ -4286,6 +4286,8 @@
           "joinedAt",
           "leftAt",
           "weeklyPattern",
+          "alternatePattern",
+          "patternAnchor",
           "blockouts",
           "rsvps",
           "comments",
@@ -4328,6 +4330,22 @@
             "items": {
               "$ref": "#/components/schemas/WeeklySlot"
             }
+          },
+          "alternatePattern": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/WeeklySlot"
+            }
+          },
+          "patternAnchor": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/LocalDate"
+              }
+            ]
           },
           "blockouts": {
             "type": "array"
@@ -4895,6 +4913,8 @@
           "membershipId",
           "displayName",
           "openSlots",
+          "alternateOpenSlots",
+          "anchorMonday",
           "patternUpdatedAt",
           "exceptions",
           "importedBusy"
@@ -4913,6 +4933,22 @@
             "items": {
               "$ref": "#/components/schemas/WeeklySlot"
             }
+          },
+          "alternateOpenSlots": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/WeeklySlot"
+            }
+          },
+          "anchorMonday": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/LocalDate"
+              }
+            ]
           },
           "patternUpdatedAt": {
             "oneOf": [
@@ -5047,6 +5083,8 @@
       "MyAvailabilityResponse": {
         "required": [
           "openSlots",
+          "alternateOpenSlots",
+          "anchorMonday",
           "patternUpdatedAt",
           "exceptions",
           "calendarFeedPath",
@@ -5060,6 +5098,22 @@
             "items": {
               "$ref": "#/components/schemas/WeeklySlot"
             }
+          },
+          "alternateOpenSlots": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/WeeklySlot"
+            }
+          },
+          "anchorMonday": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/LocalDate"
+              }
+            ]
           },
           "patternUpdatedAt": {
             "oneOf": [
@@ -5877,6 +5931,19 @@
             "items": {
               "$ref": "#/components/schemas/WeeklySlot"
             }
+          },
+          "alternateOpenSlots": {
+            "type": [
+              "null",
+              "array"
+            ],
+            "items": {
+              "$ref": "#/components/schemas/WeeklySlot"
+            }
+          },
+          "anchorMonday": {
+            "type": "string",
+            "format": "date"
           }
         }
       },

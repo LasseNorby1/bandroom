@@ -483,6 +483,10 @@ namespace Bandroom.Api.Data.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
 
+                    b.Property<string>("AlternatePattern")
+                        .IsRequired()
+                        .HasColumnType("jsonb");
+
                     b.Property<Guid>("BandId")
                         .HasColumnType("uuid");
 
@@ -514,6 +518,9 @@ namespace Bandroom.Api.Data.Migrations
 
                     b.Property<Instant?>("LeftAt")
                         .HasColumnType("timestamp with time zone");
+
+                    b.Property<LocalDate?>("PatternAnchor")
+                        .HasColumnType("date");
 
                     b.Property<Instant?>("PatternUpdatedAt")
                         .HasColumnType("timestamp with time zone");

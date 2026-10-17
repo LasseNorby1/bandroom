@@ -63,6 +63,12 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options, IBandCo
 
     public DbSet<PushSubscription> PushSubscriptions => Set<PushSubscription>();
 
+    /// <summary>Column defaults predate the first pattern ("{}"); anything that isn't an array is an empty pattern.</summary>
+    private static List<WeeklySlot> ParseSlots(string json) =>
+        json.TrimStart().StartsWith('[')
+            ? JsonSerializer.Deserialize<List<WeeklySlot>>(json, PatternJsonOptions) ?? new List<WeeklySlot>()
+            : new List<WeeklySlot>();
+
     private static readonly JsonSerializerOptions PatternJsonOptions = new()
     {
         PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
@@ -117,7 +123,16 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options, IBandCo
             membership.Property(m => m.WeeklyPattern)
                 .HasConversion(
                     pattern => JsonSerializer.Serialize(pattern, PatternJsonOptions),
-                    json => JsonSerializer.Deserialize<List<WeeklySlot>>(json, PatternJsonOptions) ?? new List<WeeklySlot>(),
+                    json => ParseSlots(json),
+                    new ValueComparer<List<WeeklySlot>>(
+                        (a, b) => (a ?? new List<WeeklySlot>()).SequenceEqual(b ?? new List<WeeklySlot>()),
+                        v => v.Aggregate(0, (hash, slot) => HashCode.Combine(hash, slot.GetHashCode())),
+                        v => v.ToList()))
+                .HasColumnType("jsonb");
+            membership.Property(m => m.AlternatePattern)
+                .HasConversion(
+                    pattern => JsonSerializer.Serialize(pattern, PatternJsonOptions),
+                    json => ParseSlots(json),
                     new ValueComparer<List<WeeklySlot>>(
                         (a, b) => (a ?? new List<WeeklySlot>()).SequenceEqual(b ?? new List<WeeklySlot>()),
                         v => v.Aggregate(0, (hash, slot) => HashCode.Combine(hash, slot.GetHashCode())),

@@ -8,7 +8,7 @@ import { api } from "@/lib/api";
 import { useBandContext } from "@/lib/band-context";
 import { bandKeys, useBandAvailability, useMyAvailability } from "@/lib/band-hooks";
 import { cn } from "@/lib/cn";
-import { addDays, DAY_ORDER, DAY_SHORT, formatDay, isoDayOfDate, SLOT_LABEL } from "@/lib/format";
+import { addDays, DAY_ORDER, DAY_SHORT, formatDay, isoDayOfDate, mondayOf, SLOT_LABEL, todayIso, weeksBetween } from "@/lib/format";
 import type { BlockoutException, IsoDay, MemberAvailability, PracticeSlot, WeeklySlot } from "@/lib/types";
 import { useBandContext as useBand } from "@/lib/band-context";
 
@@ -16,98 +16,190 @@ const SLOTS: PracticeSlot[] = ["evening", "afternoon"];
 
 const slotKey = (day: IsoDay, slot: PracticeSlot) => `${day}:${slot}`;
 
+type WeekSet = "a" | "b";
+
+function slotsOf(keys: Set<string>): WeeklySlot[] {
+  return [...keys].map((key) => {
+    const [day, slot] = key.split(":") as [IsoDay, PracticeSlot];
+    return { day, slot };
+  });
+}
+
+function keysOf(slots: WeeklySlot[] | undefined): Set<string> {
+  return new Set((slots ?? []).map((slot) => slotKey(slot.day as IsoDay, slot.slot)));
+}
+
+function sameKeys(a: Set<string>, b: Set<string>): boolean {
+  return a.size === b.size && [...a].every((key) => b.has(key));
+}
+
+/** Which of the two sets the anchor puts in force this week. */
+function thisWeekFromAnchor(anchorMonday: string | null | undefined): WeekSet {
+  if (!anchorMonday) return "a";
+  return ((weeksBetween(anchorMonday, mondayOf(todayIso())) % 2) + 2) % 2 === 0 ? "a" : "b";
+}
+
+function SlotGrid({ open, onToggle, label }: { open: Set<string>; onToggle: (day: IsoDay, slot: PracticeSlot) => void; label?: string }) {
+  return (
+    <div className="overflow-x-auto">
+      <table className="border-separate border-spacing-1">
+        <thead>
+          <tr>
+            <th aria-hidden className="w-20" />
+            {DAY_ORDER.map((day) => (
+              <th key={day} className="pb-1 font-mono text-[11px] font-normal text-muted">
+                {DAY_SHORT[day]}
+              </th>
+            ))}
+          </tr>
+        </thead>
+        <tbody>
+          {SLOTS.map((slot) => (
+            <tr key={slot}>
+              <td className="pr-2 font-mono text-[11px] text-muted">{slot}</td>
+              {DAY_ORDER.map((day) => {
+                const active = open.has(slotKey(day, slot));
+                return (
+                  <td key={day}>
+                    <button
+                      type="button"
+                      aria-pressed={active}
+                      aria-label={`${label ? `${label} ` : ""}${day} ${slot}`}
+                      onClick={() => onToggle(day, slot)}
+                      className={cn(
+                        "size-10 rounded-lg border transition-colors",
+                        active ? "border-ok/50 bg-ok-soft" : "border-dashed border-line hover:border-faint",
+                      )}
+                    />
+                  </td>
+                );
+              })}
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
 function PatternEditor({ bandId }: { bandId: string }) {
   const queryClient = useQueryClient();
   const mine = useMyAvailability(bandId);
-  // The grid shows the server's pattern until the first tap; from then on the
+  // The grids show the server's pattern until the first tap; from then on the
   // local edits, until they're saved (which clears them and shows the server's
   // again). Derived, not synced — no effect, no cascade.
-  const [edits, setEdits] = useState<Set<string> | null>(null);
-  const serverOpen = useMemo(
-    () => new Set((mine.data?.openSlots ?? []).map((slot) => slotKey(slot.day as IsoDay, slot.slot))),
+  type Draft = { a: Set<string>; b: Set<string>; alternating: boolean; thisWeek: WeekSet };
+  const [draft, setDraft] = useState<Draft | null>(null);
+  const server = useMemo<Draft>(
+    () => ({
+      a: keysOf(mine.data?.openSlots),
+      b: keysOf(mine.data?.alternateOpenSlots),
+      alternating: !!mine.data?.anchorMonday,
+      thisWeek: thisWeekFromAnchor(mine.data?.anchorMonday),
+    }),
     [mine.data],
   );
-  const open = edits ?? serverOpen;
-  const dirty = edits !== null;
+  const current = draft ?? server;
+  const dirty =
+    draft !== null &&
+    (draft.alternating !== server.alternating ||
+      !sameKeys(draft.a, server.a) ||
+      (draft.alternating && (!sameKeys(draft.b, server.b) || draft.thisWeek !== server.thisWeek)));
 
   const save = useMutation({
     mutationFn: async () => {
-      const openSlots: WeeklySlot[] = [...open].map((key) => {
-        const [day, slot] = key.split(":") as [IsoDay, PracticeSlot];
-        return { day, slot };
-      });
+      // The anchor is a Monday whose week uses set A: this Monday if "this week
+      // is A", otherwise next Monday. Never iso week parity — it flips in 53-week years.
+      const thisMonday = mondayOf(todayIso());
+      const body = current.alternating
+        ? { openSlots: slotsOf(current.a), alternateOpenSlots: slotsOf(current.b), anchorMonday: current.thisWeek === "a" ? thisMonday : addDays(thisMonday, 7) }
+        : { openSlots: slotsOf(current.a) };
       const { data, error } = await api.PUT("/bands/{bandId}/availability/me/pattern", {
         params: { path: { bandId } },
-        body: { openSlots },
+        body,
       });
       if (error) throw error;
       return data;
     },
     onSuccess: () => {
-      setEdits(null);
+      setDraft(null);
       void queryClient.invalidateQueries({ queryKey: bandKeys.availability(bandId) });
     },
   });
 
-  function toggle(day: IsoDay, slot: PracticeSlot) {
+  function update(change: Partial<Draft>) {
+    setDraft({ ...current, a: new Set(current.a), b: new Set(current.b), ...change });
+  }
+
+  function toggle(set: WeekSet, day: IsoDay, slot: PracticeSlot) {
     const key = slotKey(day, slot);
-    const next = new Set(open);
+    const next = new Set(current[set]);
     if (next.has(key)) {
       next.delete(key);
     } else {
       next.add(key);
     }
-    setEdits(next);
+    update({ [set]: next });
   }
+
+  const modeButton = (alternating: boolean, text: string) => (
+    <button
+      type="button"
+      aria-pressed={current.alternating === alternating}
+      onClick={() => update({ alternating })}
+      className={cn(
+        "rounded-full border px-3 py-1 text-xs transition-colors",
+        current.alternating === alternating ? "border-ink bg-ink text-paper" : "border-line text-muted hover:border-faint",
+      )}
+    >
+      {text}
+    </button>
+  );
 
   return (
     <section className="space-y-4 rounded-xl border border-line bg-surface p-5">
-      <div>
-        <h2 className="font-medium">Your weekly pattern</h2>
-        <p className="text-sm text-muted">
-          Tap the slots that generally work for you — set once, then only report exceptions.
-        </p>
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <h2 className="font-medium">Your weekly pattern</h2>
+          <p className="text-sm text-muted">
+            Tap the slots that generally work for you — set once, then only report exceptions.
+          </p>
+        </div>
+        <div className="flex gap-1.5" role="group" aria-label="Rhythm">
+          {modeButton(false, "Same every week")}
+          {modeButton(true, "Every other week")}
+        </div>
       </div>
-      <div className="overflow-x-auto">
-        <table className="border-separate border-spacing-1">
-          <thead>
-            <tr>
-              <th aria-hidden className="w-20" />
-              {DAY_ORDER.map((day) => (
-                <th key={day} className="pb-1 font-mono text-[11px] font-normal text-muted">
-                  {DAY_SHORT[day]}
-                </th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {SLOTS.map((slot) => (
-              <tr key={slot}>
-                <td className="pr-2 font-mono text-[11px] text-muted">{slot}</td>
-                {DAY_ORDER.map((day) => {
-                  const active = open.has(slotKey(day, slot));
-                  return (
-                    <td key={day}>
-                      <button
-                        type="button"
-                        aria-pressed={active}
-                        aria-label={`${day} ${slot}`}
-                        onClick={() => toggle(day, slot)}
-                        className={cn(
-                          "size-10 rounded-lg border transition-colors",
-                          active
-                            ? "border-ok/50 bg-ok-soft"
-                            : "border-dashed border-line hover:border-faint",
-                        )}
-                      />
-                    </td>
-                  );
-                })}
-              </tr>
+
+      {current.alternating ? (
+        <div className="space-y-4">
+          <p className="text-sm text-muted">
+            Two weeks that alternate — say, the week with the kids and the week without. Then tell us which one this is.
+          </p>
+          <div className="space-y-5">
+            {(["a", "b"] as WeekSet[]).map((set) => (
+              <div key={set} className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="font-mono text-[11px] uppercase tracking-wide text-muted">Week {set.toUpperCase()}</span>
+                  <label className="flex items-center gap-1.5 text-xs text-muted">
+                    <input
+                      type="radio"
+                      name="this-week"
+                      checked={current.thisWeek === set}
+                      onChange={() => update({ thisWeek: set })}
+                    />
+                    this is the current week
+                  </label>
+                </div>
+                <SlotGrid open={current[set]} onToggle={(day, slot) => toggle(set, day, slot)} label={`week ${set}`} />
+              </div>
             ))}
-          </tbody>
-        </table>
-      </div>
+          </div>
+        </div>
+      ) : (
+        <SlotGrid open={current.a} onToggle={(day, slot) => toggle("a", day, slot)} />
+      )}
+
       <div className="flex items-center gap-3">
         <Button onClick={() => save.mutate()} disabled={!dirty || save.isPending}>
           {save.isPending ? "Saving…" : "Save pattern"}
@@ -391,7 +483,10 @@ function memberStateOn(member: MemberAvailability, date: string, slot: PracticeS
     return "blocked";
   }
   const day = isoDayOfDate(date);
-  if (!member.openSlots.some((s) => s.day === day && s.slot === slot)) {
+  const alternateWeek =
+    !!member.anchorMonday && ((weeksBetween(member.anchorMonday, mondayOf(date)) % 2) + 2) % 2 === 1;
+  const open = alternateWeek ? member.alternateOpenSlots : member.openSlots;
+  if (!open.some((s) => s.day === day && s.slot === slot)) {
     return "off";
   }
   if (member.importedBusy.some((b) => b.date === date && (b.slot === null || b.slot === slot))) {

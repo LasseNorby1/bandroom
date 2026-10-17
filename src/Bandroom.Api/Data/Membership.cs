@@ -34,6 +34,12 @@ public sealed class Membership : IBandScoped
     /// <summary>The standing "evenings that generally work" set (spec §4).</summary>
     public List<WeeklySlot> WeeklyPattern { get; set; } = [];
 
+    /// <summary>The every-other-week set (7/7 custody and the like). Only in force when <see cref="PatternAnchor"/> is set.</summary>
+    public List<WeeklySlot> AlternatePattern { get; set; } = [];
+
+    /// <summary>A Monday whose week uses <see cref="WeeklyPattern"/>; the week after uses <see cref="AlternatePattern"/>. Null = same every week.</summary>
+    public LocalDate? PatternAnchor { get; set; }
+
     /// <summary>Staleness signal for the finder ("Sofie's pattern is 5 weeks old").</summary>
     public Instant? PatternUpdatedAt { get; set; }
 
