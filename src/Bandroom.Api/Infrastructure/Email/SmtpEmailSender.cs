@@ -46,8 +46,10 @@ public sealed class SmtpEmailSender(EmailOptions options, ILogger<SmtpEmailSende
                 await client.AuthenticateAsync(options.SmtpUser, options.SmtpPassword ?? "", ct);
             }
 
-            await client.SendAsync(message, ct);
+            var response = await client.SendAsync(message, ct);
             await client.DisconnectAsync(quit: true, ct);
+            // One line per accepted mail, so "did it go out?" is answerable from the log.
+            logger.LogInformation("mail to {To} accepted ({Subject}): {Response}", to, subject, response);
         }
         catch (Exception ex)
         {
