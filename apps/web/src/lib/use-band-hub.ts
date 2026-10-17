@@ -1,9 +1,11 @@
 "use client";
 
 import { HubConnectionBuilder, HubConnectionState } from "@microsoft/signalr";
+import { useQueryClient } from "@tanstack/react-query";
 import { useEffect } from "react";
 import { getAccessToken, refreshSession } from "./auth";
 import {
+  bandKeys,
   useInvalidateBandChat,
   useInvalidateBandDemos,
   useInvalidateBandEvents,
@@ -20,9 +22,12 @@ export function useBandHub(bandId: string) {
   const invalidate = useInvalidateBandEvents(bandId);
   const invalidateDemos = useInvalidateBandDemos(bandId);
   const invalidateChat = useInvalidateBandChat(bandId);
+  const queryClient = useQueryClient();
 
   useEffect(() => {
     let disposed = false;
+    const setPresence = (userIds: string[]) =>
+      queryClient.setQueryData(bandKeys.presence(bandId), userIds);
 
     const connection = new HubConnectionBuilder()
       .withUrl(hubUrl, {
@@ -39,8 +44,16 @@ export function useBandHub(bandId: string) {
     connection.on("eventChanged", invalidate);
     connection.on("demoChanged", invalidateDemos);
     connection.on("messageAdded", invalidateChat);
+    connection.on("presenceChanged", (n: { bandId: string; userIds: string[] }) => {
+      if (n.bandId === bandId) setPresence(n.userIds);
+    });
+    const join = () =>
+      connection
+        .invoke("JoinBand", bandId)
+        .then(() => connection.invoke<string[]>("WhoIsHere", bandId))
+        .then(setPresence);
     connection.onreconnected(() => {
-      void connection.invoke("JoinBand", bandId);
+      void join();
       invalidate();
       invalidateDemos();
       invalidateChat();
@@ -54,7 +67,7 @@ export function useBandHub(bandId: string) {
       }
       void connection
         .start()
-        .then(() => (disposed ? connection.stop() : connection.invoke("JoinBand", bandId)))
+        .then(() => (disposed ? connection.stop() : join()))
         .catch(() => {
           // The page works without live updates; keep trying quietly.
           if (!disposed) {
@@ -66,6 +79,7 @@ export function useBandHub(bandId: string) {
     // Automatic reconnect only covers drops after a successful start; when it
     // gives up (or the initial start never succeeded), begin again.
     connection.onclose(() => {
+      setPresence([]);
       if (!disposed) {
         retryTimer = setTimeout(start, 5_000);
       }

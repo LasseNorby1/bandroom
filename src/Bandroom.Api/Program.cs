@@ -185,6 +185,7 @@ try
     builder.Services.AddScoped<IBandContext>(sp => sp.GetRequiredService<BandContext>());
 
     builder.Services.AddSignalR();
+    builder.Services.AddSingleton<BandPresence>();
     builder.Services.AddSingleton<BandNotifier>();
 
     // Production runs same-origin behind traefik (no cors at all); dev allows the

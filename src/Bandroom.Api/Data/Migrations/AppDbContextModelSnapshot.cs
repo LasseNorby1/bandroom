@@ -513,6 +513,9 @@ namespace Bandroom.Api.Data.Migrations
                     b.Property<Instant>("JoinedAt")
                         .HasColumnType("timestamp with time zone");
 
+                    b.Property<Instant?>("LastActiveAt")
+                        .HasColumnType("timestamp with time zone");
+
                     b.Property<Instant?>("LastSeenAt")
                         .HasColumnType("timestamp with time zone");
 

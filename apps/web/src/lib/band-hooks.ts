@@ -18,7 +18,18 @@ export const bandKeys = {
   songs: (bandId: string) => ["band", bandId, "songs"] as const,
   chat: (bandId: string) => ["band", bandId, "chat"] as const,
   messages: (bandId: string, channelId: string) => ["band", bandId, "chat", channelId] as const,
+  presence: (bandId: string) => ["band", bandId, "presence"] as const,
 };
+
+/** User ids with the band open right now; fed by the hub, never fetched. */
+export function usePresence(bandId: string) {
+  return useQuery({
+    queryKey: bandKeys.presence(bandId),
+    queryFn: () => [] as string[],
+    staleTime: Infinity,
+    gcTime: Infinity,
+  });
+}
 
 export function useMe() {
   return useQuery({

@@ -4010,6 +4010,7 @@ export interface components {
             role: components["schemas"]["BandRole"];
             instrument: null | string;
             joinedAt: components["schemas"]["Instant"];
+            lastActiveAt: null | components["schemas"]["Instant"];
         };
         MeResponse: {
             /** Format: uuid */

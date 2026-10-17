@@ -27,6 +27,9 @@ export function PushToggle({ compact = false, nudge }: { compact?: boolean; nudg
   }
 
   if (state === "loading" || state === "server-off") return null;
+  // As a nudge on the band home it only shows while notifications could be
+  // turned on here; blocked/unsupported explanations belong on /account.
+  if (nudge && state !== "off") return null;
 
   if (state === "needs-install") {
     return (
@@ -43,9 +46,6 @@ export function PushToggle({ compact = false, nudge }: { compact?: boolean; nudg
   if (state === "denied") {
     return <p className="text-sm text-muted">Notifications are blocked for this site in your browser settings. Allow them there, then come back.</p>;
   }
-
-  // As a nudge on the band home it only shows while notifications are off here.
-  if (nudge && state !== "off") return null;
 
   const control = (
     <div className={compact ? "flex items-center gap-3" : "space-y-2"}>

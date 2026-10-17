@@ -11,7 +11,7 @@ import { StatusChip } from "@/components/status-chip";
 import { Button } from "@/components/ui/button";
 import { useBandContext } from "@/lib/band-context";
 import { useEvents, useMyAvailability } from "@/lib/band-hooks";
-import { formatDay, formatDayLong, SLOT_LABEL } from "@/lib/format";
+import { formatAgo, formatDay, formatDayLong, SLOT_LABEL } from "@/lib/format";
 import type { EventSummary } from "@/lib/types";
 
 function eventTitle(evt: EventSummary): string {
@@ -265,6 +265,23 @@ function AddEvent({ bandId }: { bandId: string }) {
   );
 }
 
+/** Last seen, not online: enough to know whether the room is being looked at. */
+function WhoIsAround() {
+  const { detail, me } = useBandContext();
+  const others = (detail?.members ?? []).filter((m) => m.membershipId !== me?.membershipId);
+  if (others.length === 0) return null;
+  return (
+    <p className="font-mono text-[11px] text-faint">
+      {others.map((m, i) => (
+        <span key={m.membershipId}>
+          {i > 0 && " · "}
+          <span className="text-muted">{m.displayName}</span> {formatAgo(m.lastActiveAt)}
+        </span>
+      ))}
+    </p>
+  );
+}
+
 function PushNudge() {
   return <PushToggle compact nudge="Get proposals on your phone, answer from the notification." />;
 }
@@ -322,6 +339,7 @@ export default function BandHomePage({ params }: { params: Promise<{ bandId: str
     <div className="space-y-6">
       <Noticeboard bandId={bandId} />
       <CatchUp bandId={bandId} />
+      <WhoIsAround />
       <PushNudge />
       {mine.data && mine.data.openSlots.length === 0 && (
         <div className="flex items-center justify-between gap-4 rounded-xl border border-accent/30 bg-accent-soft px-5 py-4">

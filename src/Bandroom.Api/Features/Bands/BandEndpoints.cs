@@ -89,7 +89,7 @@ public static class BandEndpoints
         var creator = await db.Users.SingleAsync(u => u.Id == userId, ct);
         var response = new BandDetailResponse(
             ToBandResponse(band, now, entitlements),
-            [new MemberResponse(membership.Id, userId, creator.DisplayName, BandRole.Admin, null, now)]);
+            [new MemberResponse(membership.Id, userId, creator.DisplayName, BandRole.Admin, null, now, now)]);
         return TypedResults.Created($"/bands/{band.Id}", response);
     }
 
@@ -129,7 +129,7 @@ public static class BandEndpoints
             .Where(m => m.LeftAt == null)
             .Join(db.Users, m => m.UserId, u => u.Id, (m, u) => new { m, u })
             .OrderBy(x => x.m.JoinedAt)
-            .Select(x => new MemberResponse(x.m.Id, x.u.Id, x.u.DisplayName, x.m.Role, x.m.Instrument, x.m.JoinedAt))
+            .Select(x => new MemberResponse(x.m.Id, x.u.Id, x.u.DisplayName, x.m.Role, x.m.Instrument, x.m.JoinedAt, x.m.LastActiveAt))
             .ToListAsync(ct);
 
         return TypedResults.Ok(new BandDetailResponse(

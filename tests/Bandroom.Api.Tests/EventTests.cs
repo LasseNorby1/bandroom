@@ -177,4 +177,55 @@ public class EventTests(ApiFactory factory)
         await Assert.ThrowsAsync<Microsoft.AspNetCore.SignalR.HubException>(
             () => connection.InvokeAsync("JoinBand", bandId));
     }
+
+    [Fact]
+    public async Task Presence_ListsWhoHasTheBandOpen_AndLastSeenIsStamped()
+    {
+        var (admin, adminToken, member, bandId) = await BandWithTwoMembersAsync();
+
+        // Any band request stamps "last active"; the detail shows it per member.
+        var detail = await (await admin.GetAsync($"/bands/{bandId}")).ReadAsAsync<BandDetailResponse>();
+        var adminRow = detail.Members.Single(m => m.Role == BandRole.Admin);
+        Assert.NotNull(adminRow.LastActiveAt);
+        var memberRow = detail.Members.Single(m => m.Role == BandRole.Member);
+        Assert.Null(memberRow.LastActiveAt); // the member hasn't looked yet
+        await member.GetAsync($"/bands/{bandId}");
+        detail = await (await admin.GetAsync($"/bands/{bandId}")).ReadAsAsync<BandDetailResponse>();
+        Assert.NotNull(detail.Members.Single(m => m.Role == BandRole.Member).LastActiveAt);
+
+        await using var connection = new HubConnectionBuilder()
+            .WithUrl(new Uri(factory.Server.BaseAddress, "hubs/band"), options =>
+            {
+                options.HttpMessageHandlerFactory = _ => factory.Server.CreateHandler();
+                options.Transports = HttpTransportType.LongPolling;
+                options.AccessTokenProvider = () => Task.FromResult<string?>(adminToken);
+            })
+            .Build();
+        var changes = new List<PresenceChangedNotification>();
+        connection.On<PresenceChangedNotification>("presenceChanged", n => { lock (changes) changes.Add(n); });
+
+        await connection.StartAsync();
+        await connection.InvokeAsync("JoinBand", bandId);
+        var here = await connection.InvokeAsync<List<Guid>>("WhoIsHere", bandId);
+        Assert.Equal([adminRow.UserId], here);
+
+        // A second tab of the same person doesn't change the room; closing both does.
+        await using var second = new HubConnectionBuilder()
+            .WithUrl(new Uri(factory.Server.BaseAddress, "hubs/band"), options =>
+            {
+                options.HttpMessageHandlerFactory = _ => factory.Server.CreateHandler();
+                options.Transports = HttpTransportType.LongPolling;
+                options.AccessTokenProvider = () => Task.FromResult<string?>(adminToken);
+            })
+            .Build();
+        await second.StartAsync();
+        await second.InvokeAsync("JoinBand", bandId);
+        Assert.Equal([adminRow.UserId], await second.InvokeAsync<List<Guid>>("WhoIsHere", bandId));
+        await second.StopAsync();
+        await Task.Delay(200);
+        Assert.Equal([adminRow.UserId], await connection.InvokeAsync<List<Guid>>("WhoIsHere", bandId));
+
+        // Another band's room is not visible through this connection.
+        Assert.Empty(await connection.InvokeAsync<List<Guid>>("WhoIsHere", Guid.NewGuid()));
+    }
 }

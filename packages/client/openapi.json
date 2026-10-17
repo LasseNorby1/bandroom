@@ -4981,7 +4981,8 @@
           "displayName",
           "role",
           "instrument",
-          "joinedAt"
+          "joinedAt",
+          "lastActiveAt"
         ],
         "type": "object",
         "properties": {
@@ -5007,6 +5008,16 @@
           },
           "joinedAt": {
             "$ref": "#/components/schemas/Instant"
+          },
+          "lastActiveAt": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/Instant"
+              }
+            ]
           }
         }
       },

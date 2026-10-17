@@ -60,6 +60,23 @@ export function todayIso(): string {
   return `${now.getFullYear()}-${month}-${dayOfMonth}`;
 }
 
+/** "here 2 h ago" — coarse on purpose; presence is last-seen, not a green dot. */
+export function formatAgo(iso: string | null | undefined, now: number = Date.now()): string {
+  if (!iso) return "not yet";
+  const seconds = Math.max(0, Math.round((now - new Date(iso).getTime()) / 1000));
+  if (seconds < 120) return "just now";
+  const minutes = Math.round(seconds / 60);
+  if (minutes < 60) return `${minutes} min ago`;
+  const hours = Math.round(minutes / 60);
+  if (hours < 24) return `${hours} h ago`;
+  const days = Math.round(hours / 24);
+  if (days === 1) return "yesterday";
+  if (days < 14) return `${days} days ago`;
+  const weeks = Math.round(days / 7);
+  if (weeks < 9) return `${weeks} weeks ago`;
+  return `${Math.round(days / 30)} months ago`;
+}
+
 export function addDays(isoDate: string, days: number): string {
   const date = new Date(`${isoDate}T00:00:00`);
   date.setDate(date.getDate() + days);

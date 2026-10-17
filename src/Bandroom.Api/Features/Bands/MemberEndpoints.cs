@@ -95,6 +95,6 @@ public static class MemberEndpoints
 
         var displayName = await db.Users.Where(u => u.Id == membership.UserId).Select(u => u.DisplayName).SingleAsync(ct);
         return TypedResults.Ok(new MemberResponse(
-            membership.Id, membership.UserId, displayName, membership.Role, membership.Instrument, membership.JoinedAt));
+            membership.Id, membership.UserId, displayName, membership.Role, membership.Instrument, membership.JoinedAt, membership.LastActiveAt));
     }
 }

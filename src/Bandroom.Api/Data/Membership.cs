@@ -68,4 +68,7 @@ public sealed class Membership : IBandScoped
 
     /// <summary>For "what did I miss": set when the member says they're caught up.</summary>
     public Instant? LastSeenAt { get; set; }
+
+    /// <summary>Presence as "last seen", not a green dot: stamped by any band request, at most every few minutes.</summary>
+    public Instant? LastActiveAt { get; set; }
 }

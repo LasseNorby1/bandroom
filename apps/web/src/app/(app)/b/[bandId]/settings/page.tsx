@@ -11,7 +11,7 @@ import { Input } from "@/components/ui/input";
 import { api } from "@/lib/api";
 import { useBandContext } from "@/lib/band-context";
 import { bandKeys, useInvites, useMyAvailability } from "@/lib/band-hooks";
-import { formatDay } from "@/lib/format";
+import { formatAgo, formatDay } from "@/lib/format";
 import { formatBytes } from "@/lib/upload";
 import { cn } from "@/lib/cn";
 import type { BandRole, InviteCreated, IsoDay, PracticeSlot } from "@/lib/types";
@@ -179,6 +179,7 @@ function Members({ bandId }: { bandId: string }) {
             <li key={member.membershipId} className="flex flex-wrap items-center gap-x-3 gap-y-1 px-3.5 py-2.5 text-sm">
               <span className="font-medium">{member.displayName}</span>
               {self && <span className="font-mono text-[10px] text-faint">you</span>}
+              {!self && <span className="font-mono text-[10px] text-faint">here {formatAgo(member.lastActiveAt)}</span>}
               <span
                 className={cn(
                   "rounded-full border px-2 py-0.5 font-mono text-[10px]",

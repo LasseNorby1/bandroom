@@ -1,6 +1,7 @@
 using System.Security.Claims;
 using Bandroom.Api.Data;
 using Microsoft.EntityFrameworkCore;
+using NodaTime;
 using Microsoft.IdentityModel.JsonWebTokens;
 
 namespace Bandroom.Api.Features.Bands;
@@ -40,8 +41,11 @@ public sealed class BandContext : IBandContext
 /// get 404, not 403 — for outsiders a band does not exist, so band ids can't be
 /// probed.
 /// </summary>
-public sealed class BandMemberFilter(AppDbContext db, BandContext bandContext) : IEndpointFilter
+public sealed class BandMemberFilter(AppDbContext db, BandContext bandContext, IClock clock) : IEndpointFilter
 {
+    /// <summary>"Here 2 h ago" doesn't need second precision; one write per member per band per window.</summary>
+    private static readonly Duration PresenceWindow = Duration.FromMinutes(5);
+
     public async ValueTask<object?> InvokeAsync(EndpointFilterInvocationContext context, EndpointFilterDelegate next)
     {
         if (context.HttpContext.Request.RouteValues["bandId"] is not string raw ||
@@ -70,6 +74,18 @@ public sealed class BandMemberFilter(AppDbContext db, BandContext bandContext) :
         }
 
         bandContext.Set(hit.Membership, hit.Band);
+
+        var now = clock.GetCurrentInstant();
+        if (hit.Membership.LastActiveAt is not { } last || now - last > PresenceWindow)
+        {
+            // Targeted update, not SaveChanges: the handler owns the unit of work.
+            await db.Memberships.IgnoreQueryFilters()
+                .Where(m => m.Id == hit.Membership.Id)
+                .ExecuteUpdateAsync(s => s.SetProperty(m => m.LastActiveAt, now));
+            db.Entry(hit.Membership).Property(m => m.LastActiveAt).CurrentValue = now;
+            db.Entry(hit.Membership).Property(m => m.LastActiveAt).IsModified = false;
+        }
+
         return await next(context);
     }
 }

@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { api } from "@/lib/api";
 import { useBandContext } from "@/lib/band-context";
-import { bandKeys, useChannels } from "@/lib/band-hooks";
+import { bandKeys, useChannels, usePresence } from "@/lib/band-hooks";
 import { cn } from "@/lib/cn";
 
 function dayLabel(sent: Date): string {
@@ -46,9 +46,14 @@ function useMessages(bandId: string, channelId: string | null) {
 
 export default function ChatPage({ params }: { params: Promise<{ bandId: string }> }) {
   const { bandId } = use(params);
-  const { me } = useBandContext();
+  const { me, detail } = useBandContext();
   const queryClient = useQueryClient();
   const channels = useChannels(bandId);
+  const presence = usePresence(bandId);
+  // Live only here, where people are actually talking; elsewhere it's "last seen".
+  const hereNow = (detail?.members ?? [])
+    .filter((m) => m.membershipId !== me?.membershipId && (presence.data ?? []).includes(m.userId))
+    .map((m) => m.displayName);
   const [channelId, setChannelId] = useState<string | null>(null);
   const [body, setBody] = useState("");
   const bottomRef = useRef<HTMLDivElement>(null);
@@ -107,6 +112,9 @@ export default function ChatPage({ params }: { params: Promise<{ bandId: string 
             #{channel.name}
           </button>
         ))}
+        {hereNow.length > 0 && (
+          <span className="ml-auto self-center font-mono text-[11px] text-faint">in the room now: {hereNow.join(", ")}</span>
+        )}
       </div>
 
       <div className="flex-1 space-y-3 overflow-y-auto rounded-xl border border-line bg-surface p-4">

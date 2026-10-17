@@ -43,7 +43,8 @@ public sealed record MemberResponse(
     string DisplayName,
     BandRole Role,
     string? Instrument,
-    Instant JoinedAt);
+    Instant JoinedAt,
+    Instant? LastActiveAt);
 
 public sealed record BandDetailResponse(BandResponse Band, IReadOnlyList<MemberResponse> Members);
 
