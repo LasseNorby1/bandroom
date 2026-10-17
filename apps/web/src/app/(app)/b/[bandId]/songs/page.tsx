@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { use, useRef, useState } from "react";
 import { ChordSheet } from "@/components/chord-sheet";
@@ -306,6 +307,20 @@ export default function SongsPage({ params }: { params: Promise<{ bandId: string
                       {song.durationSeconds != null && ` · ${formatDuration(song.durationSeconds)}`}
                       {song.notes && ` · ${song.notes}`}
                     </p>
+                    {song.ideas.length > 0 && (
+                      <p className="font-mono text-[11px] text-muted">
+                        demos:{" "}
+                        {song.ideas.map((idea, i) => (
+                          <span key={idea.id}>
+                            {i > 0 && ", "}
+                            <Link href={`/b/${bandId}/demos/${idea.id}`} className="text-ink underline decoration-line underline-offset-2">
+                              {idea.title}
+                            </Link>
+                            {idea.versionCount > 0 && ` (${idea.versionCount})`}
+                          </span>
+                        ))}
+                      </p>
+                    )}
                   </div>
                   <span className="flex shrink-0 items-center gap-3">
                     <button

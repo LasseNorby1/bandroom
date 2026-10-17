@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { use, useState } from "react";
 import { DemoPlayer } from "@/components/demo-player";
@@ -7,12 +8,68 @@ import { Recorder } from "@/components/recorder";
 import { UploadButton } from "@/components/upload-button";
 import { Button } from "@/components/ui/button";
 import { api } from "@/lib/api";
-import { bandKeys, useIdea, useReferences } from "@/lib/band-hooks";
+import { bandKeys, useIdea, useReferences, useSongs } from "@/lib/band-hooks";
 import { cn } from "@/lib/cn";
 import type { StemLabel } from "@/lib/types";
 import { formatBytes, uploadDemoVersion, uploadReference, uploadStem } from "@/lib/upload";
 
 const stemLabels: StemLabel[] = ["drums", "bass", "guitar", "keys", "vocals", "other"];
+
+/** The idea's place in the repertoire: takes live here, the song's paper lives on the song. */
+function SongLink({ bandId, ideaId, songId, songTitle }: { bandId: string; ideaId: string; songId: string | null; songTitle: string | null }) {
+  const queryClient = useQueryClient();
+  const songs = useSongs(bandId);
+  const [picking, setPicking] = useState(false);
+
+  const link = useMutation({
+    mutationFn: async (next: string | null) => {
+      const { error } = await api.PATCH("/bands/{bandId}/song-ideas/{ideaId}", {
+        params: { path: { bandId, ideaId } },
+        body: next ? { title: null, status: null, songId: next, clearSong: false } : { title: null, status: null, songId: null, clearSong: true },
+      });
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      setPicking(false);
+      void queryClient.invalidateQueries({ queryKey: bandKeys.demos(bandId) });
+      void queryClient.invalidateQueries({ queryKey: bandKeys.songs(bandId) });
+    },
+  });
+
+  if (picking) {
+    return (
+      <div className="mt-1 flex items-center gap-2 font-mono text-[11px] text-muted">
+        <select
+          autoFocus
+          defaultValue={songId ?? ""}
+          onChange={(e) => link.mutate(e.target.value || null)}
+          className="h-7 rounded-md border border-line bg-paper px-2 text-[11px]"
+          aria-label="Song in the repertoire"
+        >
+          <option value="">— not a song yet</option>
+          {(songs.data ?? []).map((s) => (
+            <option key={s.id} value={s.id}>{s.title}</option>
+          ))}
+        </select>
+        <button type="button" onClick={() => setPicking(false)} className="hover:text-ink">cancel</button>
+      </div>
+    );
+  }
+
+  return (
+    <p className="mt-1 font-mono text-[11px] text-muted">
+      {songTitle ? (
+        <>
+          song: <Link href={`/b/${bandId}/songs`} className="text-ink underline decoration-line underline-offset-2">{songTitle}</Link>
+        </>
+      ) : (
+        "not linked to a song"
+      )}
+      {" · "}
+      <button type="button" onClick={() => setPicking(true)} className="hover:text-ink">{songTitle ? "change" : "link to a song"}</button>
+    </p>
+  );
+}
 
 function ReferencePicker({
   id,
@@ -131,6 +188,7 @@ export default function IdeaPage({
         <div>
           <p className="font-mono text-xs tracking-wider text-accent">song idea</p>
           <h2 className="font-display text-xl font-semibold tracking-tight">{detail.title}</h2>
+          <SongLink bandId={bandId} ideaId={ideaId} songId={detail.songId ?? null} songTitle={detail.songTitle ?? null} />
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <Recorder

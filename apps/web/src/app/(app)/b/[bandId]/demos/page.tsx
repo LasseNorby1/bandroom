@@ -108,6 +108,7 @@ export default function DemosPage({ params }: { params: Promise<{ bandId: string
                 <div className="min-w-0">
                   <p className="truncate font-medium">{idea.title}</p>
                   <p className="text-xs text-muted">
+                    {idea.songTitle && <span className="text-ink">{idea.songTitle} · </span>}
                     {idea.versionCount} version{idea.versionCount === 1 ? "" : "s"}
                     {idea.latestVersionAt && ` · latest ${formatDay(idea.latestVersionAt.slice(0, 10))}`}
                   </p>

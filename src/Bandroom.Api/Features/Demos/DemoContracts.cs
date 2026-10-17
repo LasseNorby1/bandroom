@@ -5,13 +5,15 @@ namespace Bandroom.Api.Features.Demos;
 
 public sealed record CreateIdeaRequest(string Title);
 
-public sealed record UpdateIdeaRequest(string? Title, IdeaStatus? Status, Guid? SongId);
+/// <summary>SongId links the idea into the repertoire; ClearSong unlinks (null SongId alone leaves it alone).</summary>
+public sealed record UpdateIdeaRequest(string? Title, IdeaStatus? Status, Guid? SongId, bool ClearSong = false);
 
 public sealed record IdeaSummaryResponse(
     Guid Id,
     string Title,
     IdeaStatus Status,
     Guid? SongId,
+    string? SongTitle,
     int VersionCount,
     Instant? LatestVersionAt,
     Instant CreatedAt);
@@ -65,6 +67,7 @@ public sealed record IdeaDetailResponse(
     string Title,
     IdeaStatus Status,
     Guid? SongId,
+    string? SongTitle,
     IReadOnlyList<VersionResponse> Versions,
     IReadOnlyList<StemResponse> Stems,
     IReadOnlyList<PolishJobResponse> PolishJobs);

@@ -219,4 +219,32 @@ public class ChatAndSongTests(ApiFactory factory)
         Assert.Equal("Mette", detail.Contact.Name);
         Assert.Single(detail.Setlist);
     }
+
+    [Fact]
+    public async Task Idea_LinksIntoASong_AndTheSongListsItsIdeas()
+    {
+        var (client, bandId) = await BandAsync();
+        var song = await (await client.PostAsJsonAsync($"/bands/{bandId}/songs", new CreateSongRequest("Silverline"), TestJson.Options)).ReadAsAsync<SongResponse>();
+        var idea = await (await client.PostAsJsonAsync($"/bands/{bandId}/song-ideas", new Bandroom.Api.Features.Demos.CreateIdeaRequest("Silverline bridge"), TestJson.Options))
+            .ReadAsAsync<Bandroom.Api.Features.Demos.IdeaSummaryResponse>();
+        Assert.Null(idea.SongTitle);
+
+        var linked = await (await client.PatchAsJsonAsync($"/bands/{bandId}/song-ideas/{idea.Id}",
+            new Bandroom.Api.Features.Demos.UpdateIdeaRequest(null, null, song.Id), TestJson.Options)).ReadAsAsync<Bandroom.Api.Features.Demos.IdeaSummaryResponse>();
+        Assert.Equal("Silverline", linked.SongTitle);
+
+        var songs = await (await client.GetAsync($"/bands/{bandId}/songs")).ReadAsAsync<List<SongResponse>>();
+        var mine = Assert.Single(songs.Single().Ideas);
+        Assert.Equal("Silverline bridge", mine.Title);
+
+        var unknown = await client.PatchAsJsonAsync($"/bands/{bandId}/song-ideas/{idea.Id}",
+            new Bandroom.Api.Features.Demos.UpdateIdeaRequest(null, null, Guid.NewGuid()), TestJson.Options);
+        Assert.Equal(HttpStatusCode.BadRequest, unknown.StatusCode);
+
+        var cleared = await (await client.PatchAsJsonAsync($"/bands/{bandId}/song-ideas/{idea.Id}",
+            new Bandroom.Api.Features.Demos.UpdateIdeaRequest(null, null, null, ClearSong: true), TestJson.Options)).ReadAsAsync<Bandroom.Api.Features.Demos.IdeaSummaryResponse>();
+        Assert.Null(cleared.SongId);
+        songs = await (await client.GetAsync($"/bands/{bandId}/songs")).ReadAsAsync<List<SongResponse>>();
+        Assert.Empty(songs.Single().Ideas);
+    }
 }

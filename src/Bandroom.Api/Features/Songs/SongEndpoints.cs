@@ -15,7 +15,11 @@ public sealed record UpdateSongRequest(
 
 public sealed record SongResponse(
     Guid Id, string Title, string? Key, int? Bpm, SongStatus Status, string? Notes, Instant CreatedAt,
-    int? DurationSeconds, string? Chords, int FireCount, bool FiredByMe, int FileCount);
+    int? DurationSeconds, string? Chords, int FireCount, bool FiredByMe, int FileCount,
+    IReadOnlyList<LinkedIdeaResponse> Ideas);
+
+/// <summary>A demo idea linked into this song — where its takes live.</summary>
+public sealed record LinkedIdeaResponse(Guid Id, string Title, int VersionCount);
 
 public sealed record SongFireResponse(int FireCount, bool FiredByMe);
 
@@ -84,7 +88,10 @@ public static class SongEndpoints
                 s.Id, s.Title, s.Key, s.Bpm, s.Status, s.Notes, s.CreatedAt, s.DurationSeconds, s.Chords,
                 db.SongReactions.Count(r => r.SongId == s.Id),
                 db.SongReactions.Any(r => r.SongId == s.Id && r.MembershipId == me),
-                db.SongFiles.Count(f => f.SongId == s.Id && f.Status == VersionStatus.Ready)))
+                db.SongFiles.Count(f => f.SongId == s.Id && f.Status == VersionStatus.Ready),
+                db.SongIdeas.Where(i => i.SongId == s.Id).OrderBy(i => i.CreatedAt)
+                    .Select(i => new LinkedIdeaResponse(i.Id, i.Title, db.DemoVersions.Count(v => v.SongIdeaId == i.Id && v.Status == VersionStatus.Ready)))
+                    .ToList()))
             .ToListAsync(ct);
         return TypedResults.Ok(songs);
     }
@@ -93,7 +100,10 @@ public static class SongEndpoints
         new(song.Id, song.Title, song.Key, song.Bpm, song.Status, song.Notes, song.CreatedAt, song.DurationSeconds, song.Chords,
             await db.SongReactions.CountAsync(r => r.SongId == song.Id, ct),
             await db.SongReactions.AnyAsync(r => r.SongId == song.Id && r.MembershipId == me, ct),
-            await db.SongFiles.CountAsync(f => f.SongId == song.Id && f.Status == VersionStatus.Ready, ct));
+            await db.SongFiles.CountAsync(f => f.SongId == song.Id && f.Status == VersionStatus.Ready, ct),
+            await db.SongIdeas.Where(i => i.SongId == song.Id).OrderBy(i => i.CreatedAt)
+                .Select(i => new LinkedIdeaResponse(i.Id, i.Title, db.DemoVersions.Count(v => v.SongIdeaId == i.Id && v.Status == VersionStatus.Ready)))
+                .ToListAsync(ct));
 
     private static async Task<Results<Ok<SongFireResponse>, NotFound>> FireAsync(
         Guid songId, BandContext bandContext, AppDbContext db, IClock clock, CancellationToken ct)

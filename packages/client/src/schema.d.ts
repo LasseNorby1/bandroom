@@ -4244,6 +4244,7 @@ export interface components {
             status: components["schemas"]["IdeaStatus"];
             /** Format: uuid */
             songId: null | string;
+            songTitle: null | string;
             versions: components["schemas"]["VersionResponse"][];
             stems: components["schemas"]["StemResponse"][];
             polishJobs: components["schemas"]["PolishJobResponse"][];
@@ -4257,6 +4258,7 @@ export interface components {
             status: components["schemas"]["IdeaStatus"];
             /** Format: uuid */
             songId: null | string;
+            songTitle: null | string;
             /** Format: int32 */
             versionCount: number;
             latestVersionAt: null | components["schemas"]["Instant"];
@@ -4340,6 +4342,13 @@ export interface components {
         };
         /** @enum {unknown} */
         IsoDayOfWeek: "none" | "monday" | "tuesday" | "wednesday" | "thursday" | "friday" | "saturday" | "sunday";
+        LinkedIdeaResponse: {
+            /** Format: uuid */
+            id: string;
+            title: string;
+            /** Format: int32 */
+            versionCount: number;
+        };
         /** Format: date */
         LocalDate: string;
         /** Format: time */
@@ -4550,6 +4559,7 @@ export interface components {
             firedByMe: boolean;
             /** Format: int32 */
             fileCount: number;
+            ideas: components["schemas"]["LinkedIdeaResponse"][];
         };
         /** @enum {unknown} */
         SongStatus: "active" | "retired";
@@ -4621,6 +4631,8 @@ export interface components {
             status: null | components["schemas"]["IdeaStatus"];
             /** Format: uuid */
             songId: null | string;
+            /** @default false */
+            clearSong: boolean;
         };
         UpdateMemberRequest: {
             role: components["schemas"]["BandRole"];

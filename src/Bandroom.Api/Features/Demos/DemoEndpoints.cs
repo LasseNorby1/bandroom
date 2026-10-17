@@ -44,6 +44,7 @@ public static class DemoEndpoints
             .OrderByDescending(i => i.CreatedAt)
             .Select(i => new IdeaSummaryResponse(
                 i.Id, i.Title, i.Status, i.SongId,
+                db.Songs.Where(s => s.Id == i.SongId).Select(s => s.Title).FirstOrDefault(),
                 db.DemoVersions.Count(v => v.SongIdeaId == i.Id && v.Status == VersionStatus.Ready),
                 db.DemoVersions
                     .Where(v => v.SongIdeaId == i.Id && v.Status == VersionStatus.Ready)
@@ -80,7 +81,7 @@ public static class DemoEndpoints
 
         return TypedResults.Created(
             $"/bands/{idea.BandId}/song-ideas/{idea.Id}",
-            new IdeaSummaryResponse(idea.Id, idea.Title, idea.Status, idea.SongId, 0, null, idea.CreatedAt));
+            new IdeaSummaryResponse(idea.Id, idea.Title, idea.Status, idea.SongId, null, 0, null, idea.CreatedAt));
     }
 
     private static async Task<Results<Ok<IdeaDetailResponse>, NotFound>> IdeaDetailAsync(
@@ -135,8 +136,11 @@ public static class DemoEndpoints
             .Select(j => new PolishJobResponse(j.Id, j.Status, j.OutputVersionId, j.Error, j.CreatedAt, j.CompletedAt))
             .ToListAsync(ct);
 
+        var songTitle = idea.SongId is null
+            ? null
+            : await db.Songs.Where(s => s.Id == idea.SongId).Select(s => s.Title).FirstOrDefaultAsync(ct);
         return TypedResults.Ok(new IdeaDetailResponse(
-            idea.Id, idea.Title, idea.Status, idea.SongId, versions, stems, jobs));
+            idea.Id, idea.Title, idea.Status, idea.SongId, songTitle, versions, stems, jobs));
     }
 
     private static async Task<Results<Ok<IdeaSummaryResponse>, NotFound, ValidationProblem>> UpdateIdeaAsync(
@@ -170,7 +174,11 @@ public static class DemoEndpoints
             idea.Status = status;
         }
 
-        if (request.SongId is { } songId)
+        if (request.ClearSong)
+        {
+            idea.SongId = null;
+        }
+        else if (request.SongId is { } songId)
         {
             var exists = await db.Songs.AnyAsync(s => s.Id == songId, ct);
             if (!exists)
@@ -187,8 +195,11 @@ public static class DemoEndpoints
         await db.SaveChangesAsync(ct);
         var versionCount = await db.DemoVersions
             .CountAsync(v => v.SongIdeaId == ideaId && v.Status == VersionStatus.Ready, ct);
+        var linkedTitle = idea.SongId is null
+            ? null
+            : await db.Songs.Where(s => s.Id == idea.SongId).Select(s => s.Title).FirstOrDefaultAsync(ct);
         return TypedResults.Ok(new IdeaSummaryResponse(
-            idea.Id, idea.Title, idea.Status, idea.SongId, versionCount, null, idea.CreatedAt));
+            idea.Id, idea.Title, idea.Status, idea.SongId, linkedTitle, versionCount, null, idea.CreatedAt));
     }
 
     private static async Task<Results<Ok<InitUploadResponse>, NotFound, ValidationProblem>> InitVersionUploadAsync(

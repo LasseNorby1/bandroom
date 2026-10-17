@@ -5047,6 +5047,7 @@
           "title",
           "status",
           "songId",
+          "songTitle",
           "versions",
           "stems",
           "polishJobs"
@@ -5069,6 +5070,12 @@
               "string"
             ],
             "format": "uuid"
+          },
+          "songTitle": {
+            "type": [
+              "null",
+              "string"
+            ]
           },
           "versions": {
             "type": "array",
@@ -5104,6 +5111,7 @@
           "title",
           "status",
           "songId",
+          "songTitle",
           "versionCount",
           "latestVersionAt",
           "createdAt"
@@ -5126,6 +5134,12 @@
               "string"
             ],
             "format": "uuid"
+          },
+          "songTitle": {
+            "type": [
+              "null",
+              "string"
+            ]
           },
           "versionCount": {
             "type": "integer",
@@ -5405,6 +5419,27 @@
           "saturday",
           "sunday"
         ]
+      },
+      "LinkedIdeaResponse": {
+        "required": [
+          "id",
+          "title",
+          "versionCount"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "title": {
+            "type": "string"
+          },
+          "versionCount": {
+            "type": "integer",
+            "format": "int32"
+          }
+        }
       },
       "LocalDate": {
         "type": "string",
@@ -6241,7 +6276,8 @@
           "chords",
           "fireCount",
           "firedByMe",
-          "fileCount"
+          "fileCount",
+          "ideas"
         ],
         "type": "object",
         "properties": {
@@ -6300,6 +6336,12 @@
           "fileCount": {
             "type": "integer",
             "format": "int32"
+          },
+          "ideas": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/LinkedIdeaResponse"
+            }
           }
         }
       },
@@ -6604,6 +6646,10 @@
               "string"
             ],
             "format": "uuid"
+          },
+          "clearSong": {
+            "type": "boolean",
+            "default": false
           }
         }
       },
