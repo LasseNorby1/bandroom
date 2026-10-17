@@ -1887,7 +1887,50 @@ export interface paths {
         delete?: never;
         options?: never;
         head?: never;
-        patch?: never;
+        /** Edit title, location, contact (creator/admin) */
+        patch: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    eventId: string;
+                    bandId: string;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["UpdateEventRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["EventDetailResponse"];
+                    };
+                };
+                /** @description Bad Request */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["HttpValidationProblemDetails"];
+                    };
+                };
+                /** @description Not Found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
         trace?: never;
     };
     "/bands/{bandId}/events/{eventId}/rsvp": {
@@ -2059,6 +2102,215 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/bands/{bandId}/events/{eventId}/items": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Who brings what: add a line */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    eventId: string;
+                    bandId: string;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["CreateEventItemRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["EventDetailResponse"];
+                    };
+                };
+                /** @description Bad Request */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["HttpValidationProblemDetails"];
+                    };
+                };
+                /** @description Not Found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/bands/{bandId}/events/{eventId}/items/{itemId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Who brings what: remove a line */
+        delete: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    eventId: string;
+                    itemId: string;
+                    bandId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["EventDetailResponse"];
+                    };
+                };
+                /** @description Not Found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        options?: never;
+        head?: never;
+        /** Who brings what: claim, tick, reword */
+        patch: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    eventId: string;
+                    itemId: string;
+                    bandId: string;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["UpdateEventItemRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["EventDetailResponse"];
+                    };
+                };
+                /** @description Bad Request */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["HttpValidationProblemDetails"];
+                    };
+                };
+                /** @description Not Found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        trace?: never;
+    };
+    "/bands/{bandId}/events/{eventId}/setlist": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Replace the setlist (ordered song ids) */
+        put: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    eventId: string;
+                    bandId: string;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["ReplaceSetlistRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["EventDetailResponse"];
+                    };
+                };
+                /** @description Bad Request */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["HttpValidationProblemDetails"];
+                    };
+                };
+                /** @description Not Found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/bands/{bandId}/songs": {
         parameters: {
             query?: never;
@@ -2189,6 +2441,82 @@ export interface paths {
                 };
             };
         };
+        trace?: never;
+    };
+    "/bands/{bandId}/songs/{songId}/fire": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** 🔥 this song */
+        put: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    songId: string;
+                    bandId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["SongFireResponse"];
+                    };
+                };
+                /** @description Not Found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        post?: never;
+        /** Take the 🔥 back */
+        delete: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    songId: string;
+                    bandId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["SongFireResponse"];
+                    };
+                };
+                /** @description Not Found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        options?: never;
+        head?: never;
+        patch?: never;
         trace?: never;
     };
     "/bands/{bandId}/songs/{songId}/files": {
@@ -3747,6 +4075,11 @@ export interface components {
             /** Format: double */
             atSeconds?: null | number;
         };
+        CreateEventItemRequest: {
+            text: string;
+            /** Format: uuid */
+            assigneeMembershipId?: null | string;
+        };
         CreateEventRequest: {
             type: components["schemas"]["EventType"];
             date: components["schemas"]["LocalDate"];
@@ -3759,6 +4092,9 @@ export interface components {
             location?: null | string;
             /** @default false */
             confirmed: boolean;
+            contactName?: null | string;
+            contactPhone?: null | string;
+            contactEmail?: null | string;
         };
         CreateExceptionRequest: {
             from: components["schemas"]["LocalDate"];
@@ -3780,6 +4116,9 @@ export interface components {
             /** Format: int32 */
             bpm?: null | number;
             notes?: null | string;
+            /** Format: int32 */
+            durationSeconds?: null | number;
+            chords?: null | string;
         };
         DeleteAccountRequest: {
             password: string;
@@ -3787,9 +4126,28 @@ export interface components {
         DownloadUrlResponse: {
             url: string;
         };
+        EventContactResponse: {
+            name: null | string;
+            phone: null | string;
+            email: null | string;
+        };
         EventDetailResponse: {
             event: components["schemas"]["EventSummaryResponse"];
             rsvps: components["schemas"]["RsvpResponse"][];
+            contact: components["schemas"]["EventContactResponse"];
+            items: components["schemas"]["EventItemResponse"][];
+            setlist: components["schemas"]["SetlistItemResponse"][];
+            /** Format: int32 */
+            setlistSeconds: number;
+        };
+        EventItemResponse: {
+            /** Format: uuid */
+            id: string;
+            text: string;
+            /** Format: uuid */
+            assigneeMembershipId: null | string;
+            assigneeName: null | string;
+            done: boolean;
         };
         /** @enum {unknown} */
         EventStatus: "proposed" | "confirmed" | "cancelled";
@@ -4054,6 +4412,9 @@ export interface components {
             location: null | string;
             fee: null | string;
             notes: null | string;
+            contactName?: null | string;
+            contactPhone?: null | string;
+            contactEmail?: null | string;
         };
         ParseTextRequest: {
             text: string;
@@ -4109,6 +4470,9 @@ export interface components {
             password: string;
             displayName: string;
         };
+        ReplaceSetlistRequest: {
+            songIds: string[];
+        };
         RequestPolishRequest: {
             /** Format: uuid */
             referenceTrackId?: null | string;
@@ -4140,6 +4504,16 @@ export interface components {
         SendMessageRequest: {
             body: string;
         };
+        SetlistItemResponse: {
+            /** Format: uuid */
+            songId: string;
+            title: string;
+            key: null | string;
+            /** Format: int32 */
+            bpm: null | number;
+            /** Format: int32 */
+            durationSeconds: null | number;
+        };
         SongFileResponse: {
             /** Format: uuid */
             id: string;
@@ -4153,6 +4527,11 @@ export interface components {
             uploaderName: string;
             createdAt: components["schemas"]["Instant"];
         };
+        SongFireResponse: {
+            /** Format: int32 */
+            fireCount: number;
+            firedByMe: boolean;
+        };
         SongResponse: {
             /** Format: uuid */
             id: string;
@@ -4163,6 +4542,12 @@ export interface components {
             status: components["schemas"]["SongStatus"];
             notes: null | string;
             createdAt: components["schemas"]["Instant"];
+            /** Format: int32 */
+            durationSeconds: null | number;
+            chords: null | string;
+            /** Format: int32 */
+            fireCount: number;
+            firedByMe: boolean;
         };
         /** @enum {unknown} */
         SongStatus: "active" | "retired";
@@ -4214,6 +4599,21 @@ export interface components {
             clearRecurringPracticeDay: boolean;
             aiEnabled?: null | boolean;
         };
+        UpdateEventItemRequest: {
+            text?: null | string;
+            /** Format: uuid */
+            assigneeMembershipId?: null | string;
+            /** @default false */
+            clearAssignee: boolean;
+            done?: null | boolean;
+        };
+        UpdateEventRequest: {
+            title?: null | string;
+            location?: null | string;
+            contactName?: null | string;
+            contactPhone?: null | string;
+            contactEmail?: null | string;
+        };
         UpdateIdeaRequest: {
             title: null | string;
             status: null | components["schemas"]["IdeaStatus"];
@@ -4239,6 +4639,9 @@ export interface components {
             bpm: null | number;
             status: null | components["schemas"]["SongStatus"];
             notes: null | string;
+            /** Format: int32 */
+            durationSeconds?: null | number;
+            chords?: null | string;
         };
         /** @enum {unknown} */
         VersionKind: "upload" | "aiMix";

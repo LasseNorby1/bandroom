@@ -24,7 +24,10 @@ public sealed record ParsedGigOffer(
     string? Title,
     string? Location,
     string? Fee,
-    string? Notes);
+    string? Notes,
+    string? ContactName = null,
+    string? ContactPhone = null,
+    string? ContactEmail = null);
 
 public sealed record CatchUpItem(Instant At, string Kind, string Text, string? Path);
 
@@ -154,7 +157,7 @@ public static class AiEndpoints
         {
             type = "object",
             additionalProperties = false,
-            required = new[] { "type", "date", "startTime", "endTime", "title", "location", "fee", "notes" },
+            required = new[] { "type", "date", "startTime", "endTime", "title", "location", "fee", "notes", "contactName", "contactPhone", "contactEmail" },
             properties = new
             {
                 type = new { type = "string", @enum = new[] { "gig", "deadline", "other" } },
@@ -164,7 +167,10 @@ public static class AiEndpoints
                 title = new { type = new[] { "string", "null" }, description = "short, e.g. 'Gig at Loppen'" },
                 location = new { type = new[] { "string", "null" } },
                 fee = new { type = new[] { "string", "null" }, description = "money mentioned, verbatim" },
-                notes = new { type = new[] { "string", "null" }, description = "load-in, set length, backline, contact — one short line" },
+                notes = new { type = new[] { "string", "null" }, description = "load-in, set length, backline — one short line" },
+                contactName = new { type = new[] { "string", "null" }, description = "the person who wrote or is named as contact" },
+                contactPhone = new { type = new[] { "string", "null" }, description = "phone number verbatim" },
+                contactEmail = new { type = new[] { "string", "null" } },
             },
         });
         var system = $"""
@@ -186,7 +192,10 @@ public static class AiEndpoints
             Trim(Str("title"), 120),
             Trim(Str("location"), 200),
             Trim(Str("fee"), 60),
-            Trim(Str("notes"), 300)));
+            Trim(Str("notes"), 300),
+            Trim(Str("contactName"), 100),
+            Trim(Str("contactPhone"), 40),
+            Trim(Str("contactEmail"), 200)));
     }
 
     private static string? Trim(string? value, int max) =>

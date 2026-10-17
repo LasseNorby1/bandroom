@@ -127,4 +127,96 @@ public class ChatAndSongTests(ApiFactory factory)
         Assert.Equal("bringing the new pedal", only.Body);
         Assert.Equal("Lasse", only.AuthorName);
     }
+
+    [Fact]
+    public async Task Songs_CarryDurationChordsAndFire_AndTheRepertoireCanSortByFire()
+    {
+        var (client, bandId) = await BandAsync();
+        var song = await (await client.PostAsJsonAsync($"/bands/{bandId}/songs",
+                new CreateSongRequest("Hold the line", "Am", 120, null, 215, "[Am]Hold the [F]line"), TestJson.Options))
+            .ReadAsAsync<SongResponse>();
+        Assert.Equal(215, song.DurationSeconds);
+        Assert.Equal("[Am]Hold the [F]line", song.Chords);
+        Assert.Equal(0, song.FireCount);
+
+        var lit = await (await client.PutAsync($"/bands/{bandId}/songs/{song.Id}/fire", null)).ReadAsAsync<SongFireResponse>();
+        Assert.Equal((1, true), (lit.FireCount, lit.FiredByMe));
+        lit = await (await client.PutAsync($"/bands/{bandId}/songs/{song.Id}/fire", null)).ReadAsAsync<SongFireResponse>();
+        Assert.Equal(1, lit.FireCount); // idempotent
+
+        var list = await (await client.GetAsync($"/bands/{bandId}/songs")).ReadAsAsync<List<SongResponse>>();
+        Assert.True(list.Single().FiredByMe);
+
+        var cleared = await (await client.PatchAsJsonAsync($"/bands/{bandId}/songs/{song.Id}",
+                new UpdateSongRequest(null, null, null, null, null, 0, ""), TestJson.Options))
+            .ReadAsAsync<SongResponse>();
+        Assert.Null(cleared.DurationSeconds);
+        Assert.Null(cleared.Chords);
+        Assert.Equal(1, cleared.FireCount);
+
+        var unlit = await client.DeleteAsync($"/bands/{bandId}/songs/{song.Id}/fire");
+        Assert.Equal((0, false), ((await unlit.ReadAsAsync<SongFireResponse>()).FireCount, false));
+
+        var tooLong = await client.PostAsJsonAsync($"/bands/{bandId}/songs",
+            new CreateSongRequest("Long", null, null, null, 4 * 60 * 60), TestJson.Options);
+        Assert.Equal(HttpStatusCode.BadRequest, tooLong.StatusCode);
+    }
+
+    [Fact]
+    public async Task Gig_HasAContact_ASetlistWithATotal_AndWhoBringsWhat()
+    {
+        var (client, bandId) = await BandAsync();
+        var me = (await (await client.GetAsync($"/bands/{bandId}")).ReadAsAsync<BandDetailResponse>()).Members.Single();
+        var date = SystemClock.Instance.GetCurrentInstant().InZone(DateTimeZoneProviders.Tzdb["Europe/Copenhagen"]).Date.PlusDays(30);
+
+        var gig = await (await client.PostAsJsonAsync($"/bands/{bandId}/events",
+                new CreateEventRequest(EventType.Gig, date, null, new LocalTime(21, 0), null, "Loppen", "Christiania",
+                    ContactName: "Mette", ContactPhone: "+45 12 34 56 78"), TestJson.Options))
+            .ReadAsAsync<EventDetailResponse>();
+        Assert.Equal("Mette", gig.Contact.Name);
+        Assert.Null(gig.Contact.Email);
+        var id = gig.Event.Id;
+
+        // Contact can be edited later by the creator; a bad email is refused.
+        var bad = await client.PatchAsJsonAsync($"/bands/{bandId}/events/{id}", new UpdateEventRequest(ContactEmail: "nope"), TestJson.Options);
+        Assert.Equal(HttpStatusCode.BadRequest, bad.StatusCode);
+        var edited = await (await client.PatchAsJsonAsync($"/bands/{bandId}/events/{id}",
+            new UpdateEventRequest(ContactEmail: "mette@loppen.dk", ContactPhone: ""), TestJson.Options)).ReadAsAsync<EventDetailResponse>();
+        Assert.Equal("mette@loppen.dk", edited.Contact.Email);
+        Assert.Null(edited.Contact.Phone);
+
+        // Setlist: ordered songs from the repertoire, total from durations.
+        var a = await (await client.PostAsJsonAsync($"/bands/{bandId}/songs", new CreateSongRequest("A", null, null, null, 200), TestJson.Options)).ReadAsAsync<SongResponse>();
+        var b = await (await client.PostAsJsonAsync($"/bands/{bandId}/songs", new CreateSongRequest("B", null, null, null, 100), TestJson.Options)).ReadAsAsync<SongResponse>();
+        var c = await (await client.PostAsJsonAsync($"/bands/{bandId}/songs", new CreateSongRequest("C"), TestJson.Options)).ReadAsAsync<SongResponse>();
+        var withSet = await (await client.PutAsJsonAsync($"/bands/{bandId}/events/{id}/setlist",
+            new ReplaceSetlistRequest([b.Id, a.Id, c.Id]), TestJson.Options)).ReadAsAsync<EventDetailResponse>();
+        Assert.Equal(["B", "A", "C"], withSet.Setlist.Select(s => s.Title));
+        Assert.Equal(300, withSet.SetlistSeconds);
+        var reordered = await (await client.PutAsJsonAsync($"/bands/{bandId}/events/{id}/setlist",
+            new ReplaceSetlistRequest([a.Id]), TestJson.Options)).ReadAsAsync<EventDetailResponse>();
+        Assert.Equal(["A"], reordered.Setlist.Select(s => s.Title));
+        var foreign = await client.PutAsJsonAsync($"/bands/{bandId}/events/{id}/setlist", new ReplaceSetlistRequest([Guid.NewGuid()]), TestJson.Options);
+        Assert.Equal(HttpStatusCode.BadRequest, foreign.StatusCode);
+
+        // Who brings what: a line, a name, a tick.
+        var withItem = await (await client.PostAsJsonAsync($"/bands/{bandId}/events/{id}/items",
+            new CreateEventItemRequest("small amp"), TestJson.Options)).ReadAsAsync<EventDetailResponse>();
+        var item = Assert.Single(withItem.Items);
+        Assert.Null(item.AssigneeName);
+        var claimed = await (await client.PatchAsJsonAsync($"/bands/{bandId}/events/{id}/items/{item.Id}",
+            new UpdateEventItemRequest(AssigneeMembershipId: me.MembershipId, Done: true), TestJson.Options)).ReadAsAsync<EventDetailResponse>();
+        Assert.Equal(me.DisplayName, claimed.Items.Single().AssigneeName);
+        Assert.True(claimed.Items.Single().Done);
+        var released = await (await client.PatchAsJsonAsync($"/bands/{bandId}/events/{id}/items/{item.Id}",
+            new UpdateEventItemRequest(ClearAssignee: true), TestJson.Options)).ReadAsAsync<EventDetailResponse>();
+        Assert.Null(released.Items.Single().AssigneeMembershipId);
+        var gone = await (await client.DeleteAsync($"/bands/{bandId}/events/{id}/items/{item.Id}")).ReadAsAsync<EventDetailResponse>();
+        Assert.Empty(gone.Items);
+
+        // The detail shows all of it in one read.
+        var detail = await (await client.GetAsync($"/bands/{bandId}/events/{id}")).ReadAsAsync<EventDetailResponse>();
+        Assert.Equal("Mette", detail.Contact.Name);
+        Assert.Single(detail.Setlist);
+    }
 }

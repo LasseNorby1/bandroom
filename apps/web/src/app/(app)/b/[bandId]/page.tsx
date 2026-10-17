@@ -160,7 +160,8 @@ function AddEvent({ bandId }: { bandId: string }) {
   const queryClient = useQueryClient();
   const [open, setOpen] = useState(false);
   const [pasted, setPasted] = useState("");
-  const [draft, setDraft] = useState({ type: "gig", date: "", startTime: "", endTime: "", title: "", location: "" });
+  const empty = { type: "gig", date: "", startTime: "", endTime: "", title: "", location: "", contactName: "", contactPhone: "", contactEmail: "" };
+  const [draft, setDraft] = useState(empty);
   const [note, setNote] = useState<string | null>(null);
   const aiOn = !!detail?.band.aiAvailable && !!detail?.band.aiEnabled;
 
@@ -178,6 +179,9 @@ function AddEvent({ bandId }: { bandId: string }) {
         endTime: offer.endTime?.slice(0, 5) ?? "",
         title: offer.title ?? "",
         location: offer.location ?? "",
+        contactName: offer.contactName ?? "",
+        contactPhone: offer.contactPhone ?? "",
+        contactEmail: offer.contactEmail ?? "",
       });
       setNote([offer.fee && `fee: ${offer.fee}`, offer.notes].filter(Boolean).join(" · ") || null);
     },
@@ -196,6 +200,9 @@ function AddEvent({ bandId }: { bandId: string }) {
           title: draft.title || null,
           location: draft.location || null,
           confirmed: false,
+          contactName: draft.contactName || null,
+          contactPhone: draft.contactPhone || null,
+          contactEmail: draft.contactEmail || null,
         },
       });
       if (error) throw error;
@@ -204,7 +211,7 @@ function AddEvent({ bandId }: { bandId: string }) {
     onSuccess: () => {
       setOpen(false);
       setPasted("");
-      setDraft({ type: "gig", date: "", startTime: "", endTime: "", title: "", location: "" });
+      setDraft(empty);
       setNote(null);
       void queryClient.invalidateQueries({ queryKey: bandKeys.events(bandId) });
     },
@@ -256,6 +263,13 @@ function AddEvent({ bandId }: { bandId: string }) {
         <input type="time" value={draft.endTime} onChange={(e) => setDraft({ ...draft, endTime: e.target.value })} className={field} aria-label="End" />
         <input value={draft.location} onChange={(e) => setDraft({ ...draft, location: e.target.value })} placeholder="location" maxLength={200} className={field} aria-label="Location" />
       </div>
+      {draft.type === "gig" && (
+        <div className="grid gap-3 sm:grid-cols-3">
+          <input value={draft.contactName} onChange={(e) => setDraft({ ...draft, contactName: e.target.value })} placeholder="contact name" maxLength={100} className={field} aria-label="Contact name" />
+          <input value={draft.contactPhone} onChange={(e) => setDraft({ ...draft, contactPhone: e.target.value })} placeholder="contact phone" maxLength={40} className={field} aria-label="Contact phone" />
+          <input value={draft.contactEmail} onChange={(e) => setDraft({ ...draft, contactEmail: e.target.value })} placeholder="contact email" maxLength={200} className={field} aria-label="Contact email" />
+        </div>
+      )}
       <div className="flex gap-2">
         <Button type="submit" size="sm" disabled={create.isPending || !draft.date}>Propose it</Button>
         <Button type="button" size="sm" variant="ghost" onClick={() => setOpen(false)}>Cancel</Button>

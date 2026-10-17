@@ -22,6 +22,12 @@ public sealed class Song : IBandScoped
 
     public int? Bpm { get; set; }
 
+    /// <summary>How long it runs live — the setlist's total comes from this.</summary>
+    public int? DurationSeconds { get; set; }
+
+    /// <summary>Lyrics with inline chords, ChordPro style: "[Am]Hold the [F]line". Pasted, rendered, never parsed further.</summary>
+    public string? Chords { get; set; }
+
     public SongStatus Status { get; set; } = SongStatus.Active;
 
     public string? Notes { get; set; }

@@ -45,6 +45,13 @@ public sealed class Event : IBandScoped
 
     public string? Location { get; set; }
 
+    /// <summary>The one person to call on the day. A name and a number on the gig, not a crm.</summary>
+    public string? ContactName { get; set; }
+
+    public string? ContactPhone { get; set; }
+
+    public string? ContactEmail { get; set; }
+
     public required Guid CreatedByMembershipId { get; init; }
 
     public required Instant CreatedAt { get; init; }

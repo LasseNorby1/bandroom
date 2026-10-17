@@ -52,6 +52,9 @@ export function DemoPlayer({ bandId, version }: { bandId: string; version: DemoV
   const [position, setPosition] = useState(0);
   const [touched, setTouched] = useState(false);
   const [mediaDuration, setMediaDuration] = useState(0);
+  // Practice aids (spec §2, borrowed from BandHelper): slow it down, loop a section.
+  const [rate, setRate] = useState(1);
+  const [loop, setLoop] = useState<{ a: number; b: number | null } | null>(null);
   const peaks = usePeaks(version.peaks, url, touched);
   const duration = version.durationSeconds ?? mediaDuration;
 
@@ -71,7 +74,12 @@ export function DemoPlayer({ bandId, version }: { bandId: string; version: DemoV
   useEffect(() => {
     const audio = audioRef.current;
     if (!audio) return;
-    const onTime = () => setPosition(audio.currentTime);
+    const onTime = () => {
+      if (loop && loop.b !== null && audio.currentTime >= loop.b) {
+        audio.currentTime = loop.a;
+      }
+      setPosition(audio.currentTime);
+    };
     const onEnd = () => setPlaying(false);
     const onDuration = () => setMediaDuration(Number.isFinite(audio.duration) ? audio.duration : 0);
     audio.addEventListener("timeupdate", onTime);
@@ -84,7 +92,33 @@ export function DemoPlayer({ bandId, version }: { bandId: string; version: DemoV
       audio.removeEventListener("loadedmetadata", onDuration);
       audio.removeEventListener("durationchange", onDuration);
     };
-  }, [url]);
+  }, [url, loop]);
+
+  useEffect(() => {
+    const audio = audioRef.current;
+    if (audio) {
+      audio.playbackRate = rate;
+      audio.preservesPitch = true;
+    }
+  }, [rate, url]);
+
+  // Tap once: loop starts here. Tap again: loop ends here. Tap a third time: off.
+  const tapLoop = useCallback(() => {
+    const audio = audioRef.current;
+    if (!audio) return;
+    const now = audio.currentTime;
+    if (!loop) {
+      setLoop({ a: now, b: null });
+    } else if (loop.b === null) {
+      if (now <= loop.a + 0.25) {
+        setLoop(null);
+      } else {
+        setLoop({ a: loop.a, b: now });
+      }
+    } else {
+      setLoop(null);
+    }
+  }, [loop]);
 
   const toggle = useCallback(() => {
     const audio = audioRef.current;
@@ -201,20 +235,53 @@ export function DemoPlayer({ bandId, version }: { bandId: string; version: DemoV
             if (duration > 0) seek(fraction * duration);
           }}
         >
-          {peaks.map((peak, index) => (
-            <span
-              key={index}
-              style={{ height: `${Math.max(8, peak * 100)}%` }}
-              className={cn(
-                "min-w-0 flex-1 rounded-sm",
-                index / peaks.length <= progress ? "bg-ink" : "bg-line",
-              )}
-            />
-          ))}
+          {peaks.map((peak, index) => {
+            const at = duration > 0 ? (index / peaks.length) * duration : 0;
+            const inLoop = loop !== null && at >= loop.a && (loop.b === null || at <= loop.b);
+            return (
+              <span
+                key={index}
+                style={{ height: `${Math.max(8, peak * 100)}%` }}
+                className={cn(
+                  "min-w-0 flex-1 rounded-sm",
+                  index / peaks.length <= progress ? "bg-ink" : inLoop ? "bg-accent/40" : "bg-line",
+                )}
+              />
+            );
+          })}
         </button>
         <span className="w-12 shrink-0 text-right font-mono text-[11px] text-muted">
           {formatSeconds(position)}
         </span>
+      </div>
+
+      <div className="flex flex-wrap items-center gap-2 font-mono text-[11px]">
+        {[1, 0.75, 0.5].map((r) => (
+          <button
+            key={r}
+            type="button"
+            onClick={() => setRate(r)}
+            aria-pressed={rate === r}
+            className={cn(
+              "rounded-full border px-2 py-0.5 transition-colors",
+              rate === r ? "border-ink bg-ink text-paper" : "border-line text-muted hover:border-ink hover:text-ink",
+            )}
+          >
+            {r === 1 ? "1×" : `${r}×`}
+          </button>
+        ))}
+        <button
+          type="button"
+          onClick={tapLoop}
+          disabled={!url}
+          aria-pressed={loop !== null}
+          className={cn(
+            "rounded-full border px-2 py-0.5 transition-colors",
+            loop ? "border-accent/50 bg-accent-soft text-accent" : "border-line text-muted hover:border-ink hover:text-ink",
+          )}
+        >
+          {loop === null ? "loop" : loop.b === null ? `loop from ${formatSeconds(loop.a)} · tap to end` : `loop ${formatSeconds(loop.a)}–${formatSeconds(loop.b)} · off`}
+        </button>
       </div>
 
       {url && <audio ref={audioRef} src={url} preload="metadata" />}

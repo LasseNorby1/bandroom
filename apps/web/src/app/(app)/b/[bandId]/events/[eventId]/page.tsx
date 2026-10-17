@@ -3,6 +3,7 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { use } from "react";
 import { Comments } from "@/components/comments";
+import { GigContact, Setlist, WhoBringsWhat } from "@/components/event-extras";
 import { RsvpButtons } from "@/components/rsvp-buttons";
 import { StatusChip } from "@/components/status-chip";
 import { Button } from "@/components/ui/button";
@@ -51,7 +52,7 @@ export default function EventPage({
     return <p className="text-sm text-accent">That event doesn&apos;t exist (anymore).</p>;
   }
 
-  const { event: evt, rsvps } = event.data;
+  const { event: evt, rsvps, contact, items, setlist, setlistSeconds } = event.data;
   const myRsvp = rsvps.find((rsvp) => rsvp.membershipId === me?.membershipId);
   const mayManage = isAdmin || evt.createdByMembershipId === me?.membershipId;
   const quorum = detail ? Math.max(1, Math.min(detail.band.quorum, detail.members.length)) : null;
@@ -78,6 +79,10 @@ export default function EventPage({
           </div>
           <StatusChip status={evt.status} />
         </div>
+
+        {evt.type === "gig" && (
+          <GigContact bandId={bandId} eventId={eventId} contact={contact} mayEdit={mayManage} />
+        )}
 
         {belowQuorum && (
           <div className="rounded-lg border border-accent/30 bg-accent-soft px-4 py-3 text-sm">
@@ -135,6 +140,12 @@ export default function EventPage({
           )}
         </ul>
       </section>
+
+      {evt.type === "gig" && evt.status !== "cancelled" && (
+        <Setlist bandId={bandId} eventId={eventId} title={title} setlist={setlist} totalSeconds={setlistSeconds} />
+      )}
+
+      {evt.status !== "cancelled" && <WhoBringsWhat bandId={bandId} eventId={eventId} items={items} />}
 
       <section className="space-y-3 rounded-xl border border-line bg-surface p-5">
         <p className="font-mono text-xs tracking-wider text-muted">talk</p>

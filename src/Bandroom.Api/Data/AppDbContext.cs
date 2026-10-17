@@ -57,6 +57,12 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options, IBandCo
 
     public DbSet<SongFile> SongFiles => Set<SongFile>();
 
+    public DbSet<SongReaction> SongReactions => Set<SongReaction>();
+
+    public DbSet<EventItem> EventItems => Set<EventItem>();
+
+    public DbSet<SetlistEntry> SetlistEntries => Set<SetlistEntry>();
+
     public DbSet<VersionAnalysis> VersionAnalyses => Set<VersionAnalysis>();
 
     public DbSet<ImportedBusyDay> ImportedBusyDays => Set<ImportedBusyDay>();
@@ -182,6 +188,9 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options, IBandCo
             evt.Property(e => e.Slot).HasConversion<string>().HasMaxLength(20);
             evt.Property(e => e.Title).HasMaxLength(120);
             evt.Property(e => e.Location).HasMaxLength(200);
+            evt.Property(e => e.ContactName).HasMaxLength(100);
+            evt.Property(e => e.ContactPhone).HasMaxLength(40);
+            evt.Property(e => e.ContactEmail).HasMaxLength(200);
             evt.HasIndex(e => new { e.BandId, e.Date });
             evt.HasOne<Band>()
                 .WithMany()
@@ -215,6 +224,7 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options, IBandCo
             song.Property(s => s.Title).HasMaxLength(120);
             song.Property(s => s.Key).HasMaxLength(12);
             song.Property(s => s.Notes).HasMaxLength(2000);
+            song.Property(s => s.Chords).HasMaxLength(20000);
             song.Property(s => s.Status).HasConversion<string>().HasMaxLength(20);
             song.HasOne<Band>().WithMany().HasForeignKey(s => s.BandId).OnDelete(DeleteBehavior.Cascade);
             song.HasQueryFilter(s => s.BandId == _bandContext.BandId);
@@ -307,6 +317,31 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options, IBandCo
             reaction.HasOne<DemoVersion>().WithMany().HasForeignKey(r => r.VersionId).OnDelete(DeleteBehavior.Cascade);
             reaction.HasOne<Membership>().WithMany().HasForeignKey(r => r.MembershipId).OnDelete(DeleteBehavior.Cascade);
             reaction.HasQueryFilter(r => r.BandId == _bandContext.BandId);
+        });
+
+        builder.Entity<SongReaction>(reaction =>
+        {
+            reaction.HasIndex(r => new { r.SongId, r.MembershipId }).IsUnique();
+            reaction.HasOne<Song>().WithMany().HasForeignKey(r => r.SongId).OnDelete(DeleteBehavior.Cascade);
+            reaction.HasOne<Membership>().WithMany().HasForeignKey(r => r.MembershipId).OnDelete(DeleteBehavior.Cascade);
+            reaction.HasQueryFilter(r => r.BandId == _bandContext.BandId);
+        });
+
+        builder.Entity<EventItem>(item =>
+        {
+            item.Property(i => i.Text).HasMaxLength(200);
+            item.HasIndex(i => i.EventId);
+            item.HasOne<Event>().WithMany().HasForeignKey(i => i.EventId).OnDelete(DeleteBehavior.Cascade);
+            item.HasOne<Membership>().WithMany().HasForeignKey(i => i.AssigneeMembershipId).OnDelete(DeleteBehavior.SetNull);
+            item.HasQueryFilter(i => i.BandId == _bandContext.BandId);
+        });
+
+        builder.Entity<SetlistEntry>(entry =>
+        {
+            entry.HasIndex(e => new { e.EventId, e.Position }).IsUnique();
+            entry.HasOne<Event>().WithMany().HasForeignKey(e => e.EventId).OnDelete(DeleteBehavior.Cascade);
+            entry.HasOne<Song>().WithMany().HasForeignKey(e => e.SongId).OnDelete(DeleteBehavior.Cascade);
+            entry.HasQueryFilter(e => e.BandId == _bandContext.BandId);
         });
 
         builder.Entity<SongFile>(file =>
