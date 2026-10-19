@@ -498,25 +498,35 @@ def estimate_chords(mono: np.ndarray, beat_source: np.ndarray | None = None) -> 
     return chords
 
 
-def separate(mono_stereo: np.ndarray) -> tuple[np.ndarray, np.ndarray] | None:
+def separate(stereo: np.ndarray) -> tuple[np.ndarray, np.ndarray] | None:
     """Demucs (htdemucs, cpu) → (vocals, accompaniment), both mono at SR.
-    Runs as a subprocess so its memory goes away before whisper loads.
-    None when the model isn't there; the caller falls back to the mix."""
+    Runs demucs_split.py as a subprocess so its memory goes away before whisper
+    loads. None on any failure; the caller falls back to the mix."""
+    import librosa
+
     with tempfile.TemporaryDirectory() as tmp:
         src = os.path.join(tmp, "take.wav")
-        sf.write(src, mono_stereo, SR)
-        cmd = [
-            "python", "-m", "demucs.separate", "-n", "htdemucs", "--two-stems=vocals", "-d", "cpu",
-            "--segment", "7", "-j", "1", "-o", tmp, src,
-        ]
+        sf.write(src, stereo, SR)
         try:
-            subprocess.run(cmd, check=True, capture_output=True, timeout=1800)
-        except (subprocess.CalledProcessError, subprocess.TimeoutExpired, FileNotFoundError):
+            subprocess.run(
+                ["python", os.path.join(os.path.dirname(os.path.abspath(__file__)), "demucs_split.py"), src, tmp],
+                check=True, capture_output=True, timeout=1800,
+            )
+            vocals, vsr = sf.read(os.path.join(tmp, "vocals.wav"), dtype="float32", always_2d=True)
+            rest, rsr = sf.read(os.path.join(tmp, "no_vocals.wav"), dtype="float32", always_2d=True)
+        except subprocess.CalledProcessError as e:
+            # Say why in the log; the draft itself just falls back to the mix.
+            print("demucs failed:", (e.stderr or b"")[-600:].decode(errors="replace"), flush=True)
             return None
-        out = os.path.join(tmp, "htdemucs", "take")
-        vocals, _ = sf.read(os.path.join(out, "vocals.wav"), dtype="float32", always_2d=True)
-        rest, _ = sf.read(os.path.join(out, "no_vocals.wav"), dtype="float32", always_2d=True)
-        return vocals.mean(axis=1), rest.mean(axis=1)
+        except (subprocess.TimeoutExpired, FileNotFoundError, RuntimeError) as e:
+            print("demucs failed:", repr(e), flush=True)
+            return None
+        v = vocals.mean(axis=1)
+        r = rest.mean(axis=1)
+        if vsr != SR:
+            v = librosa.resample(v, orig_sr=vsr, target_sr=SR)
+            r = librosa.resample(r, orig_sr=rsr, target_sr=SR)
+        return v, r
 
 
 def draft_sheet(audio: np.ndarray, language: str | None) -> SheetResponse:

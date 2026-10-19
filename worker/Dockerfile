@@ -9,6 +9,6 @@ RUN pip install --no-cache-dir -r requirements.txt
 # lameenc only writes mp3. htdemucs is a plain checkpoint; wav in, wav out.
 RUN pip install --no-cache-dir --no-deps demucs==4.0.1 && \
     pip install --no-cache-dir dora-search einops julius lameenc openunmix pyyaml tqdm
-COPY main.py .
+COPY main.py demucs_split.py ./
 EXPOSE 8090
 CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8090"]
