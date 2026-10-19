@@ -546,8 +546,21 @@ def draft_sheet(audio: np.ndarray, language: str | None) -> SheetResponse:
         speech, language=language, word_timestamps=True, vad_filter=False, beam_size=5,
         condition_on_previous_text=True, no_speech_threshold=0.8, log_prob_threshold=-1.5,
     )
+    # Whisper invents lines on silence and on instrumentals ("Thanks for
+    # watching!"); a line only counts where the vocal stem actually has energy.
+    frame = 16000 // 10
+    vocal_rms = np.sqrt(np.convolve(speech.astype(np.float64) ** 2, np.ones(frame) / frame, mode="same") + 1e-12)
+    vocal_floor = 0.08 * float(vocal_rms.max()) if vocal_rms.size else 0.0
+
+    def sung(start: float, end: float) -> bool:
+        a, b = int(max(0.0, start) * 16000), int(max(end, start + 0.2) * 16000)
+        window = vocal_rms[a:b]
+        return window.size > 0 and float(window.max()) >= vocal_floor
+
     segments: list[SheetSegment] = []
     for seg in segments_iter:
+        if not sung(float(seg.start), float(seg.end)):
+            continue
         words = [SheetWord(start=float(w.start), end=float(w.end), text=w.word.strip()) for w in (seg.words or []) if any(ch.isalnum() for ch in w.word)]
         if not words:
             text = seg.text.strip()
