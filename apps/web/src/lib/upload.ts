@@ -68,13 +68,13 @@ function measureDuration(file: File): Promise<number | null> {
 
 export async function uploadDemoVersion(
   bandId: string,
-  ideaId: string,
+  songId: string,
   file: File,
   onProgress?: (fraction: number) => void,
 ): Promise<DemoVersion> {
   const contentType = contentTypeOf(file);
-  const { data: init, error } = await api.POST("/bands/{bandId}/song-ideas/{ideaId}/versions/uploads", {
-    params: { path: { bandId, ideaId } },
+  const { data: init, error } = await api.POST("/bands/{bandId}/songs/{songId}/versions/uploads", {
+    params: { path: { bandId, songId } },
     body: { fileName: file.name, contentType, sizeBytes: file.size },
   });
   if (error || !init) throw error ?? new Error("init failed");
@@ -95,14 +95,14 @@ export async function uploadDemoVersion(
 
 export async function uploadStem(
   bandId: string,
-  ideaId: string,
+  songId: string,
   file: File,
   label: StemLabel,
   onProgress?: (fraction: number) => void,
 ): Promise<StemInfo> {
   const contentType = contentTypeOf(file);
-  const { data: init, error } = await api.POST("/bands/{bandId}/song-ideas/{ideaId}/stems/uploads", {
-    params: { path: { bandId, ideaId } },
+  const { data: init, error } = await api.POST("/bands/{bandId}/songs/{songId}/stems/uploads", {
+    params: { path: { bandId, songId } },
     body: { label, name: null, fileName: file.name, contentType, sizeBytes: file.size },
   });
   if (error || !init) throw error ?? new Error("init failed");

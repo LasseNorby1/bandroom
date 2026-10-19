@@ -104,7 +104,7 @@ public static class CommentEndpoints
         {
             demoIdeaId = await db.DemoVersions
                 .Where(v => v.Id == request.TargetId)
-                .Select(v => (Guid?)v.SongIdeaId)
+                .Select(v => (Guid?)v.SongId)
                 .SingleOrDefaultAsync(ct);
             if (demoIdeaId is null)
             {

@@ -2101,7 +2101,7 @@
         "tags": [
           "songs"
         ],
-        "summary": "The repertoire",
+        "summary": "Every song, with take and file counts",
         "parameters": [
           {
             "name": "bandId",
@@ -2132,7 +2132,7 @@
         "tags": [
           "songs"
         ],
-        "summary": "Add a song",
+        "summary": "Start a song (an idea is a song with status idea)",
         "parameters": [
           {
             "name": "bandId",
@@ -2178,11 +2178,51 @@
       }
     },
     "/bands/{bandId}/songs/{songId}": {
+      "get": {
+        "tags": [
+          "songs"
+        ],
+        "summary": "A song with its takes, stems and polish runs",
+        "parameters": [
+          {
+            "name": "songId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "bandId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SongDetailResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found"
+          }
+        }
+      },
       "patch": {
         "tags": [
           "songs"
         ],
-        "summary": "Update a song",
+        "summary": "Update a song: title, key, bpm, status, notes, duration, chords",
         "parameters": [
           {
             "name": "songId",
@@ -2557,190 +2597,7 @@
         }
       }
     },
-    "/bands/{bandId}/song-ideas": {
-      "get": {
-        "tags": [
-          "demos"
-        ],
-        "summary": "Song ideas with version counts",
-        "parameters": [
-          {
-            "name": "bandId",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "OK",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/IdeaSummaryResponse"
-                  }
-                }
-              }
-            }
-          }
-        }
-      },
-      "post": {
-        "tags": [
-          "demos"
-        ],
-        "summary": "Start a song idea",
-        "parameters": [
-          {
-            "name": "bandId",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/CreateIdeaRequest"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "201": {
-            "description": "Created",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/IdeaSummaryResponse"
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "Bad Request",
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HttpValidationProblemDetails"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/bands/{bandId}/song-ideas/{ideaId}": {
-      "get": {
-        "tags": [
-          "demos"
-        ],
-        "summary": "Idea with versions, stems and polish jobs",
-        "parameters": [
-          {
-            "name": "ideaId",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "format": "uuid"
-            }
-          },
-          {
-            "name": "bandId",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "OK",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/IdeaDetailResponse"
-                }
-              }
-            }
-          },
-          "404": {
-            "description": "Not Found"
-          }
-        }
-      },
-      "patch": {
-        "tags": [
-          "demos"
-        ],
-        "summary": "Rename/relink/restatus an idea",
-        "parameters": [
-          {
-            "name": "ideaId",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "format": "uuid"
-            }
-          },
-          {
-            "name": "bandId",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/UpdateIdeaRequest"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "200": {
-            "description": "OK",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/IdeaSummaryResponse"
-                }
-              }
-            }
-          },
-          "404": {
-            "description": "Not Found"
-          },
-          "400": {
-            "description": "Bad Request",
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HttpValidationProblemDetails"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/bands/{bandId}/song-ideas/{ideaId}/versions/uploads": {
+    "/bands/{bandId}/songs/{songId}/versions/uploads": {
       "post": {
         "tags": [
           "demos"
@@ -2748,7 +2605,7 @@
         "summary": "Start a demo upload (presigned url)",
         "parameters": [
           {
-            "name": "ideaId",
+            "name": "songId",
             "in": "path",
             "required": true,
             "schema": {
@@ -2941,7 +2798,7 @@
         }
       }
     },
-    "/bands/{bandId}/song-ideas/{ideaId}/stems/uploads": {
+    "/bands/{bandId}/songs/{songId}/stems/uploads": {
       "post": {
         "tags": [
           "demos"
@@ -2949,7 +2806,7 @@
         "summary": "Start a stem upload",
         "parameters": [
           {
-            "name": "ideaId",
+            "name": "songId",
             "in": "path",
             "required": true,
             "schema": {
@@ -3172,15 +3029,15 @@
         }
       }
     },
-    "/bands/{bandId}/song-ideas/{ideaId}/polish": {
+    "/bands/{bandId}/songs/{songId}/polish": {
       "post": {
         "tags": [
           "demos"
         ],
-        "summary": "Mix & master the idea's stems into a new demo version (ai)",
+        "summary": "Mix & master the song's stems into a new take (ai)",
         "parameters": [
           {
-            "name": "ideaId",
+            "name": "songId",
             "in": "path",
             "required": true,
             "schema": {
@@ -4457,17 +4314,6 @@
           }
         }
       },
-      "CreateIdeaRequest": {
-        "required": [
-          "title"
-        ],
-        "type": "object",
-        "properties": {
-          "title": {
-            "type": "string"
-          }
-        }
-      },
       "CreateInviteRequest": {
         "required": [
           "maxUses",
@@ -5041,125 +4887,6 @@
           }
         }
       },
-      "IdeaDetailResponse": {
-        "required": [
-          "id",
-          "title",
-          "status",
-          "songId",
-          "songTitle",
-          "versions",
-          "stems",
-          "polishJobs"
-        ],
-        "type": "object",
-        "properties": {
-          "id": {
-            "type": "string",
-            "format": "uuid"
-          },
-          "title": {
-            "type": "string"
-          },
-          "status": {
-            "$ref": "#/components/schemas/IdeaStatus"
-          },
-          "songId": {
-            "type": [
-              "null",
-              "string"
-            ],
-            "format": "uuid"
-          },
-          "songTitle": {
-            "type": [
-              "null",
-              "string"
-            ]
-          },
-          "versions": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/VersionResponse"
-            }
-          },
-          "stems": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/StemResponse"
-            }
-          },
-          "polishJobs": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/PolishJobResponse"
-            }
-          }
-        }
-      },
-      "IdeaStatus": {
-        "enum": [
-          "idea",
-          "inProgress",
-          "finished",
-          "parked"
-        ]
-      },
-      "IdeaSummaryResponse": {
-        "required": [
-          "id",
-          "title",
-          "status",
-          "songId",
-          "songTitle",
-          "versionCount",
-          "latestVersionAt",
-          "createdAt"
-        ],
-        "type": "object",
-        "properties": {
-          "id": {
-            "type": "string",
-            "format": "uuid"
-          },
-          "title": {
-            "type": "string"
-          },
-          "status": {
-            "$ref": "#/components/schemas/IdeaStatus"
-          },
-          "songId": {
-            "type": [
-              "null",
-              "string"
-            ],
-            "format": "uuid"
-          },
-          "songTitle": {
-            "type": [
-              "null",
-              "string"
-            ]
-          },
-          "versionCount": {
-            "type": "integer",
-            "format": "int32"
-          },
-          "latestVersionAt": {
-            "oneOf": [
-              {
-                "type": "null"
-              },
-              {
-                "$ref": "#/components/schemas/Instant"
-              }
-            ]
-          },
-          "createdAt": {
-            "$ref": "#/components/schemas/Instant"
-          }
-        }
-      },
       "InitReferenceUploadRequest": {
         "required": [
           "title",
@@ -5419,27 +5146,6 @@
           "saturday",
           "sunday"
         ]
-      },
-      "LinkedIdeaResponse": {
-        "required": [
-          "id",
-          "title",
-          "versionCount"
-        ],
-        "type": "object",
-        "properties": {
-          "id": {
-            "type": "string",
-            "format": "uuid"
-          },
-          "title": {
-            "type": "string"
-          },
-          "versionCount": {
-            "type": "integer",
-            "format": "int32"
-          }
-        }
       },
       "LocalDate": {
         "type": "string",
@@ -6205,6 +5911,38 @@
           }
         }
       },
+      "SongDetailResponse": {
+        "required": [
+          "song",
+          "versions",
+          "stems",
+          "polishJobs"
+        ],
+        "type": "object",
+        "properties": {
+          "song": {
+            "$ref": "#/components/schemas/SongResponse"
+          },
+          "versions": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/VersionResponse"
+            }
+          },
+          "stems": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/StemResponse"
+            }
+          },
+          "polishJobs": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PolishJobResponse"
+            }
+          }
+        }
+      },
       "SongFileResponse": {
         "required": [
           "id",
@@ -6277,7 +6015,8 @@
           "fireCount",
           "firedByMe",
           "fileCount",
-          "ideas"
+          "versionCount",
+          "latestVersionAt"
         ],
         "type": "object",
         "properties": {
@@ -6337,18 +6076,28 @@
             "type": "integer",
             "format": "int32"
           },
-          "ideas": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/LinkedIdeaResponse"
-            }
+          "versionCount": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "latestVersionAt": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/Instant"
+              }
+            ]
           }
         }
       },
       "SongStatus": {
         "enum": [
-          "active",
-          "retired"
+          "idea",
+          "working",
+          "ready",
+          "parked"
         ]
       },
       "StemLabel": {
@@ -6613,43 +6362,6 @@
               "null",
               "string"
             ]
-          }
-        }
-      },
-      "UpdateIdeaRequest": {
-        "required": [
-          "title",
-          "status",
-          "songId"
-        ],
-        "type": "object",
-        "properties": {
-          "title": {
-            "type": [
-              "null",
-              "string"
-            ]
-          },
-          "status": {
-            "oneOf": [
-              {
-                "type": "null"
-              },
-              {
-                "$ref": "#/components/schemas/IdeaStatus"
-              }
-            ]
-          },
-          "songId": {
-            "type": [
-              "null",
-              "string"
-            ],
-            "format": "uuid"
-          },
-          "clearSong": {
-            "type": "boolean",
-            "default": false
           }
         }
       },

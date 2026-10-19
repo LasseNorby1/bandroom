@@ -37,8 +37,6 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options, IBandCo
 
     public DbSet<Song> Songs => Set<Song>();
 
-    public DbSet<SongIdea> SongIdeas => Set<SongIdea>();
-
     public DbSet<DemoVersion> DemoVersions => Set<DemoVersion>();
 
     public DbSet<Comment> Comments => Set<Comment>();
@@ -227,18 +225,8 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options, IBandCo
             song.Property(s => s.Chords).HasMaxLength(20000);
             song.Property(s => s.Status).HasConversion<string>().HasMaxLength(20);
             song.HasOne<Band>().WithMany().HasForeignKey(s => s.BandId).OnDelete(DeleteBehavior.Cascade);
+            song.HasOne<Membership>().WithMany().HasForeignKey(s => s.CreatedByMembershipId).OnDelete(DeleteBehavior.SetNull);
             song.HasQueryFilter(s => s.BandId == _bandContext.BandId);
-        });
-
-        builder.Entity<SongIdea>(idea =>
-        {
-            idea.Property(i => i.Title).HasMaxLength(120);
-            idea.Property(i => i.Status).HasConversion<string>().HasMaxLength(20);
-            idea.HasOne<Band>().WithMany().HasForeignKey(i => i.BandId).OnDelete(DeleteBehavior.Cascade);
-            idea.HasOne<Song>().WithMany().HasForeignKey(i => i.SongId).OnDelete(DeleteBehavior.SetNull);
-            idea.HasOne<Membership>().WithMany().HasForeignKey(i => i.CreatedByMembershipId)
-                .OnDelete(DeleteBehavior.Cascade);
-            idea.HasQueryFilter(i => i.BandId == _bandContext.BandId);
         });
 
         builder.Entity<DemoVersion>(version =>
@@ -248,8 +236,8 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options, IBandCo
             version.Property(v => v.ContentType).HasMaxLength(100);
             version.Property(v => v.Status).HasConversion<string>().HasMaxLength(20);
             version.Property(v => v.Kind).HasConversion<string>().HasMaxLength(20);
-            version.HasIndex(v => new { v.SongIdeaId, v.Number }).IsUnique();
-            version.HasOne<SongIdea>().WithMany().HasForeignKey(v => v.SongIdeaId)
+            version.HasIndex(v => new { v.SongId, v.Number }).IsUnique();
+            version.HasOne<Song>().WithMany().HasForeignKey(v => v.SongId)
                 .OnDelete(DeleteBehavior.Cascade);
             version.HasOne<Membership>().WithMany().HasForeignKey(v => v.UploadedByMembershipId)
                 .OnDelete(DeleteBehavior.Cascade);
@@ -292,7 +280,7 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options, IBandCo
             stem.Property(s => s.Name).HasMaxLength(50);
             stem.Property(s => s.Label).HasConversion<string>().HasMaxLength(20);
             stem.Property(s => s.Status).HasConversion<string>().HasMaxLength(20);
-            stem.HasOne<SongIdea>().WithMany().HasForeignKey(s => s.SongIdeaId).OnDelete(DeleteBehavior.Cascade);
+            stem.HasOne<Song>().WithMany().HasForeignKey(s => s.SongId).OnDelete(DeleteBehavior.Cascade);
             stem.HasOne<Membership>().WithMany().HasForeignKey(s => s.UploadedByMembershipId)
                 .OnDelete(DeleteBehavior.Cascade);
             stem.HasQueryFilter(s => s.BandId == _bandContext.BandId);
@@ -392,7 +380,7 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options, IBandCo
         {
             job.Property(j => j.Status).HasConversion<string>().HasMaxLength(20);
             job.Property(j => j.Error).HasMaxLength(500);
-            job.HasOne<SongIdea>().WithMany().HasForeignKey(j => j.SongIdeaId).OnDelete(DeleteBehavior.Cascade);
+            job.HasOne<Song>().WithMany().HasForeignKey(j => j.SongId).OnDelete(DeleteBehavior.Cascade);
             job.HasOne<Membership>().WithMany().HasForeignKey(j => j.RequestedByMembershipId)
                 .OnDelete(DeleteBehavior.Cascade);
             job.HasQueryFilter(j => j.BandId == _bandContext.BandId);

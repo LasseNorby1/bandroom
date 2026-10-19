@@ -4,6 +4,7 @@ using Bandroom.Api.Data;
 using Bandroom.Api.Features.Bands;
 using Bandroom.Api.Features.Comments;
 using Bandroom.Api.Features.Demos;
+using Bandroom.Api.Features.Songs;
 using Bandroom.Api.Tests.Support;
 using Xunit;
 
@@ -21,19 +22,19 @@ public class DemoTests(ApiFactory factory)
         return (client, created.Band.Id);
     }
 
-    private static async Task<Guid> CreateIdeaAsync(HttpClient client, Guid bandId, string title = "Bridge idea")
+    private static async Task<Guid> CreateSongAsync(HttpClient client, Guid bandId, string title = "Bridge idea")
     {
         var response = await client.PostAsJsonAsync(
-            $"/bands/{bandId}/song-ideas", new CreateIdeaRequest(title), TestJson.Options);
+            $"/bands/{bandId}/songs", new CreateSongRequest(title), TestJson.Options);
         Assert.Equal(HttpStatusCode.Created, response.StatusCode);
-        return (await response.ReadAsAsync<IdeaSummaryResponse>()).Id;
+        return (await response.ReadAsAsync<SongResponse>()).Id;
     }
 
     private static async Task<VersionResponse> UploadVersionAsync(
-        HttpClient client, Guid bandId, Guid ideaId, byte[] bytes, string fileName = "take.mp3")
+        HttpClient client, Guid bandId, Guid songId, byte[] bytes, string fileName = "take.mp3")
     {
         var init = await (await client.PostAsJsonAsync(
-                $"/bands/{bandId}/song-ideas/{ideaId}/versions/uploads",
+                $"/bands/{bandId}/songs/{songId}/versions/uploads",
                 new InitUploadRequest(fileName, "audio/mpeg", bytes.Length), TestJson.Options))
             .ReadAsAsync<InitUploadResponse>();
 
@@ -53,11 +54,11 @@ public class DemoTests(ApiFactory factory)
     public async Task UploadFlow_PresignPutConfirm_MakesAPlayableVersion()
     {
         var (client, bandId) = await BandAsync();
-        var ideaId = await CreateIdeaAsync(client, bandId);
+        var songId = await CreateSongAsync(client, bandId);
         var bytes = new byte[64 * 1024];
         Random.Shared.NextBytes(bytes);
 
-        var version = await UploadVersionAsync(client, bandId, ideaId, bytes);
+        var version = await UploadVersionAsync(client, bandId, songId, bytes);
         Assert.Equal(1, version.Number);
         Assert.Equal(bytes.Length, version.SizeBytes);
         Assert.Equal(12.5, version.DurationSeconds);
@@ -73,20 +74,20 @@ public class DemoTests(ApiFactory factory)
         var band = await (await client.GetAsync($"/bands/{bandId}")).ReadAsAsync<BandDetailResponse>();
         Assert.Equal(bytes.Length, band.Band.StorageUsedBytes);
 
-        // A second upload becomes v2 and the idea summary counts both.
-        await UploadVersionAsync(client, bandId, ideaId, bytes, "take2.mp3");
-        var ideas = await (await client.GetAsync($"/bands/{bandId}/song-ideas"))
-            .ReadAsAsync<List<IdeaSummaryResponse>>();
-        Assert.Equal(2, Assert.Single(ideas).VersionCount);
+        // A second upload becomes v2 and the song row counts both.
+        await UploadVersionAsync(client, bandId, songId, bytes, "take2.mp3");
+        var songs = await (await client.GetAsync($"/bands/{bandId}/songs"))
+            .ReadAsAsync<List<SongResponse>>();
+        Assert.Equal(2, Assert.Single(songs).VersionCount);
     }
 
     [Fact]
     public async Task Confirm_WithoutUploadedObject_Fails()
     {
         var (client, bandId) = await BandAsync();
-        var ideaId = await CreateIdeaAsync(client, bandId);
+        var songId = await CreateSongAsync(client, bandId);
         var init = await (await client.PostAsJsonAsync(
-                $"/bands/{bandId}/song-ideas/{ideaId}/versions/uploads",
+                $"/bands/{bandId}/songs/{songId}/versions/uploads",
                 new InitUploadRequest("ghost.mp3", "audio/mpeg", 1000), TestJson.Options))
             .ReadAsAsync<InitUploadResponse>();
 
@@ -99,10 +100,10 @@ public class DemoTests(ApiFactory factory)
     public async Task Upload_OverQuota_IsRejected()
     {
         var (client, bandId) = await BandAsync();
-        var ideaId = await CreateIdeaAsync(client, bandId);
+        var songId = await CreateSongAsync(client, bandId);
 
         var response = await client.PostAsJsonAsync(
-            $"/bands/{bandId}/song-ideas/{ideaId}/versions/uploads",
+            $"/bands/{bandId}/songs/{songId}/versions/uploads",
             new InitUploadRequest("huge.wav", "audio/wav", 500L * 1024 * 1024), TestJson.Options);
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
     }
@@ -111,9 +112,9 @@ public class DemoTests(ApiFactory factory)
     public async Task DeleteVersion_ReleasesStorageAndComments()
     {
         var (client, bandId) = await BandAsync();
-        var ideaId = await CreateIdeaAsync(client, bandId);
+        var songId = await CreateSongAsync(client, bandId);
         var bytes = new byte[32 * 1024];
-        var version = await UploadVersionAsync(client, bandId, ideaId, bytes);
+        var version = await UploadVersionAsync(client, bandId, songId, bytes);
 
         await client.PostAsJsonAsync(
             $"/bands/{bandId}/comments",
@@ -135,10 +136,10 @@ public class DemoTests(ApiFactory factory)
     public async Task Stems_UploadAndPolish_QueuesAJob()
     {
         var (client, bandId) = await BandAsync();
-        var ideaId = await CreateIdeaAsync(client, bandId);
+        var songId = await CreateSongAsync(client, bandId);
 
         var init = await (await client.PostAsJsonAsync(
-                $"/bands/{bandId}/song-ideas/{ideaId}/stems/uploads",
+                $"/bands/{bandId}/songs/{songId}/stems/uploads",
                 new InitStemUploadRequest(StemLabel.Drums, null, "drums.wav", "audio/wav", 2048), TestJson.Options))
             .ReadAsAsync<InitStemUploadResponse>();
         using var raw = new HttpClient();
@@ -152,17 +153,17 @@ public class DemoTests(ApiFactory factory)
         Assert.Equal(VersionStatus.Ready, stem.Status);
 
         var polish = await (await client.PostAsJsonAsync(
-                $"/bands/{bandId}/song-ideas/{ideaId}/polish", new { }, TestJson.Options))
+                $"/bands/{bandId}/songs/{songId}/polish", new { }, TestJson.Options))
             .ReadAsAsync<PolishJobResponse>();
         Assert.Equal(PolishStatus.Queued, polish.Status);
 
         // A second request while one is pending is refused.
         var second = await client.PostAsJsonAsync(
-            $"/bands/{bandId}/song-ideas/{ideaId}/polish", new { }, TestJson.Options);
+            $"/bands/{bandId}/songs/{songId}/polish", new { }, TestJson.Options);
         Assert.Equal(HttpStatusCode.BadRequest, second.StatusCode);
 
-        var detail = await (await client.GetAsync($"/bands/{bandId}/song-ideas/{ideaId}"))
-            .ReadAsAsync<IdeaDetailResponse>();
+        var detail = await (await client.GetAsync($"/bands/{bandId}/songs/{songId}"))
+            .ReadAsAsync<SongDetailResponse>();
         Assert.Single(detail.Stems);
         Assert.Single(detail.PolishJobs);
     }
@@ -171,11 +172,11 @@ public class DemoTests(ApiFactory factory)
     public async Task References_UploadAndPolishAgainstThem()
     {
         var (client, bandId) = await BandAsync();
-        var ideaId = await CreateIdeaAsync(client, bandId);
+        var songId = await CreateSongAsync(client, bandId);
 
         // One ready stem so polish is possible.
         var stemInit = await (await client.PostAsJsonAsync(
-                $"/bands/{bandId}/song-ideas/{ideaId}/stems/uploads",
+                $"/bands/{bandId}/songs/{songId}/stems/uploads",
                 new InitStemUploadRequest(StemLabel.Guitar, null, "gtr.wav", "audio/wav", 4096), TestJson.Options))
             .ReadAsAsync<InitStemUploadResponse>();
         using var raw = new HttpClient();
@@ -203,20 +204,20 @@ public class DemoTests(ApiFactory factory)
 
         // Polish referencing the library track queues; a bogus reference is rejected.
         var polish = await (await client.PostAsJsonAsync(
-                $"/bands/{bandId}/song-ideas/{ideaId}/polish",
+                $"/bands/{bandId}/songs/{songId}/polish",
                 new RequestPolishRequest(reference.Id, null), TestJson.Options))
             .ReadAsAsync<PolishJobResponse>();
         Assert.Equal(PolishStatus.Queued, polish.Status);
 
         var bogus = await client.PostAsJsonAsync(
-            $"/bands/{bandId}/song-ideas/{ideaId}/polish",
+            $"/bands/{bandId}/songs/{songId}/polish",
             new RequestPolishRequest(Guid.NewGuid(), null), TestJson.Options);
         Assert.Equal(HttpStatusCode.BadRequest, bogus.StatusCode);
 
-        // The mix stage takes its own reference — same pair semantics, on a fresh idea.
-        var ideaId2 = await CreateIdeaAsync(client, bandId);
+        // The mix stage takes its own reference — same pair semantics, on a fresh song.
+        var songId2 = await CreateSongAsync(client, bandId);
         var stemInit2 = await (await client.PostAsJsonAsync(
-                $"/bands/{bandId}/song-ideas/{ideaId2}/stems/uploads",
+                $"/bands/{bandId}/songs/{songId2}/stems/uploads",
                 new InitStemUploadRequest(StemLabel.Bass, null, "bass.wav", "audio/wav", 4096), TestJson.Options))
             .ReadAsAsync<InitStemUploadResponse>();
         var stemContent2 = new ByteArrayContent(new byte[4096]);
@@ -225,12 +226,12 @@ public class DemoTests(ApiFactory factory)
         (await client.PostAsync($"/bands/{bandId}/stems/{stemInit2.StemId}/confirm", null)).EnsureSuccessStatusCode();
 
         var bogusMix = await client.PostAsJsonAsync(
-            $"/bands/{bandId}/song-ideas/{ideaId2}/polish",
+            $"/bands/{bandId}/songs/{songId2}/polish",
             new RequestPolishRequest(null, null, Guid.NewGuid(), null), TestJson.Options);
         Assert.Equal(HttpStatusCode.BadRequest, bogusMix.StatusCode);
 
         var mixPolish = await (await client.PostAsJsonAsync(
-                $"/bands/{bandId}/song-ideas/{ideaId2}/polish",
+                $"/bands/{bandId}/songs/{songId2}/polish",
                 new RequestPolishRequest(reference.Id, null, reference.Id, null), TestJson.Options))
             .ReadAsAsync<PolishJobResponse>();
         Assert.Equal(PolishStatus.Queued, mixPolish.Status);
@@ -240,9 +241,9 @@ public class DemoTests(ApiFactory factory)
     public async Task Polish_WithoutStems_IsRejected()
     {
         var (client, bandId) = await BandAsync();
-        var ideaId = await CreateIdeaAsync(client, bandId);
+        var songId = await CreateSongAsync(client, bandId);
         var response = await client.PostAsJsonAsync(
-            $"/bands/{bandId}/song-ideas/{ideaId}/polish", new { }, TestJson.Options);
+            $"/bands/{bandId}/songs/{songId}/polish", new { }, TestJson.Options);
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
     }
 }

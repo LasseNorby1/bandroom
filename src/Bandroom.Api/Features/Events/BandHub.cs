@@ -167,7 +167,7 @@ public sealed class BandNotifier(IHubContext<BandHub> hub)
 
 public sealed record EventChangedNotification(Guid BandId, Guid EventId, string Action);
 
-public sealed record DemoChangedNotification(Guid BandId, Guid SongIdeaId, string Action);
+public sealed record DemoChangedNotification(Guid BandId, Guid SongId, string Action);
 
 public sealed record MessageAddedNotification(Guid BandId, Guid ChannelId);
 

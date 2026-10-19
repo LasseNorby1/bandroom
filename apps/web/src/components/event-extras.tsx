@@ -189,7 +189,8 @@ export function Setlist({ bandId, eventId, title, setlist, totalSeconds }: { ban
     [next[index], next[target]] = [next[target], next[index]];
     replace.mutate(next);
   };
-  const available = (songs.data ?? []).filter((s) => s.status === "active" && !ids.includes(s.id));
+  // Only what the band can actually play — the repertoire — goes on a setlist.
+  const available = (songs.data ?? []).filter((s) => s.status === "ready" && !ids.includes(s.id));
   const unknownLength = setlist.filter((s) => s.durationSeconds == null).length;
 
   async function share() {

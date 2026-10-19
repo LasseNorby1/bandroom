@@ -18,19 +18,14 @@ public static class DemoEndpoints
             .WithTags("demos")
             .AddEndpointFilter<BandMemberFilter>();
 
-        band.MapGet("/song-ideas", ListIdeasAsync).WithSummary("Song ideas with version counts");
-        band.MapPost("/song-ideas", CreateIdeaAsync).WithSummary("Start a song idea");
-        band.MapGet("/song-ideas/{ideaId:guid}", IdeaDetailAsync).WithSummary("Idea with versions, stems and polish jobs");
-        band.MapPatch("/song-ideas/{ideaId:guid}", UpdateIdeaAsync).WithSummary("Rename/relink/restatus an idea");
-
-        band.MapPost("/song-ideas/{ideaId:guid}/versions/uploads", InitVersionUploadAsync)
+        band.MapPost("/songs/{songId:guid}/versions/uploads", InitVersionUploadAsync)
             .WithSummary("Start a demo upload (presigned url)");
         band.MapPost("/versions/{versionId:guid}/confirm", ConfirmVersionAsync)
             .WithSummary("Finish an upload — verifies the object and its size");
         band.MapGet("/versions/{versionId:guid}/stream", StreamAsync).WithSummary("Presigned playback url");
         band.MapDelete("/versions/{versionId:guid}", DeleteVersionAsync).WithSummary("Delete a version (uploader/admin)");
 
-        band.MapPost("/song-ideas/{ideaId:guid}/stems/uploads", InitStemUploadAsync)
+        band.MapPost("/songs/{songId:guid}/stems/uploads", InitStemUploadAsync)
             .WithSummary("Start a stem upload");
         band.MapPost("/stems/{stemId:guid}/confirm", ConfirmStemAsync).WithSummary("Finish a stem upload");
         band.MapDelete("/stems/{stemId:guid}", DeleteStemAsync).WithSummary("Delete a stem (uploader/admin)");
@@ -38,74 +33,18 @@ public static class DemoEndpoints
         return routes;
     }
 
-    private static async Task<Ok<List<IdeaSummaryResponse>>> ListIdeasAsync(AppDbContext db, CancellationToken ct)
+    /// <summary>Versions, stems and polish jobs of a song — SongEndpoints folds this into the song detail.</summary>
+    public static async Task<SongTakesResponse> LoadTakesAsync(AppDbContext db, Guid songId, Guid me, CancellationToken ct)
     {
-        var ideas = await db.SongIdeas
-            .OrderByDescending(i => i.CreatedAt)
-            .Select(i => new IdeaSummaryResponse(
-                i.Id, i.Title, i.Status, i.SongId,
-                db.Songs.Where(s => s.Id == i.SongId).Select(s => s.Title).FirstOrDefault(),
-                db.DemoVersions.Count(v => v.SongIdeaId == i.Id && v.Status == VersionStatus.Ready),
-                db.DemoVersions
-                    .Where(v => v.SongIdeaId == i.Id && v.Status == VersionStatus.Ready)
-                    .Max(v => (Instant?)v.CreatedAt),
-                i.CreatedAt))
-            .ToListAsync(ct);
-        return TypedResults.Ok(ideas);
-    }
-
-    private static async Task<Results<Created<IdeaSummaryResponse>, ValidationProblem>> CreateIdeaAsync(
-        CreateIdeaRequest request,
-        BandContext bandContext,
-        AppDbContext db,
-        IClock clock,
-        CancellationToken ct)
-    {
-        if (string.IsNullOrWhiteSpace(request.Title) || request.Title.Trim().Length > 120)
-        {
-            return TypedResults.ValidationProblem(new Dictionary<string, string[]>
-            {
-                ["title"] = ["Title is required (max 120 characters)."],
-            });
-        }
-
-        var idea = new SongIdea
-        {
-            BandId = bandContext.BandId!.Value,
-            Title = request.Title.Trim(),
-            CreatedByMembershipId = bandContext.MembershipId!.Value,
-            CreatedAt = clock.GetCurrentInstant(),
-        };
-        db.SongIdeas.Add(idea);
-        await db.SaveChangesAsync(ct);
-
-        return TypedResults.Created(
-            $"/bands/{idea.BandId}/song-ideas/{idea.Id}",
-            new IdeaSummaryResponse(idea.Id, idea.Title, idea.Status, idea.SongId, null, 0, null, idea.CreatedAt));
-    }
-
-    private static async Task<Results<Ok<IdeaDetailResponse>, NotFound>> IdeaDetailAsync(
-        Guid ideaId,
-        BandContext bandContext,
-        AppDbContext db,
-        CancellationToken ct)
-    {
-        var idea = await db.SongIdeas.SingleOrDefaultAsync(i => i.Id == ideaId, ct);
-        if (idea is null)
-        {
-            return TypedResults.NotFound();
-        }
-
         var memberNames = await db.Memberships
             .Join(db.Users, m => m.UserId, u => u.Id, (m, u) => new { m.Id, u.DisplayName })
             .ToDictionaryAsync(x => x.Id, x => x.DisplayName, ct);
 
         var versionRows = await db.DemoVersions
-            .Where(v => v.SongIdeaId == ideaId && v.Status == VersionStatus.Ready)
+            .Where(v => v.SongId == songId && v.Status == VersionStatus.Ready)
             .OrderByDescending(v => v.Number)
             .ToListAsync(ct);
         var versionIds = versionRows.Select(v => v.Id).ToList();
-        var me = bandContext.MembershipId!.Value;
         var fires = await db.Reactions
             .Where(r => versionIds.Contains(r.VersionId))
             .GroupBy(r => r.VersionId)
@@ -123,87 +62,24 @@ public static class DemoEndpoints
             .ToList();
 
         var stems = await db.Stems
-            .Where(s => s.SongIdeaId == ideaId && s.Status != VersionStatus.Failed)
+            .Where(s => s.SongId == songId && s.Status != VersionStatus.Failed)
             .OrderBy(s => s.Label)
             .ThenBy(s => s.CreatedAt)
             .Select(s => new StemResponse(s.Id, s.Label, s.Name, s.FileName, s.SizeBytes, s.Status, s.CreatedAt))
             .ToListAsync(ct);
 
         var jobs = await db.PolishJobs
-            .Where(j => j.SongIdeaId == ideaId)
+            .Where(j => j.SongId == songId)
             .OrderByDescending(j => j.CreatedAt)
             .Take(5)
             .Select(j => new PolishJobResponse(j.Id, j.Status, j.OutputVersionId, j.Error, j.CreatedAt, j.CompletedAt))
             .ToListAsync(ct);
 
-        var songTitle = idea.SongId is null
-            ? null
-            : await db.Songs.Where(s => s.Id == idea.SongId).Select(s => s.Title).FirstOrDefaultAsync(ct);
-        return TypedResults.Ok(new IdeaDetailResponse(
-            idea.Id, idea.Title, idea.Status, idea.SongId, songTitle, versions, stems, jobs));
-    }
-
-    private static async Task<Results<Ok<IdeaSummaryResponse>, NotFound, ValidationProblem>> UpdateIdeaAsync(
-        Guid ideaId,
-        UpdateIdeaRequest request,
-        AppDbContext db,
-        CancellationToken ct)
-    {
-        var idea = await db.SongIdeas.SingleOrDefaultAsync(i => i.Id == ideaId, ct);
-        if (idea is null)
-        {
-            return TypedResults.NotFound();
-        }
-
-        if (request.Title is not null)
-        {
-            var title = request.Title.Trim();
-            if (title.Length is 0 or > 120)
-            {
-                return TypedResults.ValidationProblem(new Dictionary<string, string[]>
-                {
-                    ["title"] = ["Title must be 1–120 characters."],
-                });
-            }
-
-            idea.Title = title;
-        }
-
-        if (request.Status is { } status)
-        {
-            idea.Status = status;
-        }
-
-        if (request.ClearSong)
-        {
-            idea.SongId = null;
-        }
-        else if (request.SongId is { } songId)
-        {
-            var exists = await db.Songs.AnyAsync(s => s.Id == songId, ct);
-            if (!exists)
-            {
-                return TypedResults.ValidationProblem(new Dictionary<string, string[]>
-                {
-                    ["songId"] = ["Unknown song."],
-                });
-            }
-
-            idea.SongId = songId;
-        }
-
-        await db.SaveChangesAsync(ct);
-        var versionCount = await db.DemoVersions
-            .CountAsync(v => v.SongIdeaId == ideaId && v.Status == VersionStatus.Ready, ct);
-        var linkedTitle = idea.SongId is null
-            ? null
-            : await db.Songs.Where(s => s.Id == idea.SongId).Select(s => s.Title).FirstOrDefaultAsync(ct);
-        return TypedResults.Ok(new IdeaSummaryResponse(
-            idea.Id, idea.Title, idea.Status, idea.SongId, linkedTitle, versionCount, null, idea.CreatedAt));
+        return new SongTakesResponse(versions, stems, jobs);
     }
 
     private static async Task<Results<Ok<InitUploadResponse>, NotFound, ValidationProblem>> InitVersionUploadAsync(
-        Guid ideaId,
+        Guid songId,
         InitUploadRequest request,
         BandContext bandContext,
         AppDbContext db,
@@ -212,8 +88,8 @@ public static class DemoEndpoints
         EntitlementOptions entitlements,
         CancellationToken ct)
     {
-        var idea = await db.SongIdeas.SingleOrDefaultAsync(i => i.Id == ideaId, ct);
-        if (idea is null)
+        var song = await db.Songs.SingleOrDefaultAsync(i => i.Id == songId, ct);
+        if (song is null)
         {
             return TypedResults.NotFound();
         }
@@ -227,13 +103,13 @@ public static class DemoEndpoints
 
         for (var attempt = 0; ; attempt++)
         {
-            var number = await db.DemoVersions.Where(v => v.SongIdeaId == ideaId).Select(v => (int?)v.Number).MaxAsync(ct) ?? 0;
+            var number = await db.DemoVersions.Where(v => v.SongId == songId).Select(v => (int?)v.Number).MaxAsync(ct) ?? 0;
             var version = new DemoVersion
             {
-                BandId = idea.BandId,
-                SongIdeaId = ideaId,
+                BandId = song.BandId,
+                SongId = songId,
                 Number = number + 1,
-                FileKey = $"bands/{idea.BandId}/ideas/{ideaId}/versions/{Guid.CreateVersion7()}{UploadRules.Extension(request.FileName)}",
+                FileKey = $"bands/{song.BandId}/songs/{songId}/versions/{Guid.CreateVersion7()}{UploadRules.Extension(request.FileName)}",
                 FileName = request.FileName.Trim(),
                 ContentType = request.ContentType,
                 UploadedByMembershipId = bandContext.MembershipId!.Value,
@@ -248,7 +124,7 @@ public static class DemoEndpoints
             }
             catch (DbUpdateException) when (attempt == 0)
             {
-                // Lost the (SongIdeaId, Number) race — recompute once.
+                // Lost the (SongId, Number) race — recompute once.
                 db.Entry(version).State = EntityState.Detached;
             }
         }
@@ -289,7 +165,7 @@ public static class DemoEndpoints
 
             bandContext.Band.StorageUsedBytes += size.Value;
             await db.SaveChangesAsync(ct);
-            await notifier.DemoChangedAsync(version.BandId, version.SongIdeaId, "version", ct);
+            await notifier.DemoChangedAsync(version.BandId, version.SongId, "version", ct);
 
             // Bpm + key arrive later, from the worker — never in this request.
             await AnalysisJobRunner.QueueAsync(db, version.BandId, version.Id, clock.GetCurrentInstant(), ct);
@@ -360,12 +236,12 @@ public static class DemoEndpoints
             // reconcile storage later.
         }
 
-        await notifier.DemoChangedAsync(version.BandId, version.SongIdeaId, "versionDeleted", ct);
+        await notifier.DemoChangedAsync(version.BandId, version.SongId, "versionDeleted", ct);
         return TypedResults.NoContent();
     }
 
     private static async Task<Results<Ok<InitStemUploadResponse>, NotFound, ValidationProblem>> InitStemUploadAsync(
-        Guid ideaId,
+        Guid songId,
         InitStemUploadRequest request,
         BandContext bandContext,
         AppDbContext db,
@@ -374,8 +250,8 @@ public static class DemoEndpoints
         EntitlementOptions entitlements,
         CancellationToken ct)
     {
-        var idea = await db.SongIdeas.SingleOrDefaultAsync(i => i.Id == ideaId, ct);
-        if (idea is null)
+        var song = await db.Songs.SingleOrDefaultAsync(i => i.Id == songId, ct);
+        if (song is null)
         {
             return TypedResults.NotFound();
         }
@@ -389,11 +265,11 @@ public static class DemoEndpoints
 
         var stem = new Stem
         {
-            BandId = idea.BandId,
-            SongIdeaId = ideaId,
+            BandId = song.BandId,
+            SongId = songId,
             Label = request.Label,
             Name = request.Name?.Trim(),
-            FileKey = $"bands/{idea.BandId}/ideas/{ideaId}/stems/{Guid.CreateVersion7()}{UploadRules.Extension(request.FileName)}",
+            FileKey = $"bands/{song.BandId}/songs/{songId}/stems/{Guid.CreateVersion7()}{UploadRules.Extension(request.FileName)}",
             FileName = request.FileName.Trim(),
             ContentType = request.ContentType,
             UploadedByMembershipId = bandContext.MembershipId!.Value,
@@ -435,7 +311,7 @@ public static class DemoEndpoints
             stem.Status = VersionStatus.Ready;
             bandContext.Band.StorageUsedBytes += size.Value;
             await db.SaveChangesAsync(ct);
-            await notifier.DemoChangedAsync(stem.BandId, stem.SongIdeaId, "stem", ct);
+            await notifier.DemoChangedAsync(stem.BandId, stem.SongId, "stem", ct);
         }
 
         return TypedResults.Ok(new StemResponse(
@@ -475,7 +351,7 @@ public static class DemoEndpoints
             // see DeleteVersionAsync
         }
 
-        await notifier.DemoChangedAsync(stem.BandId, stem.SongIdeaId, "stemDeleted", ct);
+        await notifier.DemoChangedAsync(stem.BandId, stem.SongId, "stemDeleted", ct);
         return TypedResults.NoContent();
     }
 }

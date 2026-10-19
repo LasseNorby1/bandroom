@@ -1,5 +1,6 @@
 using Bandroom.Api.Data;
 using Bandroom.Api.Features.Bands;
+using Bandroom.Api.Features.Demos;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.EntityFrameworkCore;
 using NodaTime;
@@ -13,16 +14,22 @@ public sealed record CreateSongRequest(
 public sealed record UpdateSongRequest(
     string? Title, string? Key, int? Bpm, SongStatus? Status, string? Notes, int? DurationSeconds = null, string? Chords = null);
 
+/// <summary>One row of the songs page: the song and how much hangs off it.</summary>
 public sealed record SongResponse(
     Guid Id, string Title, string? Key, int? Bpm, SongStatus Status, string? Notes, Instant CreatedAt,
     int? DurationSeconds, string? Chords, int FireCount, bool FiredByMe, int FileCount,
-    IReadOnlyList<LinkedIdeaResponse> Ideas);
+    int VersionCount, Instant? LatestVersionAt);
 
-/// <summary>A demo idea linked into this song — where its takes live.</summary>
-public sealed record LinkedIdeaResponse(Guid Id, string Title, int VersionCount);
+/// <summary>The song page: the song plus its takes, stems and polish runs.</summary>
+public sealed record SongDetailResponse(
+    SongResponse Song,
+    IReadOnlyList<VersionResponse> Versions,
+    IReadOnlyList<StemResponse> Stems,
+    IReadOnlyList<PolishJobResponse> PolishJobs);
 
 public sealed record SongFireResponse(int FireCount, bool FiredByMe);
 
+/// <summary>The song is the one container (spec §5.2): from first riff to repertoire, one id.</summary>
 public static class SongEndpoints
 {
     public static IEndpointRouteBuilder MapSongEndpoints(this IEndpointRouteBuilder routes)
@@ -32,9 +39,10 @@ public static class SongEndpoints
             .WithTags("songs")
             .AddEndpointFilter<BandMemberFilter>();
 
-        songs.MapGet("/", ListAsync).WithSummary("The repertoire");
-        songs.MapPost("/", CreateAsync).WithSummary("Add a song");
-        songs.MapPatch("/{songId:guid}", UpdateAsync).WithSummary("Update a song");
+        songs.MapGet("/", ListAsync).WithSummary("Every song, with take and file counts");
+        songs.MapPost("/", CreateAsync).WithSummary("Start a song (an idea is a song with status idea)");
+        songs.MapGet("/{songId:guid}", DetailAsync).WithSummary("A song with its takes, stems and polish runs");
+        songs.MapPatch("/{songId:guid}", UpdateAsync).WithSummary("Update a song: title, key, bpm, status, notes, duration, chords");
         songs.MapPut("/{songId:guid}/fire", FireAsync).WithSummary("🔥 this song");
         songs.MapDelete("/{songId:guid}/fire", UnfireAsync).WithSummary("Take the 🔥 back");
 
@@ -78,72 +86,34 @@ public static class SongEndpoints
         return errors;
     }
 
+    private static IQueryable<SongResponse> Project(AppDbContext db, IQueryable<Song> songs, Guid me) =>
+        songs.Select(s => new SongResponse(
+            s.Id, s.Title, s.Key, s.Bpm, s.Status, s.Notes, s.CreatedAt, s.DurationSeconds, s.Chords,
+            db.SongReactions.Count(r => r.SongId == s.Id),
+            db.SongReactions.Any(r => r.SongId == s.Id && r.MembershipId == me),
+            db.SongFiles.Count(f => f.SongId == s.Id && f.Status == VersionStatus.Ready),
+            db.DemoVersions.Count(v => v.SongId == s.Id && v.Status == VersionStatus.Ready),
+            db.DemoVersions.Where(v => v.SongId == s.Id && v.Status == VersionStatus.Ready).Max(v => (Instant?)v.CreatedAt)));
+
     private static async Task<Ok<List<SongResponse>>> ListAsync(AppDbContext db, BandContext bandContext, CancellationToken ct)
     {
-        var me = bandContext.MembershipId!.Value;
-        var songs = await db.Songs
-            .OrderBy(s => s.Status)
-            .ThenBy(s => s.Title)
-            .Select(s => new SongResponse(
-                s.Id, s.Title, s.Key, s.Bpm, s.Status, s.Notes, s.CreatedAt, s.DurationSeconds, s.Chords,
-                db.SongReactions.Count(r => r.SongId == s.Id),
-                db.SongReactions.Any(r => r.SongId == s.Id && r.MembershipId == me),
-                db.SongFiles.Count(f => f.SongId == s.Id && f.Status == VersionStatus.Ready),
-                db.SongIdeas.Where(i => i.SongId == s.Id).OrderBy(i => i.CreatedAt)
-                    .Select(i => new LinkedIdeaResponse(i.Id, i.Title, db.DemoVersions.Count(v => v.SongIdeaId == i.Id && v.Status == VersionStatus.Ready)))
-                    .ToList()))
-            .ToListAsync(ct);
+        // Newest first; the client groups by status. "Sort by 🔥" is a view there too.
+        var songs = await Project(db, db.Songs.OrderByDescending(s => s.CreatedAt), bandContext.MembershipId!.Value).ToListAsync(ct);
         return TypedResults.Ok(songs);
     }
 
-    private static async Task<SongResponse> ToResponseAsync(AppDbContext db, Song song, Guid me, CancellationToken ct) =>
-        new(song.Id, song.Title, song.Key, song.Bpm, song.Status, song.Notes, song.CreatedAt, song.DurationSeconds, song.Chords,
-            await db.SongReactions.CountAsync(r => r.SongId == song.Id, ct),
-            await db.SongReactions.AnyAsync(r => r.SongId == song.Id && r.MembershipId == me, ct),
-            await db.SongFiles.CountAsync(f => f.SongId == song.Id && f.Status == VersionStatus.Ready, ct),
-            await db.SongIdeas.Where(i => i.SongId == song.Id).OrderBy(i => i.CreatedAt)
-                .Select(i => new LinkedIdeaResponse(i.Id, i.Title, db.DemoVersions.Count(v => v.SongIdeaId == i.Id && v.Status == VersionStatus.Ready)))
-                .ToListAsync(ct));
-
-    private static async Task<Results<Ok<SongFireResponse>, NotFound>> FireAsync(
-        Guid songId, BandContext bandContext, AppDbContext db, IClock clock, CancellationToken ct)
+    private static async Task<Results<Ok<SongDetailResponse>, NotFound>> DetailAsync(
+        Guid songId, AppDbContext db, BandContext bandContext, CancellationToken ct)
     {
-        if (!await db.Songs.AnyAsync(s => s.Id == songId, ct))
+        var me = bandContext.MembershipId!.Value;
+        var song = await Project(db, db.Songs.Where(s => s.Id == songId), me).SingleOrDefaultAsync(ct);
+        if (song is null)
         {
             return TypedResults.NotFound();
         }
 
-        var me = bandContext.MembershipId!.Value;
-        if (!await db.SongReactions.AnyAsync(r => r.SongId == songId && r.MembershipId == me, ct))
-        {
-            db.SongReactions.Add(new SongReaction
-            {
-                BandId = bandContext.BandId!.Value, SongId = songId, MembershipId = me, CreatedAt = clock.GetCurrentInstant(),
-            });
-            try
-            {
-                await db.SaveChangesAsync(ct);
-            }
-            catch (DbUpdateException)
-            {
-                // Double tap raced the unique index — already lit.
-            }
-        }
-
-        return TypedResults.Ok(new SongFireResponse(await db.SongReactions.CountAsync(r => r.SongId == songId, ct), true));
-    }
-
-    private static async Task<Results<Ok<SongFireResponse>, NotFound>> UnfireAsync(
-        Guid songId, BandContext bandContext, AppDbContext db, CancellationToken ct)
-    {
-        if (!await db.Songs.AnyAsync(s => s.Id == songId, ct))
-        {
-            return TypedResults.NotFound();
-        }
-
-        var me = bandContext.MembershipId!.Value;
-        await db.SongReactions.Where(r => r.SongId == songId && r.MembershipId == me).ExecuteDeleteAsync(ct);
-        return TypedResults.Ok(new SongFireResponse(await db.SongReactions.CountAsync(r => r.SongId == songId, ct), false));
+        var takes = await DemoEndpoints.LoadTakesAsync(db, songId, me, ct);
+        return TypedResults.Ok(new SongDetailResponse(song, takes.Versions, takes.Stems, takes.PolishJobs));
     }
 
     private static async Task<Results<Created<SongResponse>, ValidationProblem>> CreateAsync(
@@ -174,6 +144,7 @@ public static class SongEndpoints
             Notes = request.Notes?.Trim(),
             DurationSeconds = request.DurationSeconds is > 0 ? request.DurationSeconds : null,
             Chords = string.IsNullOrWhiteSpace(request.Chords) ? null : request.Chords.Trim(),
+            CreatedByMembershipId = bandContext.MembershipId,
             CreatedAt = clock.GetCurrentInstant(),
         };
         db.Songs.Add(song);
@@ -181,7 +152,7 @@ public static class SongEndpoints
 
         return TypedResults.Created(
             $"/bands/{song.BandId}/songs/{song.Id}",
-            await ToResponseAsync(db, song, bandContext.MembershipId!.Value, ct));
+            await Project(db, db.Songs.Where(s => s.Id == song.Id), bandContext.MembershipId!.Value).SingleAsync(ct));
     }
 
     private static async Task<Results<Ok<SongResponse>, NotFound, ValidationProblem>> UpdateAsync(
@@ -239,6 +210,47 @@ public static class SongEndpoints
         }
 
         await db.SaveChangesAsync(ct);
-        return TypedResults.Ok(await ToResponseAsync(db, song, bandContext.MembershipId!.Value, ct));
+        return TypedResults.Ok(await Project(db, db.Songs.Where(s => s.Id == songId), bandContext.MembershipId!.Value).SingleAsync(ct));
+    }
+
+    private static async Task<Results<Ok<SongFireResponse>, NotFound>> FireAsync(
+        Guid songId, BandContext bandContext, AppDbContext db, IClock clock, CancellationToken ct)
+    {
+        if (!await db.Songs.AnyAsync(s => s.Id == songId, ct))
+        {
+            return TypedResults.NotFound();
+        }
+
+        var me = bandContext.MembershipId!.Value;
+        if (!await db.SongReactions.AnyAsync(r => r.SongId == songId && r.MembershipId == me, ct))
+        {
+            db.SongReactions.Add(new SongReaction
+            {
+                BandId = bandContext.BandId!.Value, SongId = songId, MembershipId = me, CreatedAt = clock.GetCurrentInstant(),
+            });
+            try
+            {
+                await db.SaveChangesAsync(ct);
+            }
+            catch (DbUpdateException)
+            {
+                // Double tap raced the unique index — already lit.
+            }
+        }
+
+        return TypedResults.Ok(new SongFireResponse(await db.SongReactions.CountAsync(r => r.SongId == songId, ct), true));
+    }
+
+    private static async Task<Results<Ok<SongFireResponse>, NotFound>> UnfireAsync(
+        Guid songId, BandContext bandContext, AppDbContext db, CancellationToken ct)
+    {
+        if (!await db.Songs.AnyAsync(s => s.Id == songId, ct))
+        {
+            return TypedResults.NotFound();
+        }
+
+        var me = bandContext.MembershipId!.Value;
+        await db.SongReactions.Where(r => r.SongId == songId && r.MembershipId == me).ExecuteDeleteAsync(ct);
+        return TypedResults.Ok(new SongFireResponse(await db.SongReactions.CountAsync(r => r.SongId == songId, ct), false));
     }
 }

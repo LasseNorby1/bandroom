@@ -11,8 +11,7 @@ export const bandKeys = {
   events: (bandId: string) => ["band", bandId, "events"] as const,
   event: (bandId: string, eventId: string) => ["band", bandId, "events", eventId] as const,
   invites: (bandId: string) => ["band", bandId, "invites"] as const,
-  demos: (bandId: string) => ["band", bandId, "demos"] as const,
-  idea: (bandId: string, ideaId: string) => ["band", bandId, "demos", ideaId] as const,
+  song: (bandId: string, songId: string) => ["band", bandId, "songs", songId] as const,
   comments: (bandId: string, targetType: string, targetId: string) =>
     ["band", bandId, "comments", targetType, targetId] as const,
   songs: (bandId: string) => ["band", bandId, "songs"] as const,
@@ -130,25 +129,12 @@ export function useInvites(bandId: string) {
   });
 }
 
-export function useSongIdeas(bandId: string) {
+export function useSong(bandId: string, songId: string) {
   return useQuery({
-    queryKey: bandKeys.demos(bandId),
+    queryKey: bandKeys.song(bandId, songId),
     queryFn: async () => {
-      const { data, error } = await api.GET("/bands/{bandId}/song-ideas", {
-        params: { path: { bandId } },
-      });
-      if (error) throw error;
-      return data;
-    },
-  });
-}
-
-export function useIdea(bandId: string, ideaId: string) {
-  return useQuery({
-    queryKey: bandKeys.idea(bandId, ideaId),
-    queryFn: async () => {
-      const { data, error } = await api.GET("/bands/{bandId}/song-ideas/{ideaId}", {
-        params: { path: { bandId, ideaId } },
+      const { data, error } = await api.GET("/bands/{bandId}/songs/{songId}", {
+        params: { path: { bandId, songId } },
       });
       if (error) throw error;
       return data;
@@ -217,7 +203,7 @@ export function useInvalidateBandEvents(bandId: string) {
 export function useInvalidateBandDemos(bandId: string) {
   const queryClient = useQueryClient();
   return () => {
-    void queryClient.invalidateQueries({ queryKey: bandKeys.demos(bandId) });
+    void queryClient.invalidateQueries({ queryKey: bandKeys.songs(bandId) });
     void queryClient.invalidateQueries({ queryKey: ["band", bandId, "comments"] });
     void queryClient.invalidateQueries({ queryKey: bandKeys.detail(bandId) });
   };

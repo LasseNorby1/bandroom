@@ -34,12 +34,12 @@ public class Phase3Tests(ApiFactory factory)
     }
 
     [Fact]
-    public async Task Fire_TogglesPerMember_AndShowsOnTheIdea()
+    public async Task Fire_TogglesPerMember_AndShowsOnTheSong()
     {
         var (client, bandId) = await BandAsync();
-        var idea = await (await client.PostAsJsonAsync($"/bands/{bandId}/song-ideas", new CreateIdeaRequest("Riff"), TestJson.Options))
-            .ReadAsAsync<IdeaSummaryResponse>();
-        var init = await (await client.PostAsJsonAsync($"/bands/{bandId}/song-ideas/{idea.Id}/versions/uploads",
+        var song = await (await client.PostAsJsonAsync($"/bands/{bandId}/songs", new CreateSongRequest("Riff"), TestJson.Options))
+            .ReadAsAsync<SongResponse>();
+        var init = await (await client.PostAsJsonAsync($"/bands/{bandId}/songs/{song.Id}/versions/uploads",
                 new InitUploadRequest("take.mp3", "audio/mpeg", 2048), TestJson.Options)).ReadAsAsync<InitUploadResponse>();
         await PutAsync(init.UploadUrl, new byte[2048], "audio/mpeg");
         var version = await (await client.PostAsJsonAsync($"/bands/{bandId}/versions/{init.VersionId}/confirm",
@@ -51,7 +51,7 @@ public class Phase3Tests(ApiFactory factory)
         var again = await (await client.PutAsync($"/bands/{bandId}/versions/{version.Id}/fire", null)).ReadAsAsync<FireResponse>();
         Assert.Equal(1, again.FireCount); // idempotent
 
-        var detail = await (await client.GetAsync($"/bands/{bandId}/song-ideas/{idea.Id}")).ReadAsAsync<IdeaDetailResponse>();
+        var detail = await (await client.GetAsync($"/bands/{bandId}/songs/{song.Id}")).ReadAsAsync<SongDetailResponse>();
         Assert.True(detail.Versions.Single().FiredByMe);
         Assert.Null(detail.Versions.Single().Bpm); // analysis is queued, never inline
 

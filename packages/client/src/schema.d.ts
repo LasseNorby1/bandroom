@@ -2318,7 +2318,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** The repertoire */
+        /** Every song, with take and file counts */
         get: {
             parameters: {
                 query?: never;
@@ -2342,7 +2342,7 @@ export interface paths {
             };
         };
         put?: never;
-        /** Add a song */
+        /** Start a song (an idea is a song with status idea) */
         post: {
             parameters: {
                 query?: never;
@@ -2391,13 +2391,43 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get?: never;
+        /** A song with its takes, stems and polish runs */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    songId: string;
+                    bandId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["SongDetailResponse"];
+                    };
+                };
+                /** @description Not Found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
         put?: never;
         post?: never;
         delete?: never;
         options?: never;
         head?: never;
-        /** Update a song */
+        /** Update a song: title, key, bpm, status, notes, duration, chords */
         patch: {
             parameters: {
                 query?: never;
@@ -2769,169 +2799,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/bands/{bandId}/song-ideas": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Song ideas with version counts */
-        get: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path: {
-                    bandId: string;
-                };
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                /** @description OK */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["IdeaSummaryResponse"][];
-                    };
-                };
-            };
-        };
-        put?: never;
-        /** Start a song idea */
-        post: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path: {
-                    bandId: string;
-                };
-                cookie?: never;
-            };
-            requestBody: {
-                content: {
-                    "application/json": components["schemas"]["CreateIdeaRequest"];
-                };
-            };
-            responses: {
-                /** @description Created */
-                201: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["IdeaSummaryResponse"];
-                    };
-                };
-                /** @description Bad Request */
-                400: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/problem+json": components["schemas"]["HttpValidationProblemDetails"];
-                    };
-                };
-            };
-        };
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/bands/{bandId}/song-ideas/{ideaId}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Idea with versions, stems and polish jobs */
-        get: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path: {
-                    ideaId: string;
-                    bandId: string;
-                };
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                /** @description OK */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["IdeaDetailResponse"];
-                    };
-                };
-                /** @description Not Found */
-                404: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content?: never;
-                };
-            };
-        };
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        /** Rename/relink/restatus an idea */
-        patch: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path: {
-                    ideaId: string;
-                    bandId: string;
-                };
-                cookie?: never;
-            };
-            requestBody: {
-                content: {
-                    "application/json": components["schemas"]["UpdateIdeaRequest"];
-                };
-            };
-            responses: {
-                /** @description OK */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["IdeaSummaryResponse"];
-                    };
-                };
-                /** @description Bad Request */
-                400: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/problem+json": components["schemas"]["HttpValidationProblemDetails"];
-                    };
-                };
-                /** @description Not Found */
-                404: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content?: never;
-                };
-            };
-        };
-        trace?: never;
-    };
-    "/bands/{bandId}/song-ideas/{ideaId}/versions/uploads": {
+    "/bands/{bandId}/songs/{songId}/versions/uploads": {
         parameters: {
             query?: never;
             header?: never;
@@ -2946,7 +2814,7 @@ export interface paths {
                 query?: never;
                 header?: never;
                 path: {
-                    ideaId: string;
+                    songId: string;
                     bandId: string;
                 };
                 cookie?: never;
@@ -3139,7 +3007,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/bands/{bandId}/song-ideas/{ideaId}/stems/uploads": {
+    "/bands/{bandId}/songs/{songId}/stems/uploads": {
         parameters: {
             query?: never;
             header?: never;
@@ -3154,7 +3022,7 @@ export interface paths {
                 query?: never;
                 header?: never;
                 path: {
-                    ideaId: string;
+                    songId: string;
                     bandId: string;
                 };
                 cookie?: never;
@@ -3373,7 +3241,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/bands/{bandId}/song-ideas/{ideaId}/polish": {
+    "/bands/{bandId}/songs/{songId}/polish": {
         parameters: {
             query?: never;
             header?: never;
@@ -3382,13 +3250,13 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Mix & master the idea's stems into a new demo version (ai) */
+        /** Mix & master the song's stems into a new take (ai) */
         post: {
             parameters: {
                 query?: never;
                 header?: never;
                 path: {
-                    ideaId: string;
+                    songId: string;
                     bandId: string;
                 };
                 cookie?: never;
@@ -4101,9 +3969,6 @@ export interface components {
             to: components["schemas"]["LocalDate"];
             note: null | string;
         };
-        CreateIdeaRequest: {
-            title: string;
-        };
         CreateInviteRequest: {
             /** Format: int32 */
             maxUses: null | number;
@@ -4237,33 +4102,6 @@ export interface components {
                 [key: string]: string[];
             };
         };
-        IdeaDetailResponse: {
-            /** Format: uuid */
-            id: string;
-            title: string;
-            status: components["schemas"]["IdeaStatus"];
-            /** Format: uuid */
-            songId: null | string;
-            songTitle: null | string;
-            versions: components["schemas"]["VersionResponse"][];
-            stems: components["schemas"]["StemResponse"][];
-            polishJobs: components["schemas"]["PolishJobResponse"][];
-        };
-        /** @enum {unknown} */
-        IdeaStatus: "idea" | "inProgress" | "finished" | "parked";
-        IdeaSummaryResponse: {
-            /** Format: uuid */
-            id: string;
-            title: string;
-            status: components["schemas"]["IdeaStatus"];
-            /** Format: uuid */
-            songId: null | string;
-            songTitle: null | string;
-            /** Format: int32 */
-            versionCount: number;
-            latestVersionAt: null | components["schemas"]["Instant"];
-            createdAt: components["schemas"]["Instant"];
-        };
         InitReferenceUploadRequest: {
             title: string;
             fileName: string;
@@ -4342,13 +4180,6 @@ export interface components {
         };
         /** @enum {unknown} */
         IsoDayOfWeek: "none" | "monday" | "tuesday" | "wednesday" | "thursday" | "friday" | "saturday" | "sunday";
-        LinkedIdeaResponse: {
-            /** Format: uuid */
-            id: string;
-            title: string;
-            /** Format: int32 */
-            versionCount: number;
-        };
         /** Format: date */
         LocalDate: string;
         /** Format: time */
@@ -4523,6 +4354,12 @@ export interface components {
             /** Format: int32 */
             durationSeconds: null | number;
         };
+        SongDetailResponse: {
+            song: components["schemas"]["SongResponse"];
+            versions: components["schemas"]["VersionResponse"][];
+            stems: components["schemas"]["StemResponse"][];
+            polishJobs: components["schemas"]["PolishJobResponse"][];
+        };
         SongFileResponse: {
             /** Format: uuid */
             id: string;
@@ -4559,10 +4396,12 @@ export interface components {
             firedByMe: boolean;
             /** Format: int32 */
             fileCount: number;
-            ideas: components["schemas"]["LinkedIdeaResponse"][];
+            /** Format: int32 */
+            versionCount: number;
+            latestVersionAt: null | components["schemas"]["Instant"];
         };
         /** @enum {unknown} */
-        SongStatus: "active" | "retired";
+        SongStatus: "idea" | "working" | "ready" | "parked";
         /** @enum {unknown} */
         StemLabel: "drums" | "bass" | "guitar" | "keys" | "vocals" | "other";
         StemResponse: {
@@ -4625,14 +4464,6 @@ export interface components {
             contactName?: null | string;
             contactPhone?: null | string;
             contactEmail?: null | string;
-        };
-        UpdateIdeaRequest: {
-            title: null | string;
-            status: null | components["schemas"]["IdeaStatus"];
-            /** Format: uuid */
-            songId: null | string;
-            /** @default false */
-            clearSong: boolean;
         };
         UpdateMemberRequest: {
             role: components["schemas"]["BandRole"];

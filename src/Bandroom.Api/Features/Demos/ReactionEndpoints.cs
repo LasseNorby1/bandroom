@@ -35,7 +35,7 @@ public static class ReactionEndpoints
     {
         var version = await db.DemoVersions
             .Where(v => v.Id == versionId && v.Status == VersionStatus.Ready)
-            .Select(v => new { v.SongIdeaId })
+            .Select(v => new { v.SongId })
             .SingleOrDefaultAsync(ct);
         if (version is null)
         {
@@ -61,7 +61,7 @@ public static class ReactionEndpoints
                 // Double tap raced the unique index — already lit.
             }
 
-            await notifier.DemoChangedAsync(bandContext.BandId!.Value, version.SongIdeaId, "fire", ct);
+            await notifier.DemoChangedAsync(bandContext.BandId!.Value, version.SongId, "fire", ct);
         }
 
         return TypedResults.Ok(await CountAsync(db, versionId, me, ct));
@@ -74,7 +74,7 @@ public static class ReactionEndpoints
         BandNotifier notifier,
         CancellationToken ct)
     {
-        var ideaId = await db.DemoVersions.Where(v => v.Id == versionId).Select(v => (Guid?)v.SongIdeaId).SingleOrDefaultAsync(ct);
+        var ideaId = await db.DemoVersions.Where(v => v.Id == versionId).Select(v => (Guid?)v.SongId).SingleOrDefaultAsync(ct);
         if (ideaId is null)
         {
             return TypedResults.NotFound();

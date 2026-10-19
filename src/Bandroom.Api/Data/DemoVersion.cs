@@ -26,7 +26,7 @@ public sealed class DemoVersion : IBandScoped
 
     public required Guid BandId { get; init; }
 
-    public required Guid SongIdeaId { get; init; }
+    public required Guid SongId { get; init; }
 
     /// <summary>Per-idea sequence (v1, v2, …).</summary>
     public required int Number { get; set; }

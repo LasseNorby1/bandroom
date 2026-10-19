@@ -240,10 +240,10 @@ public static class AiEndpoints
         }
 
         foreach (var v in await db.DemoVersions.Where(v => v.CreatedAt > since && v.Status == VersionStatus.Ready && v.UploadedByMembershipId != me.Id)
-                     .Join(db.SongIdeas, v => v.SongIdeaId, i => i.Id, (v, i) => new { v, i }).ToListAsync(ct))
+                     .Join(db.Songs, v => v.SongId, i => i.Id, (v, i) => new { v, i }).ToListAsync(ct))
         {
             items.Add(new CatchUpItem(v.v.CreatedAt, "demo",
-                $"{Name(v.v.UploadedByMembershipId)} uploaded v{v.v.Number} of \"{v.i.Title}\"", $"{prefix}/demos/{v.i.Id}"));
+                $"{Name(v.v.UploadedByMembershipId)} uploaded v{v.v.Number} of \"{v.i.Title}\"", $"{prefix}/songs/{v.i.Id}"));
         }
 
         var messageCount = await db.Messages.CountAsync(m => m.CreatedAt > since && m.AuthorMembershipId != me.Id, ct);

@@ -13,7 +13,7 @@ public enum StemLabel
 }
 
 /// <summary>
-/// One labelled track of a song idea — the input to ai demo polish. Same
+/// One labelled track of a song — the input to ai demo polish. Same
 /// two-phase upload discipline as demo versions.
 /// </summary>
 public sealed class Stem : IBandScoped
@@ -22,7 +22,7 @@ public sealed class Stem : IBandScoped
 
     public required Guid BandId { get; init; }
 
-    public required Guid SongIdeaId { get; init; }
+    public required Guid SongId { get; init; }
 
     public required StemLabel Label { get; init; }
 
@@ -62,7 +62,7 @@ public sealed class PolishJob : IBandScoped
 
     public required Guid BandId { get; init; }
 
-    public required Guid SongIdeaId { get; init; }
+    public required Guid SongId { get; init; }
 
     public PolishStatus Status { get; set; } = PolishStatus.Queued;
 

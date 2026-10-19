@@ -103,7 +103,7 @@ public sealed class AnalysisJobRunner(
             analysis.Status = AnalysisStatus.Done;
             analysis.CompletedAt = clock.GetCurrentInstant();
             await db.SaveChangesAsync(ct);
-            await notifier.DemoChangedAsync(version.BandId, version.SongIdeaId, "analysis", ct);
+            await notifier.DemoChangedAsync(version.BandId, version.SongId, "analysis", ct);
         }
         catch (Exception ex)
         {

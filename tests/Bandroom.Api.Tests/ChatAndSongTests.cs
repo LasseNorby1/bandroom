@@ -90,7 +90,7 @@ public class ChatAndSongTests(ApiFactory factory)
 
         var updated = await (await client.PatchAsJsonAsync(
                 $"/bands/{bandId}/songs/{created.Id}",
-                new UpdateSongRequest(null, null, 128, SongStatus.Active, "capo 2"), TestJson.Options))
+                new UpdateSongRequest(null, null, 128, SongStatus.Ready, "capo 2"), TestJson.Options))
             .ReadAsAsync<SongResponse>();
         Assert.Equal(128, updated.Bpm);
         Assert.Equal("capo 2", updated.Notes);
@@ -221,30 +221,32 @@ public class ChatAndSongTests(ApiFactory factory)
     }
 
     [Fact]
-    public async Task Idea_LinksIntoASong_AndTheSongListsItsIdeas()
+    public async Task Song_IsTheOneContainer_TakesCountOnTheRow_AndStatusMoves()
     {
         var (client, bandId) = await BandAsync();
         var song = await (await client.PostAsJsonAsync($"/bands/{bandId}/songs", new CreateSongRequest("Silverline"), TestJson.Options)).ReadAsAsync<SongResponse>();
-        var idea = await (await client.PostAsJsonAsync($"/bands/{bandId}/song-ideas", new Bandroom.Api.Features.Demos.CreateIdeaRequest("Silverline bridge"), TestJson.Options))
-            .ReadAsAsync<Bandroom.Api.Features.Demos.IdeaSummaryResponse>();
-        Assert.Null(idea.SongTitle);
+        Assert.Equal(SongStatus.Idea, song.Status); // a new song is an idea until someone says otherwise
+        Assert.Equal(0, song.VersionCount);
 
-        var linked = await (await client.PatchAsJsonAsync($"/bands/{bandId}/song-ideas/{idea.Id}",
-            new Bandroom.Api.Features.Demos.UpdateIdeaRequest(null, null, song.Id), TestJson.Options)).ReadAsAsync<Bandroom.Api.Features.Demos.IdeaSummaryResponse>();
-        Assert.Equal("Silverline", linked.SongTitle);
+        var init = await (await client.PostAsJsonAsync($"/bands/{bandId}/songs/{song.Id}/versions/uploads",
+            new Bandroom.Api.Features.Demos.InitUploadRequest("take.mp3", "audio/mpeg", 2048), TestJson.Options)).ReadAsAsync<Bandroom.Api.Features.Demos.InitUploadResponse>();
+        using var raw = new HttpClient();
+        var content = new ByteArrayContent(new byte[2048]);
+        content.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("audio/mpeg");
+        (await raw.PutAsync(init.UploadUrl, content)).EnsureSuccessStatusCode();
+        (await client.PostAsJsonAsync($"/bands/{bandId}/versions/{init.VersionId}/confirm", new Bandroom.Api.Features.Demos.ConfirmUploadRequest(null), TestJson.Options)).EnsureSuccessStatusCode();
 
-        var songs = await (await client.GetAsync($"/bands/{bandId}/songs")).ReadAsAsync<List<SongResponse>>();
-        var mine = Assert.Single(songs.Single().Ideas);
-        Assert.Equal("Silverline bridge", mine.Title);
+        var detail = await (await client.GetAsync($"/bands/{bandId}/songs/{song.Id}")).ReadAsAsync<SongDetailResponse>();
+        Assert.Equal("Silverline", detail.Song.Title);
+        Assert.Equal(1, detail.Song.VersionCount);
+        Assert.Single(detail.Versions);
 
-        var unknown = await client.PatchAsJsonAsync($"/bands/{bandId}/song-ideas/{idea.Id}",
-            new Bandroom.Api.Features.Demos.UpdateIdeaRequest(null, null, Guid.NewGuid()), TestJson.Options);
-        Assert.Equal(HttpStatusCode.BadRequest, unknown.StatusCode);
+        var working = await (await client.PatchAsJsonAsync($"/bands/{bandId}/songs/{song.Id}",
+            new UpdateSongRequest(null, null, null, SongStatus.Working, null), TestJson.Options)).ReadAsAsync<SongResponse>();
+        Assert.Equal(SongStatus.Working, working.Status);
 
-        var cleared = await (await client.PatchAsJsonAsync($"/bands/{bandId}/song-ideas/{idea.Id}",
-            new Bandroom.Api.Features.Demos.UpdateIdeaRequest(null, null, null, ClearSong: true), TestJson.Options)).ReadAsAsync<Bandroom.Api.Features.Demos.IdeaSummaryResponse>();
-        Assert.Null(cleared.SongId);
-        songs = await (await client.GetAsync($"/bands/{bandId}/songs")).ReadAsAsync<List<SongResponse>>();
-        Assert.Empty(songs.Single().Ideas);
+        var list = await (await client.GetAsync($"/bands/{bandId}/songs")).ReadAsAsync<List<SongResponse>>();
+        Assert.Equal(1, list.Single().VersionCount);
+        Assert.NotNull(list.Single().LatestVersionAt);
     }
 }

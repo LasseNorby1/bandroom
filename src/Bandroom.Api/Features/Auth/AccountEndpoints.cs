@@ -171,7 +171,7 @@ public static class AccountEndpoints
                 await db.Messages.IgnoreQueryFilters().Where(m => m.AuthorMembershipId == id)
                     .Select(m => (object)new { m.ChannelId, m.Body, m.CreatedAt }).ToListAsync(ct),
                 await db.DemoVersions.IgnoreQueryFilters().Where(v => v.UploadedByMembershipId == id)
-                    .Select(v => (object)new { v.SongIdeaId, v.Number, v.FileName, v.SizeBytes, v.DurationSeconds, v.CreatedAt }).ToListAsync(ct)));
+                    .Select(v => (object)new { v.SongId, v.Number, v.FileName, v.SizeBytes, v.DurationSeconds, v.CreatedAt }).ToListAsync(ct)));
         }
 
         return TypedResults.Ok(new AccountExport(clock.GetCurrentInstant(), user.Id, user.Email!, user.DisplayName, bands));

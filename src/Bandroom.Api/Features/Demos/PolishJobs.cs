@@ -48,14 +48,14 @@ public static class PolishEndpoints
             .RequireAuthorization()
             .WithTags("demos")
             .AddEndpointFilter<BandMemberFilter>()
-            .MapPost("/song-ideas/{ideaId:guid}/polish", RequestPolishAsync)
-            .WithSummary("Mix & master the idea's stems into a new demo version (ai)");
+            .MapPost("/songs/{songId:guid}/polish", RequestPolishAsync)
+            .WithSummary("Mix & master the song's stems into a new take (ai)");
 
         return routes;
     }
 
     private static async Task<Results<Ok<PolishJobResponse>, NotFound, ValidationProblem>> RequestPolishAsync(
-        Guid ideaId,
+        Guid songId,
         RequestPolishRequest? request,
         BandContext bandContext,
         AppDbContext db,
@@ -65,8 +65,8 @@ public static class PolishEndpoints
         IPolishQueue queue,
         CancellationToken ct)
     {
-        var idea = await db.SongIdeas.SingleOrDefaultAsync(i => i.Id == ideaId, ct);
-        if (idea is null)
+        var song = await db.Songs.SingleOrDefaultAsync(i => i.Id == songId, ct);
+        if (song is null)
         {
             return TypedResults.NotFound();
         }
@@ -90,18 +90,18 @@ public static class PolishEndpoints
         }
 
         var stemCount = await db.Stems.CountAsync(
-            s => s.SongIdeaId == ideaId && s.Status == VersionStatus.Ready, ct);
+            s => s.SongId == songId && s.Status == VersionStatus.Ready, ct);
         if (stemCount == 0)
         {
             errors["stems"] = ["Upload at least one stem first."];
         }
 
         var running = await db.PolishJobs.AnyAsync(
-            j => j.SongIdeaId == ideaId &&
+            j => j.SongId == songId &&
                  (j.Status == PolishStatus.Queued || j.Status == PolishStatus.Processing), ct);
         if (running)
         {
-            errors["job"] = ["A polish run is already in progress for this idea."];
+            errors["job"] = ["A polish run is already in progress for this song."];
         }
 
         if (errors.Count > 0)
@@ -111,8 +111,8 @@ public static class PolishEndpoints
 
         var job = new PolishJob
         {
-            BandId = idea.BandId,
-            SongIdeaId = ideaId,
+            BandId = song.BandId,
+            SongId = songId,
             ReferenceTrackId = request?.ReferenceTrackId,
             ReferenceVersionId = request?.ReferenceVersionId,
             MixReferenceTrackId = request?.MixReferenceTrackId,
@@ -199,12 +199,12 @@ public sealed class PolishJobRunner(
 
         job.Status = PolishStatus.Processing;
         await db.SaveChangesAsync(ct);
-        await notifier.DemoChangedAsync(job.BandId, job.SongIdeaId, "polish", ct);
+        await notifier.DemoChangedAsync(job.BandId, job.SongId, "polish", ct);
 
         try
         {
             var stems = await db.Stems.IgnoreQueryFilters()
-                .Where(s => s.SongIdeaId == job.SongIdeaId && s.Status == VersionStatus.Ready)
+                .Where(s => s.SongId == job.SongId && s.Status == VersionStatus.Ready)
                 .ToListAsync(ct);
             if (stems.Count == 0)
             {
@@ -212,7 +212,7 @@ public sealed class PolishJobRunner(
             }
 
             var outputVersionId = Guid.CreateVersion7();
-            var outputKey = $"bands/{job.BandId}/ideas/{job.SongIdeaId}/versions/{outputVersionId}.wav";
+            var outputKey = $"bands/{job.BandId}/songs/{job.SongId}/versions/{outputVersionId}.wav";
             var outputUpload = await storage.CreateUploadAsync(
                 outputKey, "audio/wav", ct, StorageAudience.Worker);
 
@@ -247,14 +247,14 @@ public sealed class PolishJobRunner(
                        ?? throw new InvalidOperationException("Worker reported success but no output object exists.");
 
             var number = await db.DemoVersions.IgnoreQueryFilters()
-                .Where(v => v.SongIdeaId == job.SongIdeaId)
+                .Where(v => v.SongId == job.SongId)
                 .Select(v => (int?)v.Number)
                 .MaxAsync(ct) ?? 0;
             db.DemoVersions.Add(new DemoVersion
             {
                 Id = outputVersionId,
                 BandId = job.BandId,
-                SongIdeaId = job.SongIdeaId,
+                SongId = job.SongId,
                 Number = number + 1,
                 FileKey = outputKey,
                 FileName = "ai-demo-mix.wav",
@@ -275,7 +275,7 @@ public sealed class PolishJobRunner(
             job.OutputVersionId = outputVersionId;
             job.CompletedAt = clock.GetCurrentInstant();
             await db.SaveChangesAsync(ct);
-            await notifier.DemoChangedAsync(job.BandId, job.SongIdeaId, "polishDone", ct);
+            await notifier.DemoChangedAsync(job.BandId, job.SongId, "polishDone", ct);
 
             await AnalysisJobRunner.QueueAsync(db, job.BandId, outputVersionId, clock.GetCurrentInstant(), ct);
             analysisQueue.Enqueue(outputVersionId);
@@ -287,7 +287,7 @@ public sealed class PolishJobRunner(
             job.Error = ex.Message.Length > 500 ? ex.Message[..500] : ex.Message;
             job.CompletedAt = clock.GetCurrentInstant();
             await db.SaveChangesAsync(CancellationToken.None);
-            await notifier.DemoChangedAsync(job.BandId, job.SongIdeaId, "polishFailed", CancellationToken.None);
+            await notifier.DemoChangedAsync(job.BandId, job.SongId, "polishFailed", CancellationToken.None);
         }
     }
 

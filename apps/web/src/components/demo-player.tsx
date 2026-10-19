@@ -152,7 +152,7 @@ export function DemoPlayer({ bandId, version }: { bandId: string; version: DemoV
       const { error } = version.firedByMe ? await api.DELETE(path, params) : await api.PUT(path, params);
       if (error) throw error;
     },
-    onSuccess: () => void queryClient.invalidateQueries({ queryKey: bandKeys.demos(bandId) }),
+    onSuccess: () => void queryClient.invalidateQueries({ queryKey: bandKeys.songs(bandId) }),
   });
 
   const remove = useMutation({
@@ -163,7 +163,7 @@ export function DemoPlayer({ bandId, version }: { bandId: string; version: DemoV
       if (error) throw error;
     },
     onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: bandKeys.demos(bandId) });
+      void queryClient.invalidateQueries({ queryKey: bandKeys.songs(bandId) });
       void queryClient.invalidateQueries({ queryKey: bandKeys.detail(bandId) });
     },
   });

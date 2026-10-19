@@ -24,9 +24,7 @@ export type InviteCreated = Schemas["InviteCreatedResponse"];
 export type Invite = Schemas["InviteResponse"];
 export type Me = Schemas["MeResponse"];
 
-export type IdeaSummary = Schemas["IdeaSummaryResponse"];
-export type IdeaDetail = Schemas["IdeaDetailResponse"];
-export type IdeaStatus = Schemas["IdeaStatus"];
+export type SongDetail = Schemas["SongDetailResponse"];
 export type DemoVersion = Schemas["VersionResponse"];
 export type StemInfo = Schemas["StemResponse"];
 export type StemLabel = Schemas["StemLabel"];
