@@ -47,6 +47,7 @@ echo "==> starting"
 docker compose up -d --remove-orphans
 echo "==> warming the whisper model (downloads once into worker-models)"
 docker compose exec -T worker python -c "import os; from faster_whisper import WhisperModel; WhisperModel(os.environ.get('WHISPER_MODEL','medium'), device='cpu', compute_type='int8'); print('whisper', os.environ.get('WHISPER_MODEL','medium'), 'ready')" 2>/dev/null | tail -1 || echo "whisper warm-up skipped"
+docker compose exec -T worker python -c "from demucs.pretrained import get_model; get_model('htdemucs'); print('demucs htdemucs ready')" 2>/dev/null | tail -1 || echo "demucs warm-up skipped"
 
 echo "==> waiting for api readiness"
 for i in $(seq 1 30); do

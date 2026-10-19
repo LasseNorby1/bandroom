@@ -42,6 +42,7 @@ services:
       - "8090:8090"
     environment:
       HF_HOME: /models
+      TORCH_HOME: /models/torch
       WHISPER_MODEL: base
     volumes:
       - worker-models:/models

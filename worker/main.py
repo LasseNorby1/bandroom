@@ -383,10 +383,10 @@ async def polish(request: PolishRequest) -> PolishResponse:
 
 # ---------------------------------------------------------------------------
 # /sheet — the roadie's draft of lyrics and chords from one take (spec §5.5).
-# Lyrics: faster-whisper on cpu, word timestamps, language auto-detected.
-# Chords: chroma on the harmonic part, synced to beats, matched against the 24
-# major/minor triad templates, smoothed. A sketch, never a finished sheet; the
-# api turns the two timelines into a ChordPro draft the band accepts or not.
+# Demucs first (vocals / the rest), then faster-whisper on the vocals for the
+# words and a chroma-triad-viterbi sketch on the rest for the chords. Both run
+# on cpu. A sketch, never a finished sheet; the api turns the two timelines into
+# a ChordPro draft the band accepts or not.
 # ---------------------------------------------------------------------------
 
 WHISPER_MODEL = os.environ.get("WHISPER_MODEL", "small")
@@ -400,6 +400,11 @@ def whisper_model():
 
         _whisper = WhisperModel(WHISPER_MODEL, device="cpu", compute_type="int8")
     return _whisper
+
+
+def release_whisper() -> None:
+    global _whisper
+    _whisper = None
 
 
 class SheetRequest(BaseModel):
@@ -448,69 +453,112 @@ def _chord_templates() -> tuple[np.ndarray, list[str]]:
     return np.array(templates), names
 
 
-def estimate_chords(mono: np.ndarray) -> list[SheetChord]:
+def estimate_chords(mono: np.ndarray, beat_source: np.ndarray | None = None) -> list[SheetChord]:
+    """Chords from the accompaniment: chroma on the harmonic part, beat-synced,
+    scored against the 24 triads, then viterbi-smoothed so a chord has to earn
+    its change. `beat_source` (the full mix) gives steadier beats than a
+    drum-less stem."""
     import librosa
 
-    harmonic = librosa.effects.harmonic(mono)
-    tempo, beats = librosa.beat.beat_track(y=mono, sr=SR)
-    chroma = librosa.feature.chroma_cqt(y=harmonic, sr=SR)
+    harmonic = librosa.effects.harmonic(mono, margin=4.0)
+    tempo, beats = librosa.beat.beat_track(y=beat_source if beat_source is not None else mono, sr=SR)
+    chroma = librosa.feature.chroma_cqt(y=harmonic, sr=SR, bins_per_octave=36)
     if len(beats) < 4:
         return []
+    # sync() yields one column per span between boundaries: before the first
+    # beat, beat-to-beat, after the last. Keep the boundaries beside it.
     synced = librosa.util.sync(chroma, beats, aggregate=np.median)
-    times = librosa.frames_to_time(beats, sr=SR)
+    bounds = np.concatenate([[0.0], librosa.frames_to_time(beats, sr=SR), [len(mono) / SR]])
     templates, names = _chord_templates()
+    templates = templates / np.linalg.norm(templates, axis=1, keepdims=True)
     norm = synced / (np.linalg.norm(synced, axis=0, keepdims=True) + 1e-9)
-    scores = templates @ norm  # (24, beats)
-    picks = scores.argmax(axis=0)
-    confidence = scores.max(axis=0)
-    # Smooth: a chord has to hold for two beats to count, else it inherits its neighbour.
-    for i in range(1, len(picks) - 1):
-        if picks[i] != picks[i - 1] and picks[i] != picks[i + 1]:
-            picks[i] = picks[i - 1]
+    scores = templates @ norm  # (24, spans), cosine in [0, 1]
+    # Softmax to a probability per span, then a sticky viterbi: staying is cheap, changing costs.
+    probs = np.exp(scores * 25.0)
+    probs /= probs.sum(axis=0, keepdims=True)
+    transition = librosa.sequence.transition_loop(len(names), 0.6)
+    path = librosa.sequence.viterbi(probs, transition)
+    confidence = scores[path, np.arange(len(path))]
+    # Spans where the accompaniment is nearly silent (an a cappella intro, a
+    # spoken take) get no chord at all rather than a confident wrong one.
+    rms = librosa.feature.rms(y=mono)[0]
+    span_rms = librosa.util.sync(rms[np.newaxis, :], beats, aggregate=np.mean)[0]
+    audible = span_rms >= 0.12 * (span_rms.max() if span_rms.size else 1.0)
+    bar = 60.0 / max(float(np.atleast_1d(tempo)[0]), 1.0)
     chords: list[SheetChord] = []
-    for i, pick in enumerate(picks):
-        if confidence[i] < 0.5:
+    for i, pick in enumerate(path):
+        if confidence[i] < 0.6 or i + 1 >= len(bounds) or not audible[i]:
             continue
-        start = float(times[i])
-        end = float(times[i + 1]) if i + 1 < len(times) else start + 60.0 / max(float(np.atleast_1d(tempo)[0]), 1.0)
+        start, end = float(bounds[i]), float(bounds[i + 1])
         name = names[int(pick)]
-        if chords and chords[-1].chord == name:
+        if chords and chords[-1].chord == name and start - chords[-1].end < bar * 2:
             chords[-1].end = end
         else:
             chords.append(SheetChord(start=start, end=end, chord=name))
     return chords
 
 
+def separate(mono_stereo: np.ndarray) -> tuple[np.ndarray, np.ndarray] | None:
+    """Demucs (htdemucs, cpu) → (vocals, accompaniment), both mono at SR.
+    Runs as a subprocess so its memory goes away before whisper loads.
+    None when the model isn't there; the caller falls back to the mix."""
+    with tempfile.TemporaryDirectory() as tmp:
+        src = os.path.join(tmp, "take.wav")
+        sf.write(src, mono_stereo, SR)
+        cmd = [
+            "python", "-m", "demucs.separate", "-n", "htdemucs", "--two-stems=vocals", "-d", "cpu",
+            "--segment", "7", "-j", "1", "-o", tmp, src,
+        ]
+        try:
+            subprocess.run(cmd, check=True, capture_output=True, timeout=1800)
+        except (subprocess.CalledProcessError, subprocess.TimeoutExpired, FileNotFoundError):
+            return None
+        out = os.path.join(tmp, "htdemucs", "take")
+        vocals, _ = sf.read(os.path.join(out, "vocals.wav"), dtype="float32", always_2d=True)
+        rest, _ = sf.read(os.path.join(out, "no_vocals.wav"), dtype="float32", always_2d=True)
+        return vocals.mean(axis=1), rest.mean(axis=1)
+
+
 def draft_sheet(audio: np.ndarray, language: str | None) -> SheetResponse:
+    import gc
+
     import librosa
 
+    audio = audio[: SR * 60 * 12]  # twelve minutes is a song, not a rehearsal recording
     mono = audio.mean(axis=1).astype(np.float32)
-    mono = mono[: SR * 60 * 12]  # twelve minutes is a song, not a rehearsal recording
-    speech = librosa.resample(mono, orig_sr=SR, target_sr=16000)
+    stems = separate(audio)
+    vocals, rest = stems if stems is not None else (mono, mono)
+    separated = stems is not None
+
+    speech = librosa.resample(vocals, orig_sr=SR, target_sr=16000)
     model = whisper_model()
-    # No vad: it is trained on speech and throws away sung lines under a band
-    # ("the roadie skipped a verse"). Beam 5 and context carry-over are whisper's
-    # own defaults for quality; the cost is time, which a background job has.
     segments_iter, info = model.transcribe(
         speech, language=language, word_timestamps=True, vad_filter=False, beam_size=5,
         condition_on_previous_text=True, no_speech_threshold=0.8, log_prob_threshold=-1.5,
     )
     segments: list[SheetSegment] = []
     for seg in segments_iter:
-        words = [SheetWord(start=float(w.start), end=float(w.end), text=w.word.strip()) for w in (seg.words or []) if w.word.strip()]
+        words = [SheetWord(start=float(w.start), end=float(w.end), text=w.word.strip()) for w in (seg.words or []) if any(ch.isalnum() for ch in w.word)]
         if not words:
             text = seg.text.strip()
-            if not text:
+            if not any(ch.isalnum() for ch in text):
                 continue
             words = [SheetWord(start=float(seg.start), end=float(seg.end), text=text)]
         segments.append(SheetSegment(start=float(seg.start), end=float(seg.end), words=words))
+    language_out, language_p = info.language, float(info.language_probability or 0)
+    # Let whisper's 1.5 GB go before the next job; reloading costs seconds.
+    release_whisper()
+    del model, speech
+    gc.collect()
+
     try:
-        chords = estimate_chords(mono)
+        chords = estimate_chords(rest, beat_source=mono)
     except Exception:  # noqa: BLE001 — chords are optional
         chords = []
     return SheetResponse(
-        language=info.language, language_probability=float(info.language_probability or 0),
-        segments=segments, chords=chords, model=f"faster-whisper-{WHISPER_MODEL}+chroma-triads-1",
+        language=language_out, language_probability=language_p,
+        segments=segments, chords=chords,
+        model=f"faster-whisper-{WHISPER_MODEL}+{'htdemucs+' if separated else ''}chroma-triads-viterbi-2",
     )
 
 

@@ -110,12 +110,13 @@ services:
     environment:
       # Whisper weights download once into this volume (~1.5 GB for "medium"; deploy.sh warms it).
       HF_HOME: /models
+      TORCH_HOME: /models/torch
       WHISPER_MODEL: ${WHISPER_MODEL:-medium}
     volumes:
       - worker-models:/models
     # Polish jobs decode every stem into float64 — the one thing on this box that
     # can spike. Capped so a big session can't squeeze the tolk demo next door.
-    mem_limit: 3g
+    mem_limit: 3500m
     logging:
       driver: json-file
       options: { max-size: "10m", max-file: "3" }
