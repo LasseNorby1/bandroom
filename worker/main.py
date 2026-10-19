@@ -488,8 +488,12 @@ def draft_sheet(audio: np.ndarray, language: str | None) -> SheetResponse:
     mono = mono[: SR * 60 * 12]  # twelve minutes is a song, not a rehearsal recording
     speech = librosa.resample(mono, orig_sr=SR, target_sr=16000)
     model = whisper_model()
+    # No vad: it is trained on speech and throws away sung lines under a band
+    # ("the roadie skipped a verse"). Beam 5 and context carry-over are whisper's
+    # own defaults for quality; the cost is time, which a background job has.
     segments_iter, info = model.transcribe(
-        speech, language=language, word_timestamps=True, vad_filter=True, beam_size=1, condition_on_previous_text=False,
+        speech, language=language, word_timestamps=True, vad_filter=False, beam_size=5,
+        condition_on_previous_text=True, no_speech_threshold=0.8, log_prob_threshold=-1.5,
     )
     segments: list[SheetSegment] = []
     for seg in segments_iter:
