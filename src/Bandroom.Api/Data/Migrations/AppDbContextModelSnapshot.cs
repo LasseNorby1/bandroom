@@ -919,6 +919,60 @@ namespace Bandroom.Api.Data.Migrations
                     b.ToTable("SetlistEntries");
                 });
 
+            modelBuilder.Entity("Bandroom.Api.Data.SheetDraft", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("BandId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Instant?>("CompletedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Instant>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Draft")
+                        .HasColumnType("text");
+
+                    b.Property<string>("Error")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<string>("Language")
+                        .HasMaxLength(12)
+                        .HasColumnType("character varying(12)");
+
+                    b.Property<string>("Model")
+                        .HasMaxLength(60)
+                        .HasColumnType("character varying(60)");
+
+                    b.Property<Guid>("RequestedByMembershipId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("SongId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
+
+                    b.Property<Guid>("VersionId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("SongId")
+                        .IsUnique();
+
+                    b.HasIndex("VersionId");
+
+                    b.ToTable("SheetDrafts");
+                });
+
             modelBuilder.Entity("Bandroom.Api.Data.Song", b =>
                 {
                     b.Property<Guid>("Id")
@@ -1440,6 +1494,21 @@ namespace Bandroom.Api.Data.Migrations
                     b.HasOne("Bandroom.Api.Data.Song", null)
                         .WithMany()
                         .HasForeignKey("SongId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Bandroom.Api.Data.SheetDraft", b =>
+                {
+                    b.HasOne("Bandroom.Api.Data.Song", null)
+                        .WithMany()
+                        .HasForeignKey("SongId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("Bandroom.Api.Data.DemoVersion", null)
+                        .WithMany()
+                        .HasForeignKey("VersionId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
                 });

@@ -2361,6 +2361,166 @@
         }
       }
     },
+    "/bands/{bandId}/songs/{songId}/sheet-draft": {
+      "post": {
+        "tags": [
+          "songs"
+        ],
+        "summary": "Roadie: draft lyrics and chords from a take",
+        "parameters": [
+          {
+            "name": "songId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "bandId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "oneOf": [
+                  {
+                    "type": "null"
+                  },
+                  {
+                    "$ref": "#/components/schemas/RequestSheetDraftRequest"
+                  }
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SongDetailResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found"
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HttpValidationProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "songs"
+        ],
+        "summary": "Discard the draft",
+        "parameters": [
+          {
+            "name": "songId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "bandId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SongDetailResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found"
+          }
+        }
+      }
+    },
+    "/bands/{bandId}/songs/{songId}/sheet-draft/accept": {
+      "post": {
+        "tags": [
+          "songs"
+        ],
+        "summary": "Use the draft as the song's chord sheet",
+        "parameters": [
+          {
+            "name": "songId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "bandId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SongDetailResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found"
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HttpValidationProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/bands/{bandId}/songs/{songId}/files": {
       "get": {
         "tags": [
@@ -3676,6 +3836,13 @@
             }
           }
         }
+      },
+      "AnalysisStatus": {
+        "enum": [
+          "queued",
+          "done",
+          "failed"
+        ]
       },
       "BandAvailabilityResponse": {
         "required": [
@@ -5790,6 +5957,18 @@
           }
         }
       },
+      "RequestSheetDraftRequest": {
+        "type": "object",
+        "properties": {
+          "versionId": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "uuid"
+          }
+        }
+      },
       "ResetPasswordRequest": {
         "required": [
           "email",
@@ -5911,12 +6090,78 @@
           }
         }
       },
+      "SheetDraftResponse": {
+        "required": [
+          "id",
+          "versionId",
+          "versionNumber",
+          "status",
+          "language",
+          "draft",
+          "error",
+          "createdAt",
+          "completedAt"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "versionId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "versionNumber": {
+            "type": [
+              "null",
+              "integer"
+            ],
+            "format": "int32"
+          },
+          "status": {
+            "$ref": "#/components/schemas/AnalysisStatus"
+          },
+          "language": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "draft": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "error": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "createdAt": {
+            "$ref": "#/components/schemas/Instant"
+          },
+          "completedAt": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/Instant"
+              }
+            ]
+          }
+        }
+      },
       "SongDetailResponse": {
         "required": [
           "song",
           "versions",
           "stems",
-          "polishJobs"
+          "polishJobs",
+          "sheetDraft"
         ],
         "type": "object",
         "properties": {
@@ -5940,6 +6185,16 @@
             "items": {
               "$ref": "#/components/schemas/PolishJobResponse"
             }
+          },
+          "sheetDraft": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/SheetDraftResponse"
+              }
+            ]
           }
         }
       },

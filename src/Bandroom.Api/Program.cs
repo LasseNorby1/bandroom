@@ -259,16 +259,19 @@ try
     builder.Services.AddHttpClient("worker", client => client.Timeout = TimeSpan.FromMinutes(15));
     builder.Services.AddScoped<PolishJobRunner>();
     builder.Services.AddScoped<AnalysisJobRunner>();
+    builder.Services.AddScoped<Bandroom.Api.Features.Songs.SheetDraftRunner>();
     builder.Services.AddScoped<RecurringPracticeJob>();
     if (jobsEnabled)
     {
         builder.Services.AddSingleton<IPolishQueue, HangfirePolishQueue>();
         builder.Services.AddSingleton<IAnalysisQueue, HangfireAnalysisQueue>();
+        builder.Services.AddSingleton<Bandroom.Api.Features.Songs.ISheetDraftQueue, Bandroom.Api.Features.Songs.HangfireSheetDraftQueue>();
     }
     else
     {
         builder.Services.AddSingleton<IPolishQueue, NoopPolishQueue>();
         builder.Services.AddSingleton<IAnalysisQueue, NoopAnalysisQueue>();
+        builder.Services.AddSingleton<Bandroom.Api.Features.Songs.ISheetDraftQueue, Bandroom.Api.Features.Songs.NoopSheetDraftQueue>();
     }
 
     builder.Services.AddOpenApi(openApi =>

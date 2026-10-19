@@ -45,6 +45,8 @@ public sealed class ApiFactory : WebApplicationFactory<Program>, IAsyncLifetime
 
     public FakePushServiceHandler PushService { get; } = new();
 
+    public FakeWorkerHandler Worker { get; } = new();
+
     public ApiFactory()
     {
         // Env vars are the one config source that reliably beats appsettings under
@@ -77,6 +79,7 @@ public sealed class ApiFactory : WebApplicationFactory<Program>, IAsyncLifetime
             // One canned calendar feed and one canned model for every test.
             services.AddHttpClient("calendar").ConfigurePrimaryHttpMessageHandler(() => CalendarHandler);
             services.AddHttpClient("push").ConfigurePrimaryHttpMessageHandler(() => PushService);
+            services.AddHttpClient("worker").ConfigurePrimaryHttpMessageHandler(() => Worker);
             services.RemoveAll<Bandroom.Api.Features.Push.IPushSender>();
             services.AddSingleton<Bandroom.Api.Features.Push.IPushSender>(Push);
             services.RemoveAll<Bandroom.Api.Features.Ai.IAiClient>();

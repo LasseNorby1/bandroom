@@ -107,9 +107,15 @@ services:
       default:
         aliases: [bandroom-worker]
     restart: unless-stopped
+    environment:
+      # Whisper weights download once into this volume (~500 MB for "small").
+      HF_HOME: /models
+      WHISPER_MODEL: ${WHISPER_MODEL:-small}
+    volumes:
+      - worker-models:/models
     # Polish jobs decode every stem into float64 — the one thing on this box that
     # can spike. Capped so a big session can't squeeze the tolk demo next door.
-    mem_limit: 2g
+    mem_limit: 2500m
     logging:
       driver: json-file
       options: { max-size: "10m", max-file: "3" }
@@ -197,3 +203,4 @@ networks:
 volumes:
   postgres-data:
   minio-data:
+  worker-models:

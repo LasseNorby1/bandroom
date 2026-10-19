@@ -4,6 +4,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { use, useState } from "react";
 import { DemoPlayer } from "@/components/demo-player";
 import { Recorder } from "@/components/recorder";
+import { SheetDraftPanel } from "@/components/sheet-draft";
 import { SongFiles } from "@/components/song-files";
 import { SongSheet } from "@/components/song-sheet";
 import { UploadButton } from "@/components/upload-button";
@@ -255,6 +256,7 @@ export default function SongPage({
           <p className="text-sm text-muted">The sheet the band plays from. Chords in brackets; transpose on screen.</p>
         </div>
         <SongSheet key={`${detail.song.id}-${detail.song.chords ?? ""}-${detail.song.durationSeconds ?? ""}`} bandId={bandId} song={detail.song} />
+        <SheetDraftPanel bandId={bandId} detail={detail} />
       </section>
 
       <section className="rounded-xl border border-line bg-surface">

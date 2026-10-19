@@ -40,7 +40,13 @@ services:
     build: ./worker
     ports:
       - "8090:8090"
+    environment:
+      HF_HOME: /models
+      WHISPER_MODEL: base
+    volumes:
+      - worker-models:/models
 
 volumes:
   postgres-data:
   minio-data:
+  worker-models:

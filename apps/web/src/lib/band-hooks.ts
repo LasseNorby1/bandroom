@@ -139,6 +139,12 @@ export function useSong(bandId: string, songId: string) {
       if (error) throw error;
       return data;
     },
+    // While the roadie listens (or a polish runs) the hub says when it's done; this is the fallback.
+    refetchInterval: (query) => {
+      const d = query.state.data;
+      const busy = d?.sheetDraft?.status === "queued" || d?.polishJobs.some((j) => j.status === "queued" || j.status === "processing");
+      return busy ? 4000 : false;
+    },
   });
 }
 

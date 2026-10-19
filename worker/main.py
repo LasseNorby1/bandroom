@@ -379,3 +379,141 @@ async def polish(request: PolishRequest) -> PolishResponse:
         upload.raise_for_status()
 
     return PolishResponse(duration_seconds=len(mix) / SR, peaks=waveform_peaks(mix))
+
+
+# ---------------------------------------------------------------------------
+# /sheet — the roadie's draft of lyrics and chords from one take (spec §5.5).
+# Lyrics: faster-whisper on cpu, word timestamps, language auto-detected.
+# Chords: chroma on the harmonic part, synced to beats, matched against the 24
+# major/minor triad templates, smoothed. A sketch, never a finished sheet; the
+# api turns the two timelines into a ChordPro draft the band accepts or not.
+# ---------------------------------------------------------------------------
+
+WHISPER_MODEL = os.environ.get("WHISPER_MODEL", "small")
+_whisper = None
+
+
+def whisper_model():
+    global _whisper
+    if _whisper is None:
+        from faster_whisper import WhisperModel  # heavy import, only when used
+
+        _whisper = WhisperModel(WHISPER_MODEL, device="cpu", compute_type="int8")
+    return _whisper
+
+
+class SheetRequest(BaseModel):
+    url: str
+    language: str | None = None
+
+
+class SheetWord(BaseModel):
+    start: float
+    end: float
+    text: str
+
+
+class SheetSegment(BaseModel):
+    start: float
+    end: float
+    words: list[SheetWord]
+
+
+class SheetChord(BaseModel):
+    start: float
+    end: float
+    chord: str
+
+
+class SheetResponse(BaseModel):
+    language: str | None
+    language_probability: float | None
+    segments: list[SheetSegment]
+    chords: list[SheetChord]
+    model: str
+
+
+_NOTE_NAMES = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"]
+
+
+def _chord_templates() -> tuple[np.ndarray, list[str]]:
+    templates, names = [], []
+    for root in range(12):
+        major = np.zeros(12)
+        major[[root, (root + 4) % 12, (root + 7) % 12]] = 1.0
+        minor = np.zeros(12)
+        minor[[root, (root + 3) % 12, (root + 7) % 12]] = 1.0
+        templates += [major, minor]
+        names += [_NOTE_NAMES[root], _NOTE_NAMES[root] + "m"]
+    return np.array(templates), names
+
+
+def estimate_chords(mono: np.ndarray) -> list[SheetChord]:
+    import librosa
+
+    harmonic = librosa.effects.harmonic(mono)
+    tempo, beats = librosa.beat.beat_track(y=mono, sr=SR)
+    chroma = librosa.feature.chroma_cqt(y=harmonic, sr=SR)
+    if len(beats) < 4:
+        return []
+    synced = librosa.util.sync(chroma, beats, aggregate=np.median)
+    times = librosa.frames_to_time(beats, sr=SR)
+    templates, names = _chord_templates()
+    norm = synced / (np.linalg.norm(synced, axis=0, keepdims=True) + 1e-9)
+    scores = templates @ norm  # (24, beats)
+    picks = scores.argmax(axis=0)
+    confidence = scores.max(axis=0)
+    # Smooth: a chord has to hold for two beats to count, else it inherits its neighbour.
+    for i in range(1, len(picks) - 1):
+        if picks[i] != picks[i - 1] and picks[i] != picks[i + 1]:
+            picks[i] = picks[i - 1]
+    chords: list[SheetChord] = []
+    for i, pick in enumerate(picks):
+        if confidence[i] < 0.5:
+            continue
+        start = float(times[i])
+        end = float(times[i + 1]) if i + 1 < len(times) else start + 60.0 / max(float(np.atleast_1d(tempo)[0]), 1.0)
+        name = names[int(pick)]
+        if chords and chords[-1].chord == name:
+            chords[-1].end = end
+        else:
+            chords.append(SheetChord(start=start, end=end, chord=name))
+    return chords
+
+
+def draft_sheet(audio: np.ndarray, language: str | None) -> SheetResponse:
+    import librosa
+
+    mono = audio.mean(axis=1).astype(np.float32)
+    mono = mono[: SR * 60 * 12]  # twelve minutes is a song, not a rehearsal recording
+    speech = librosa.resample(mono, orig_sr=SR, target_sr=16000)
+    model = whisper_model()
+    segments_iter, info = model.transcribe(
+        speech, language=language, word_timestamps=True, vad_filter=True, beam_size=1, condition_on_previous_text=False,
+    )
+    segments: list[SheetSegment] = []
+    for seg in segments_iter:
+        words = [SheetWord(start=float(w.start), end=float(w.end), text=w.word.strip()) for w in (seg.words or []) if w.word.strip()]
+        if not words:
+            text = seg.text.strip()
+            if not text:
+                continue
+            words = [SheetWord(start=float(seg.start), end=float(seg.end), text=text)]
+        segments.append(SheetSegment(start=float(seg.start), end=float(seg.end), words=words))
+    try:
+        chords = estimate_chords(mono)
+    except Exception:  # noqa: BLE001 — chords are optional
+        chords = []
+    return SheetResponse(
+        language=info.language, language_probability=float(info.language_probability or 0),
+        segments=segments, chords=chords, model=f"faster-whisper-{WHISPER_MODEL}+chroma-triads-1",
+    )
+
+
+@app.post("/sheet", response_model=SheetResponse)
+async def sheet(request: SheetRequest) -> SheetResponse:
+    async with httpx.AsyncClient(timeout=300) as client:
+        response = await client.get(request.url)
+        response.raise_for_status()
+        audio = decode_to_stereo(response.content)
+    return await asyncio.to_thread(draft_sheet, audio, request.language)

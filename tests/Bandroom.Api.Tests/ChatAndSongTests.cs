@@ -7,6 +7,7 @@ using Bandroom.Api.Features.Comments;
 using Bandroom.Api.Features.Events;
 using Bandroom.Api.Features.Songs;
 using Bandroom.Api.Tests.Support;
+using Microsoft.Extensions.DependencyInjection;
 using NodaTime;
 using Xunit;
 
@@ -248,5 +249,67 @@ public class ChatAndSongTests(ApiFactory factory)
         var list = await (await client.GetAsync($"/bands/{bandId}/songs")).ReadAsAsync<List<SongResponse>>();
         Assert.Equal(1, list.Single().VersionCount);
         Assert.NotNull(list.Single().LatestVersionAt);
+    }
+
+    [Fact]
+    public void ChordProDraft_PutsEachChordInFrontOfTheWordItStartsUnder()
+    {
+        var segments = new List<SheetSegment>
+        {
+            new(0, 2, [new SheetWord(0, 0.4, "Hold"), new SheetWord(0.4, 0.8, "the"), new SheetWord(0.8, 1.4, "line")]),
+            new(8, 10, [new SheetWord(8, 8.5, "Till"), new SheetWord(8.5, 8.8, "the"), new SheetWord(8.8, 9.3, "morning"), new SheetWord(9.3, 9.9, "comes")]),
+        };
+        var chords = new List<SheetChord> { new(0, 0.7, "Am"), new(0.7, 3, "F"), new(7.5, 9, "C"), new(9, 11, "G") };
+        var draft = ChordProDraft.Build(segments, chords);
+        Assert.Equal("[Am]Hold the [F]line\n\n[C]Till the morning [G]comes\n", draft);
+        Assert.Equal("[Am] [F]\n", ChordProDraft.Build([], chords.Take(2).ToList()));
+    }
+
+    [Fact]
+    public async Task Roadie_DraftsLyricsAndChordsFromATake_AndOnlyBecomesTheSheetWhenAccepted()
+    {
+        var (client, bandId) = await BandAsync();
+        var song = await (await client.PostAsJsonAsync($"/bands/{bandId}/songs", new CreateSongRequest("Hold the line"), TestJson.Options)).ReadAsAsync<SongResponse>();
+
+        // Nothing to listen to yet.
+        var early = await client.PostAsJsonAsync($"/bands/{bandId}/songs/{song.Id}/sheet-draft", new RequestSheetDraftRequest(), TestJson.Options);
+        Assert.Equal(HttpStatusCode.BadRequest, early.StatusCode);
+
+        var init = await (await client.PostAsJsonAsync($"/bands/{bandId}/songs/{song.Id}/versions/uploads",
+            new Bandroom.Api.Features.Demos.InitUploadRequest("take.mp3", "audio/mpeg", 2048), TestJson.Options)).ReadAsAsync<Bandroom.Api.Features.Demos.InitUploadResponse>();
+        using var raw = new HttpClient();
+        var content = new ByteArrayContent(new byte[2048]);
+        content.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("audio/mpeg");
+        (await raw.PutAsync(init.UploadUrl, content)).EnsureSuccessStatusCode();
+        (await client.PostAsJsonAsync($"/bands/{bandId}/versions/{init.VersionId}/confirm", new Bandroom.Api.Features.Demos.ConfirmUploadRequest(null), TestJson.Options)).EnsureSuccessStatusCode();
+
+        var queued = await (await client.PostAsJsonAsync($"/bands/{bandId}/songs/{song.Id}/sheet-draft", new RequestSheetDraftRequest(), TestJson.Options)).ReadAsAsync<SongDetailResponse>();
+        Assert.NotNull(queued.SheetDraft);
+        Assert.Equal(AnalysisStatus.Queued, queued.SheetDraft!.Status);
+        Assert.Equal(1, queued.SheetDraft.VersionNumber);
+        var again = await client.PostAsJsonAsync($"/bands/{bandId}/songs/{song.Id}/sheet-draft", new RequestSheetDraftRequest(), TestJson.Options);
+        Assert.Equal(HttpStatusCode.BadRequest, again.StatusCode); // still listening
+
+        // Jobs are off in the test host; run the roadie by hand against the fake worker.
+        using (var scope = factory.Services.CreateScope())
+        {
+            await scope.ServiceProvider.GetRequiredService<SheetDraftRunner>().RunAsync(queued.SheetDraft.Id, CancellationToken.None);
+        }
+
+        var done = await (await client.GetAsync($"/bands/{bandId}/songs/{song.Id}")).ReadAsAsync<SongDetailResponse>();
+        Assert.Equal(AnalysisStatus.Done, done.SheetDraft!.Status);
+        Assert.Equal("en", done.SheetDraft.Language);
+        Assert.Contains("[Am]Hold the [F]line", done.SheetDraft.Draft);
+        Assert.Null(done.Song.Chords); // the roadie never writes the song's sheet by itself
+
+        var accepted = await (await client.PostAsync($"/bands/{bandId}/songs/{song.Id}/sheet-draft/accept", null)).ReadAsAsync<SongDetailResponse>();
+        Assert.StartsWith("[Am]Hold the [F]line", accepted.Song.Chords);
+        Assert.Null(accepted.SheetDraft); // used up
+
+        // A second draft can be asked for and thrown away without touching the sheet.
+        await client.PostAsJsonAsync($"/bands/{bandId}/songs/{song.Id}/sheet-draft", new RequestSheetDraftRequest(), TestJson.Options);
+        var discarded = await (await client.DeleteAsync($"/bands/{bandId}/songs/{song.Id}/sheet-draft")).ReadAsAsync<SongDetailResponse>();
+        Assert.Null(discarded.SheetDraft);
+        Assert.StartsWith("[Am]Hold the [F]line", discarded.Song.Chords);
     }
 }

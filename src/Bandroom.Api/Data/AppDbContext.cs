@@ -61,6 +61,8 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options, IBandCo
 
     public DbSet<SetlistEntry> SetlistEntries => Set<SetlistEntry>();
 
+    public DbSet<SheetDraft> SheetDrafts => Set<SheetDraft>();
+
     public DbSet<VersionAnalysis> VersionAnalyses => Set<VersionAnalysis>();
 
     public DbSet<ImportedBusyDay> ImportedBusyDays => Set<ImportedBusyDay>();
@@ -343,6 +345,18 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options, IBandCo
             file.HasOne<Song>().WithMany().HasForeignKey(f => f.SongId).OnDelete(DeleteBehavior.Cascade);
             file.HasOne<Membership>().WithMany().HasForeignKey(f => f.UploadedByMembershipId).OnDelete(DeleteBehavior.Cascade);
             file.HasQueryFilter(f => f.BandId == _bandContext.BandId);
+        });
+
+        builder.Entity<SheetDraft>(draft =>
+        {
+            draft.HasIndex(d => d.SongId).IsUnique();
+            draft.Property(d => d.Language).HasMaxLength(12);
+            draft.Property(d => d.Model).HasMaxLength(60);
+            draft.Property(d => d.Error).HasMaxLength(500);
+            draft.Property(d => d.Status).HasConversion<string>().HasMaxLength(20);
+            draft.HasOne<Song>().WithMany().HasForeignKey(d => d.SongId).OnDelete(DeleteBehavior.Cascade);
+            draft.HasOne<DemoVersion>().WithMany().HasForeignKey(d => d.VersionId).OnDelete(DeleteBehavior.Cascade);
+            draft.HasQueryFilter(d => d.BandId == _bandContext.BandId);
         });
 
         builder.Entity<VersionAnalysis>(analysis =>

@@ -20,12 +20,20 @@ public sealed record SongResponse(
     int? DurationSeconds, string? Chords, int FireCount, bool FiredByMe, int FileCount,
     int VersionCount, Instant? LatestVersionAt);
 
-/// <summary>The song page: the song plus its takes, stems and polish runs.</summary>
+/// <summary>The roadie's draft of lyrics and chords, heard from one take. Null until someone asks for it.</summary>
+public sealed record SheetDraftResponse(
+    Guid Id, Guid VersionId, int? VersionNumber, AnalysisStatus Status, string? Language, string? Draft, string? Error,
+    Instant CreatedAt, Instant? CompletedAt);
+
+public sealed record RequestSheetDraftRequest(Guid? VersionId = null);
+
+/// <summary>The song page: the song plus its takes, stems, polish runs and the roadie's draft.</summary>
 public sealed record SongDetailResponse(
     SongResponse Song,
     IReadOnlyList<VersionResponse> Versions,
     IReadOnlyList<StemResponse> Stems,
-    IReadOnlyList<PolishJobResponse> PolishJobs);
+    IReadOnlyList<PolishJobResponse> PolishJobs,
+    SheetDraftResponse? SheetDraft);
 
 public sealed record SongFireResponse(int FireCount, bool FiredByMe);
 
@@ -45,6 +53,9 @@ public static class SongEndpoints
         songs.MapPatch("/{songId:guid}", UpdateAsync).WithSummary("Update a song: title, key, bpm, status, notes, duration, chords");
         songs.MapPut("/{songId:guid}/fire", FireAsync).WithSummary("🔥 this song");
         songs.MapDelete("/{songId:guid}/fire", UnfireAsync).WithSummary("Take the 🔥 back");
+        songs.MapPost("/{songId:guid}/sheet-draft", RequestSheetDraftAsync).WithSummary("Roadie: draft lyrics and chords from a take");
+        songs.MapPost("/{songId:guid}/sheet-draft/accept", AcceptSheetDraftAsync).WithSummary("Use the draft as the song's chord sheet");
+        songs.MapDelete("/{songId:guid}/sheet-draft", DiscardSheetDraftAsync).WithSummary("Discard the draft");
 
         return routes;
     }
@@ -113,7 +124,119 @@ public static class SongEndpoints
         }
 
         var takes = await DemoEndpoints.LoadTakesAsync(db, songId, me, ct);
-        return TypedResults.Ok(new SongDetailResponse(song, takes.Versions, takes.Stems, takes.PolishJobs));
+        return TypedResults.Ok(new SongDetailResponse(song, takes.Versions, takes.Stems, takes.PolishJobs, await LoadDraftAsync(db, songId, ct)));
+    }
+
+    private static async Task<SheetDraftResponse?> LoadDraftAsync(AppDbContext db, Guid songId, CancellationToken ct) =>
+        await db.SheetDrafts
+            .Where(d => d.SongId == songId)
+            .Select(d => new SheetDraftResponse(
+                d.Id, d.VersionId, db.DemoVersions.Where(v => v.Id == d.VersionId).Select(v => (int?)v.Number).FirstOrDefault(),
+                d.Status, d.Language, d.Draft, d.Error, d.CreatedAt, d.CompletedAt))
+            .SingleOrDefaultAsync(ct);
+
+    // ---- the roadie's draft ------------------------------------------------------
+
+    private static async Task<Results<Ok<SongDetailResponse>, NotFound, ValidationProblem>> RequestSheetDraftAsync(
+        Guid songId,
+        RequestSheetDraftRequest? request,
+        BandContext bandContext,
+        AppDbContext db,
+        IClock clock,
+        WorkerOptions worker,
+        ISheetDraftQueue queue,
+        CancellationToken ct)
+    {
+        if (!await db.Songs.AnyAsync(s => s.Id == songId, ct))
+        {
+            return TypedResults.NotFound();
+        }
+
+        if (string.IsNullOrEmpty(worker.Url))
+        {
+            return TypedResults.ValidationProblem(new Dictionary<string, string[]> { ["worker"] = ["The roadie isn't available on this server (no audio worker)."] });
+        }
+
+        var version = request?.VersionId is { } wanted
+            ? await db.DemoVersions.SingleOrDefaultAsync(v => v.Id == wanted && v.SongId == songId && v.Status == VersionStatus.Ready, ct)
+            : await db.DemoVersions.Where(v => v.SongId == songId && v.Status == VersionStatus.Ready).OrderByDescending(v => v.Number).FirstOrDefaultAsync(ct);
+        if (version is null)
+        {
+            return TypedResults.ValidationProblem(new Dictionary<string, string[]> { ["versionId"] = ["Upload a take first — the roadie needs something to listen to."] });
+        }
+
+        var now = clock.GetCurrentInstant();
+        var draft = await db.SheetDrafts.SingleOrDefaultAsync(d => d.SongId == songId, ct);
+        if (draft is null)
+        {
+            draft = new SheetDraft
+            {
+                BandId = bandContext.BandId!.Value, SongId = songId, VersionId = version.Id,
+                RequestedByMembershipId = bandContext.MembershipId!.Value, CreatedAt = now,
+            };
+            db.SheetDrafts.Add(draft);
+        }
+        else
+        {
+            if (draft.Status == AnalysisStatus.Queued)
+            {
+                return TypedResults.ValidationProblem(new Dictionary<string, string[]> { ["draft"] = ["The roadie is still listening."] });
+            }
+
+            // One draft per song: asking again replaces the last one.
+            draft.VersionId = version.Id;
+            draft.Status = AnalysisStatus.Queued;
+            draft.Draft = null;
+            draft.Error = null;
+            draft.Language = null;
+            draft.CreatedAt = now;
+            draft.CompletedAt = null;
+        }
+
+        await db.SaveChangesAsync(ct);
+        queue.Enqueue(draft.Id);
+        return TypedResults.Ok(await DetailOrThrowAsync(db, songId, bandContext.MembershipId!.Value, ct));
+    }
+
+    private static async Task<Results<Ok<SongDetailResponse>, NotFound, ValidationProblem>> AcceptSheetDraftAsync(
+        Guid songId, BandContext bandContext, AppDbContext db, CancellationToken ct)
+    {
+        var song = await db.Songs.SingleOrDefaultAsync(s => s.Id == songId, ct);
+        var draft = await db.SheetDrafts.SingleOrDefaultAsync(d => d.SongId == songId, ct);
+        if (song is null || draft is null)
+        {
+            return TypedResults.NotFound();
+        }
+
+        if (draft.Status != AnalysisStatus.Done || string.IsNullOrWhiteSpace(draft.Draft))
+        {
+            return TypedResults.ValidationProblem(new Dictionary<string, string[]> { ["draft"] = ["There is no finished draft to use."] });
+        }
+
+        // The member said "use it" — that is the one moment the roadie's words become the band's.
+        song.Chords = draft.Draft.Trim();
+        db.SheetDrafts.Remove(draft);
+        await db.SaveChangesAsync(ct);
+        return TypedResults.Ok(await DetailOrThrowAsync(db, songId, bandContext.MembershipId!.Value, ct));
+    }
+
+    private static async Task<Results<Ok<SongDetailResponse>, NotFound>> DiscardSheetDraftAsync(
+        Guid songId, BandContext bandContext, AppDbContext db, CancellationToken ct)
+    {
+        if (!await db.Songs.AnyAsync(s => s.Id == songId, ct))
+        {
+            return TypedResults.NotFound();
+        }
+
+        await db.SheetDrafts.Where(d => d.SongId == songId).ExecuteDeleteAsync(ct);
+        return TypedResults.Ok(await DetailOrThrowAsync(db, songId, bandContext.MembershipId!.Value, ct));
+    }
+
+    private static async Task<SongDetailResponse> DetailOrThrowAsync(AppDbContext db, Guid songId, Guid me, CancellationToken ct)
+    {
+        var song = await Project(db, db.Songs.Where(s => s.Id == songId), me).SingleAsync(ct);
+        var takes = await DemoEndpoints.LoadTakesAsync(db, songId, me, ct);
+        return new SongDetailResponse(song, takes.Versions, takes.Stems, takes.PolishJobs, await LoadDraftAsync(db, songId, ct));
     }
 
     private static async Task<Results<Created<SongResponse>, ValidationProblem>> CreateAsync(

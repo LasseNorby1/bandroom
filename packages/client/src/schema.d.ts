@@ -2549,6 +2549,150 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/bands/{bandId}/songs/{songId}/sheet-draft": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Roadie: draft lyrics and chords from a take */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    songId: string;
+                    bandId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": null | components["schemas"]["RequestSheetDraftRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["SongDetailResponse"];
+                    };
+                };
+                /** @description Bad Request */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["HttpValidationProblemDetails"];
+                    };
+                };
+                /** @description Not Found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        /** Discard the draft */
+        delete: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    songId: string;
+                    bandId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["SongDetailResponse"];
+                    };
+                };
+                /** @description Not Found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/bands/{bandId}/songs/{songId}/sheet-draft/accept": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Use the draft as the song's chord sheet */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    songId: string;
+                    bandId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["SongDetailResponse"];
+                    };
+                };
+                /** @description Bad Request */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["HttpValidationProblemDetails"];
+                    };
+                };
+                /** @description Not Found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/bands/{bandId}/songs/{songId}/files": {
         parameters: {
             query?: never;
@@ -3817,6 +3961,8 @@ export interface components {
             displayName: string;
             bands: components["schemas"]["ExportMembership"][];
         };
+        /** @enum {unknown} */
+        AnalysisStatus: "queued" | "done" | "failed";
         BandAvailabilityResponse: {
             from: components["schemas"]["LocalDate"];
             /** Format: int32 */
@@ -4323,6 +4469,10 @@ export interface components {
             /** Format: uuid */
             mixReferenceVersionId?: null | string;
         };
+        RequestSheetDraftRequest: {
+            /** Format: uuid */
+            versionId?: null | string;
+        };
         ResetPasswordRequest: {
             email: string;
             token: string;
@@ -4354,11 +4504,26 @@ export interface components {
             /** Format: int32 */
             durationSeconds: null | number;
         };
+        SheetDraftResponse: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            versionId: string;
+            /** Format: int32 */
+            versionNumber: null | number;
+            status: components["schemas"]["AnalysisStatus"];
+            language: null | string;
+            draft: null | string;
+            error: null | string;
+            createdAt: components["schemas"]["Instant"];
+            completedAt: null | components["schemas"]["Instant"];
+        };
         SongDetailResponse: {
             song: components["schemas"]["SongResponse"];
             versions: components["schemas"]["VersionResponse"][];
             stems: components["schemas"]["StemResponse"][];
             polishJobs: components["schemas"]["PolishJobResponse"][];
+            sheetDraft: null | components["schemas"]["SheetDraftResponse"];
         };
         SongFileResponse: {
             /** Format: uuid */

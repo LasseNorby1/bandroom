@@ -6,3 +6,4 @@ soundfile==0.12.*
 pyloudnorm==0.1.*
 matchering==2.*
 librosa==0.10.*
+faster-whisper==1.*
