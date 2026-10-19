@@ -3905,6 +3905,7 @@
           "noticeUpdatedAt",
           "aiEnabled",
           "aiAvailable",
+          "lyricsLanguage",
           "plan",
           "storageUsedBytes",
           "storageQuotaBytes"
@@ -3969,6 +3970,12 @@
           },
           "aiAvailable": {
             "type": "boolean"
+          },
+          "lyricsLanguage": {
+            "type": [
+              "null",
+              "string"
+            ]
           },
           "plan": {
             "$ref": "#/components/schemas/BandPlan"
@@ -6553,6 +6560,12 @@
             "type": [
               "null",
               "boolean"
+            ]
+          },
+          "lyricsLanguage": {
+            "type": [
+              "null",
+              "string"
             ]
           }
         }

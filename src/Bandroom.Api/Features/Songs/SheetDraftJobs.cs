@@ -140,8 +140,10 @@ public sealed class SheetDraftRunner(
         try
         {
             var url = storage.GetDownloadUrl(version.FileKey, TimeSpan.FromHours(1), StorageAudience.Worker);
+            // A band that says what it sings in spares whisper the guess — the single biggest miss on mixed demos.
+            var language = await db.Bands.IgnoreQueryFilters().Where(b => b.Id == draft.BandId).Select(b => b.LyricsLanguage).SingleOrDefaultAsync(ct);
             var http = httpClientFactory.CreateClient("worker");
-            var response = await http.PostAsJsonAsync($"{worker.Url.TrimEnd('/')}/sheet", new SheetRequest(url, null), WorkerJson, ct);
+            var response = await http.PostAsJsonAsync($"{worker.Url.TrimEnd('/')}/sheet", new SheetRequest(url, language), WorkerJson, ct);
             response.EnsureSuccessStatusCode();
             var result = await response.Content.ReadFromJsonAsync<SheetResponse>(WorkerJson, ct)
                          ?? throw new InvalidOperationException("Empty worker response.");

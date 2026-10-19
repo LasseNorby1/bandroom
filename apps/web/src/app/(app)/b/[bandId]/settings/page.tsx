@@ -296,6 +296,7 @@ function BandSettings({ bandId }: { bandId: string }) {
       reminderHour: number | null;
       recurringPracticeDay: IsoDay | null;
       clearRecurringPracticeDay: boolean;
+      lyricsLanguage: string | null;
     }) => {
       const { data, error } = await api.PATCH("/bands/{bandId}", {
         params: { path: { bandId } },
@@ -345,6 +346,7 @@ function BandSettings({ bandId }: { bandId: string }) {
             reminderHour: Number(data.get("reminderHour")),
             recurringPracticeDay: (String(data.get("recurringDay")) as IsoDay) || null,
             clearRecurringPracticeDay: !data.get("recurringDay"),
+            lyricsLanguage: String(data.get("lyricsLanguage") ?? ""),
           });
         }}
       >
@@ -392,6 +394,21 @@ function BandSettings({ bandId }: { bandId: string }) {
             {Array.from({ length: 24 }, (_, hour) => (
               <option key={hour} value={hour}>{String(hour).padStart(2, "0")}:00</option>
             ))}
+          </select>
+        </Field>
+        <Field label="We sing in" htmlFor="lyricsLanguage">
+          <select
+            id="lyricsLanguage"
+            name="lyricsLanguage"
+            defaultValue={band.lyricsLanguage ?? ""}
+            className="h-10 w-full rounded-lg border border-line bg-surface px-3 text-sm"
+          >
+            <option value="">let the roadie guess per take</option>
+            <option value="da">Danish</option>
+            <option value="en">English</option>
+            <option value="sv">Swedish</option>
+            <option value="no">Norwegian</option>
+            <option value="de">German</option>
           </select>
         </Field>
         <Field label="Standing practice day" htmlFor="recurringDay">

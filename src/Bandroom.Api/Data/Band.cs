@@ -61,6 +61,9 @@ public sealed class Band
     /// <summary>Per-band ai switch (spec §5.5, trust): parsing, drafting, summaries — never the music.</summary>
     public bool AiEnabled { get; set; } = true;
 
+    /// <summary>What the band sings in, as a bcp-47 code ("da", "en"). Null = let the roadie guess per take.</summary>
+    public string? LyricsLanguage { get; set; }
+
     /// <summary>Verified bytes in object storage (demos + stems), quota-gated.</summary>
     public long StorageUsedBytes { get; set; }
 

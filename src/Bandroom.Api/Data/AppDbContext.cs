@@ -106,6 +106,7 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options, IBandCo
             band.Property(b => b.Name).HasMaxLength(100);
             band.Property(b => b.TimeZone).HasMaxLength(64);
             band.Property(b => b.RehearsalSpace).HasMaxLength(200);
+            band.Property(b => b.LyricsLanguage).HasMaxLength(8);
             band.Property(b => b.DefaultPracticeSlot).HasConversion<string>().HasMaxLength(20);
             band.Property(b => b.Plan).HasConversion<string>().HasMaxLength(20);
             band.Property(b => b.ReminderHour).HasDefaultValue(17);

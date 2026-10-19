@@ -156,6 +156,10 @@ namespace Bandroom.Api.Data.Migrations
                         .HasMaxLength(20)
                         .HasColumnType("character varying(20)");
 
+                    b.Property<string>("LyricsLanguage")
+                        .HasMaxLength(8)
+                        .HasColumnType("character varying(8)");
+
                     b.Property<string>("Name")
                         .IsRequired()
                         .HasMaxLength(100)

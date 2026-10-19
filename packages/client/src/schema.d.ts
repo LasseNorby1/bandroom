@@ -3991,6 +3991,7 @@ export interface components {
             noticeUpdatedAt: null | components["schemas"]["Instant"];
             aiEnabled: boolean;
             aiAvailable: boolean;
+            lyricsLanguage: null | string;
             plan: components["schemas"]["BandPlan"];
             /** Format: int64 */
             storageUsedBytes: number;
@@ -4614,6 +4615,7 @@ export interface components {
             /** @default false */
             clearRecurringPracticeDay: boolean;
             aiEnabled?: null | boolean;
+            lyricsLanguage?: null | string;
         };
         UpdateEventItemRequest: {
             text?: null | string;

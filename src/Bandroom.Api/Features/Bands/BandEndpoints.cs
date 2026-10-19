@@ -213,6 +213,12 @@ public static class BandEndpoints
             band.AiEnabled = aiEnabled;
         }
 
+        if (request.LyricsLanguage is not null)
+        {
+            var language = request.LyricsLanguage.Trim().ToLowerInvariant();
+            band.LyricsLanguage = language.Length is 0 ? null : language.Length <= 8 ? language : language[..8];
+        }
+
         if (request.ClearRecurringPracticeDay)
         {
             band.RecurringPracticeDay = null;
@@ -258,7 +264,7 @@ public static class BandEndpoints
     private static BandResponse ToBandResponse(Band band, Instant now, EntitlementOptions entitlements) =>
         new(band.Id, band.Name, band.TimeZone, band.Quorum, band.DefaultPracticeSlot, band.RehearsalSpace,
             band.ReminderHour, band.RecurringPracticeDay, band.Notice, band.NoticeUpdatedAt,
-            band.AiEnabled, AiAvailable,
+            band.AiEnabled, AiAvailable, band.LyricsLanguage,
             PlanLimits.IsPro(band, now, entitlements) ? BandPlan.Pro : BandPlan.Free,
             band.StorageUsedBytes,
             PlanLimits.StorageQuota(band, now, entitlements));

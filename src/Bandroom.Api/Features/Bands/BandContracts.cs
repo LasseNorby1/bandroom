@@ -15,7 +15,9 @@ public sealed record UpdateBandRequest(
     int? ReminderHour = null,
     IsoDayOfWeek? RecurringPracticeDay = null,
     bool ClearRecurringPracticeDay = false,
-    bool? AiEnabled = null);
+    bool? AiEnabled = null,
+    /// <summary>"da", "en", … or "" to let the roadie guess per take. Null leaves it alone.</summary>
+    string? LyricsLanguage = null);
 
 public sealed record BandResponse(
     Guid Id,
@@ -31,6 +33,7 @@ public sealed record BandResponse(
     bool AiEnabled,
     /// <summary>Whether this server has an ai key at all; the ui hides ai affordances otherwise.</summary>
     bool AiAvailable,
+    string? LyricsLanguage,
     BandPlan Plan,
     long StorageUsedBytes,
     long StorageQuotaBytes);
