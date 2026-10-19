@@ -46,6 +46,9 @@ public static class ChordProDraft
         var chordIndex = 0;
         double? previousEnd = null;
 
+        static bool StartsALine(string word) =>
+            word.Length > 0 && char.IsUpper(word[0]) && !word.All(char.IsUpper);
+
         static string? ChordAt(IReadOnlyList<SheetChord> chords, ref int index, double at)
         {
             while (index < chords.Count && chords[index].End <= at)
@@ -70,7 +73,9 @@ public static class ChordProDraft
                 var chord = ChordAt(chords, ref chordIndex, word.Start + 0.05);
                 if (!first)
                 {
-                    sb.Append(' ');
+                    // Whisper runs two sung lines into one segment and marks the seam with a
+                    // capital ("…still asleep I can hear…"); a sheet wants them on two lines.
+                    sb.Append(StartsALine(word.Text) ? '\n' : ' ');
                 }
 
                 if (chord is not null && chord != lastChord)

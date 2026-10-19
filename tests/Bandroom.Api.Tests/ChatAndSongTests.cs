@@ -263,6 +263,14 @@ public class ChatAndSongTests(ApiFactory factory)
         var draft = ChordProDraft.Build(segments, chords);
         Assert.Equal("[Am]Hold the [F]line\n\n[C]Till the morning [G]comes\n", draft);
         Assert.Equal("[Am] [F]\n", ChordProDraft.Build([], chords.Take(2).ToList()));
+
+        // Two sung lines in one segment: the capital marks the seam.
+        var runOn = new List<SheetSegment>
+        {
+            new(0, 6, [new SheetWord(0, 1, "In"), new SheetWord(1, 2, "the"), new SheetWord(2, 3, "quiet"), new SheetWord(3, 4, "When"), new SheetWord(4, 5, "the"), new SheetWord(5, 6, "world"), new SheetWord(6, 7, "I"), new SheetWord(7, 8, "can")]),
+        };
+        // "I" is capitalised anywhere in English, so it never starts a line by itself.
+        Assert.Equal("In the quiet\nWhen the world I can\n", ChordProDraft.Build(runOn, []));
     }
 
     [Fact]
