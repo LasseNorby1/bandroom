@@ -32,6 +32,7 @@ function RegisterForm() {
       String(data.get("email")),
       String(data.get("password")),
       String(data.get("displayName")),
+      String(data.get("website") ?? ""),
     );
     if (result.ok) {
       const next = searchParams.get("next");
@@ -68,6 +69,11 @@ function RegisterForm() {
               required
             />
           </Field>
+          {/* Honeypot: invisible to people, irresistible to form bots. Leave it empty. */}
+          <div aria-hidden="true" className="absolute -left-[9999px] top-0 h-0 w-0 overflow-hidden">
+            <label htmlFor="website">Website</label>
+            <input id="website" name="website" type="text" tabIndex={-1} autoComplete="off" defaultValue="" />
+          </div>
           {error && <p className="text-sm text-accent">{error}</p>}
           <Button type="submit" disabled={busy} className="w-full">
             {busy ? "Creating…" : "Create account"}

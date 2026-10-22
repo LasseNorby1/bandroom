@@ -176,6 +176,15 @@ try
                     Window = TimeSpan.FromMinutes(1),
                     QueueLimit = 0,
                 }));
+            // Nobody creates five accounts an hour from one address; bots do.
+            limiter.AddPolicy("register", httpContext => RateLimitPartition.GetFixedWindowLimiter(
+                httpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+                _ => new FixedWindowRateLimiterOptions
+                {
+                    PermitLimit = builder.Configuration.GetValue("RateLimiting:RegisterPerHour", 5),
+                    Window = TimeSpan.FromHours(1),
+                    QueueLimit = 0,
+                }));
         });
     }
 

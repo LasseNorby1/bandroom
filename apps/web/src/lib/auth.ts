@@ -71,8 +71,8 @@ export function login(email: string, password: string): Promise<AuthResult> {
   return callSession("/session/login", { email, password });
 }
 
-export function registerAccount(email: string, password: string, displayName: string): Promise<AuthResult> {
-  return callSession("/session/register", { email, password, displayName });
+export function registerAccount(email: string, password: string, displayName: string, website = ""): Promise<AuthResult> {
+  return callSession("/session/register", { email, password, displayName, website });
 }
 
 export async function logout(): Promise<void> {

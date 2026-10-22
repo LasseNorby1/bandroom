@@ -1,5 +1,6 @@
 using System.Security.Claims;
 using Bandroom.Api.Data;
+using Microsoft.EntityFrameworkCore;
 using Bandroom.Api.Infrastructure.Email;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Identity;
@@ -13,7 +14,7 @@ public static class AuthEndpoints
     {
         var auth = routes.MapGroup("/auth").WithTags("auth").RequireRateLimiting("auth");
 
-        auth.MapPost("/register", RegisterAsync).WithSummary("Create an account and sign in");
+        auth.MapPost("/register", RegisterAsync).RequireRateLimiting("register").WithSummary("Create an account and sign in");
         auth.MapPost("/login", LoginAsync).WithSummary("Sign in with email + password");
         auth.MapPost("/refresh", RefreshAsync).WithSummary("Rotate a refresh token");
         auth.MapPost("/logout", LogoutAsync).WithSummary("Revoke a refresh token family");
@@ -27,12 +28,23 @@ public static class AuthEndpoints
     private static async Task<NoContent> ForgotPasswordAsync(
         ForgotPasswordRequest request,
         UserManager<AppUser> userManager,
+        AppDbContext db,
         IAppEmailSender email,
         AuthOptions options,
+        ILogger<AuthOptions> logger,
         CancellationToken ct)
     {
         // Always 204 — no user enumeration through this endpoint either.
         var user = await userManager.FindByEmailAsync(request.Email);
+        // An account that never joined or created a band has nothing to recover,
+        // and "register a stranger, then request a reset" is exactly how the sign-up
+        // form was abused to mail strangers (oct 2026). So: no band, no mail.
+        if (user is not null && !await db.Memberships.IgnoreQueryFilters().AnyAsync(m => m.UserId == user.Id, ct))
+        {
+            logger.LogWarning("password reset skipped for a bandless account");
+            user = null;
+        }
+
         if (user is not null)
         {
             var token = await userManager.GeneratePasswordResetTokenAsync(user);
@@ -86,7 +98,6 @@ public static class AuthEndpoints
         RegisterRequest request,
         UserManager<AppUser> userManager,
         TokenService tokens,
-        IAppEmailSender email,
         CancellationToken ct)
     {
         if (string.IsNullOrWhiteSpace(request.DisplayName))
@@ -112,8 +123,8 @@ public static class AuthEndpoints
                 .ToDictionary(group => group.Key, group => group.Select(error => error.Description).ToArray()));
         }
 
-        await email.SendAsync(user.Email, "Welcome to Bandroom", $"Hi {user.DisplayName} — your account is ready.", ct);
-
+        // No welcome mail: bots registered strangers' addresses to get mail sent to
+        // them (oct 2026), and the signed-in page already says everything it said.
         return TypedResults.Ok(ToResponse(await tokens.IssueAsync(user, ct)));
     }
 

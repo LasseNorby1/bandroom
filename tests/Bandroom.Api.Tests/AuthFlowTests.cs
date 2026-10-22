@@ -134,11 +134,21 @@ public class AuthFlowTests(ApiFactory factory)
         var user = NewUser();
         var register = await client.PostAsJsonAsync("/auth/register", user);
         var tokens = await register.Content.ReadFromJsonAsync<TokenPairResponse>();
+        var recorder = factory.Services.GetRequiredService<RecordingEmailSender>();
+
+        // No welcome mail, and no reset mail while the account is in no band — that
+        // register-then-reset shape is how the form was abused to mail strangers.
+        Assert.DoesNotContain(recorder.Sent, m => m.To == user.Email);
+        (await client.PostAsJsonAsync("/auth/forgot-password", new ForgotPasswordRequest(user.Email))).EnsureSuccessStatusCode();
+        Assert.DoesNotContain(recorder.Sent, m => m.To == user.Email);
+
+        client.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", tokens!.AccessToken);
+        (await client.PostAsJsonAsync("/bands", new Bandroom.Api.Features.Bands.CreateBandRequest("Reset band", null), TestJson.Options)).EnsureSuccessStatusCode();
+        client.DefaultRequestHeaders.Authorization = null;
 
         var forgot = await client.PostAsJsonAsync("/auth/forgot-password", new ForgotPasswordRequest(user.Email));
         Assert.Equal(HttpStatusCode.NoContent, forgot.StatusCode);
 
-        var recorder = factory.Services.GetRequiredService<RecordingEmailSender>();
         var mail = recorder.Sent.Last(m => m.To == user.Email && m.Subject.Contains("Reset"));
         var token = Uri.UnescapeDataString(Regex.Match(mail.Body, @"token=([^&\s]+)").Groups[1].Value);
 
